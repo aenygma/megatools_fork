@@ -47,7 +47,7 @@ static gint compare_node(mega_node* a, mega_node* b)
 int main(int ac, char* av[])
 {
   mega_session* s;
-  GError *local_err = NULL;
+  gs_free_error GError *local_err = NULL;
   GSList *l = NULL, *i;
   gint j;
 
@@ -70,11 +70,13 @@ int main(int ac, char* av[])
 
     for (j = 1; j < ac; j++)
     {
-      mega_node* n = mega_session_stat(s, av[j]);
+      gs_free gchar* path = tool_convert_filename(av[j], FALSE);
+
+      mega_node* n = mega_session_stat(s, path);
       if (n && (n->type == MEGA_NODE_FILE || !opt_names))
         l = g_slist_append(l, n);
 
-      l = g_slist_concat(l, mega_session_ls(s, av[j], opt_recursive));
+      l = g_slist_concat(l, mega_session_ls(s, path, opt_recursive));
     }
   }
 
@@ -85,7 +87,6 @@ int main(int ac, char* av[])
   {
     g_printerr("ERROR: Can't read links info from mega.co.nz: %s\n", local_err->message);
     g_slist_free(l);
-    g_clear_error(&local_err);
     tool_fini(s);
     return 1;
   }
@@ -107,10 +108,10 @@ int main(int ac, char* av[])
     if (opt_long)
     {
       GDateTime* dt = g_date_time_new_from_unix_local(n->timestamp);
-      gchar* time_str = g_date_time_format(dt, "%Y-%m-%d %H:%M:%S");
+      gs_free gchar* time_str = g_date_time_format(dt, "%Y-%m-%d %H:%M:%S");
       g_date_time_unref(dt);
 
-      gchar* size_str;
+      gs_free gchar* size_str = NULL;
       if (opt_human)
         size_str = n->size > 0 ? g_format_size_full(n->size, G_FORMAT_SIZE_IEC_UNITS) : g_strdup("-");
       else
@@ -124,9 +125,6 @@ int main(int ac, char* av[])
         n->timestamp > 0 ? time_str : "", 
         opt_names ? n->name : n->path
       );
-
-      g_free(time_str);
-      g_free(size_str);
     }
     else
       g_print("%s\n", opt_names ? n->name : n->path);

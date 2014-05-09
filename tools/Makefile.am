@@ -13,7 +13,8 @@ libtools_la_SOURCES = \
   libtools/oldmega.c \
   libtools/oldmega.h \
   libtools/tools.c \
-  libtools/tools.h
+  libtools/tools.h \
+  libtools/alloc.h
 
 LDADD = \
   $(MEGA_LIBS) \

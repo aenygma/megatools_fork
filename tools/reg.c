@@ -37,72 +37,55 @@ static GOptionEntry entries[] =
   { NULL }
 };
 
-gchar* serialize_reg_state(mega_reg_state* state)
+static gchar* serialize_reg_state(mega_reg_state* state)
 {
-  gchar* pk = g_base64_encode(state->password_key, 16);
-  gchar* ch = g_base64_encode(state->challenge, 16);
+  gs_free gchar* pk = g_base64_encode(state->password_key, 16);
+  gs_free gchar* ch = g_base64_encode(state->challenge, 16);
 
-  gchar *ser = g_strdup_printf("%s:%s:%s", pk, ch, state->user_handle);
-
-  g_free(pk);
-  g_free(ch);
-
-  return ser;
+  return g_strdup_printf("%s:%s:%s", pk, ch, state->user_handle);
 }
 
-mega_reg_state* unserialize_reg_state(const gchar* str)
+static mega_reg_state* unserialize_reg_state(const gchar* str)
 {
-  GMatchInfo* m = NULL;
-  guchar* tmp;
+  gs_unref_match_info GMatchInfo* m = NULL;
+  gs_unref_regex GRegex* r = g_regex_new("^([a-z0-9/+=]{24}):([a-z0-9/+=]{24}):(.*)$", G_REGEX_CASELESS, 0, NULL);
   gsize len;
-  GRegex* r = g_regex_new("^([a-z0-9/+=]{24}):([a-z0-9/+=]{24}):(.*)$", G_REGEX_CASELESS, 0, NULL);
+
   if (!r)
     return NULL;
 
   if (!g_regex_match(r, str, 0, &m))
-  {
-    g_regex_unref(r);
-    g_match_info_unref(m);
     return NULL; 
-  }
 
-  gchar* pk = g_match_info_fetch(m, 1);
-  gchar* ch = g_match_info_fetch(m, 2);
-  gchar* user_handle = g_match_info_fetch(m, 3);
-  g_match_info_unref(m);
-  g_regex_unref(r);
+  gs_free gchar* pk = g_match_info_fetch(m, 1);
+  gs_free gchar* ch = g_match_info_fetch(m, 2);
+  gs_free guchar* decoded_ch = NULL;
+  gs_free guchar* decoded_pk = NULL;
 
   mega_reg_state* state = g_new0(mega_reg_state, 1);
-  state->user_handle = user_handle;
+  state->user_handle = g_match_info_fetch(m, 3);;
 
-  tmp = g_base64_decode(pk, &len);
-  if (!tmp)
+  decoded_pk = g_base64_decode(pk, &len);
+  if (!decoded_pk)
     goto err;
 
   if (len != 16)
     goto err;
 
-  memcpy(state->password_key, tmp, 16);
-  g_free(tmp);
+  memcpy(state->password_key, decoded_pk, 16);
 
-  tmp = g_base64_decode(ch, &len);
-  if (!tmp)
+  decoded_ch = g_base64_decode(ch, &len);
+  if (!decoded_ch)
     goto err;
 
   if (len != 16)
     goto err;
 
-  memcpy(state->challenge, tmp, 16);
+  memcpy(state->challenge, decoded_ch, 16);
 
-  g_free(tmp);
-  g_free(pk);
-  g_free(ch);
   return state;
 
 err:
-  g_free(pk);
-  g_free(ch);
-  g_free(tmp);
   g_free(state->user_handle);
   g_free(state);
   return NULL;
@@ -110,9 +93,9 @@ err:
 
 int main(int ac, char* av[])
 {
-  GError *local_err = NULL;
+  gs_free_error GError *local_err = NULL;
   mega_reg_state* state = NULL;
-  gchar* signup_key = NULL;
+  gs_free gchar* signup_key = NULL;
   mega_session* s;
 
   tool_init_bare(&ac, &av, "LINK - register a new mega.co.nz account", entries);
@@ -152,8 +135,9 @@ int main(int ac, char* av[])
       return 1;
     }
 
-    GMatchInfo* m = NULL;
-    GRegex* r = g_regex_new("^(?:https?://mega.co.nz/#confirm)?([a-z0-9_-]{80,150})$", G_REGEX_CASELESS, 0, NULL);
+    gs_unref_regex GRegex* r = g_regex_new("^(?:https?://mega.co.nz/#confirm)?([a-z0-9_-]{80,150})$", G_REGEX_CASELESS, 0, NULL);
+    gs_unref_match_info GMatchInfo* m = NULL;
+
     g_assert(r != NULL);
 
     if (!g_regex_match(r, av[1], 0, &m))
@@ -163,9 +147,6 @@ int main(int ac, char* av[])
     }
 
     signup_key = g_match_info_fetch(m, 1);
-    g_match_info_unref(m);
-    g_regex_unref(r);
-
     state = unserialize_reg_state(opt_verify);
     if (!state)
     {
@@ -186,11 +167,10 @@ int main(int ac, char* av[])
     if (!mega_session_register(s, opt_email, opt_password, opt_name, &state, &local_err))
     {
       g_printerr("ERROR: Registration failed: %s\n", local_err ? local_err->message : "Unknown error");
-      g_clear_error(&local_err);
       goto err;
     }
 
-    gchar* serialized_state = serialize_reg_state(state);
+    gs_free gchar* serialized_state = serialize_reg_state(state);
 
     if (opt_script)
       g_print("%s --verify %s @LINK@\n", av[0], serialized_state);
@@ -210,7 +190,6 @@ int main(int ac, char* av[])
     if (!mega_session_register_verify(s, state, signup_key, &local_err))
     {
       g_printerr("ERROR: Verification failed: %s\n", local_err ? local_err->message : "Unknown error");
-      g_clear_error(&local_err);
       goto err;
     }
 

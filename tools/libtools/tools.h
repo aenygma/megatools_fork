@@ -26,11 +26,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include "oldmega.h"
+#include "alloc.h"
 
 void            tool_init_bare        (gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries);
 void            tool_init             (gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries);
 mega_session*   tool_start_session    (void);
 void            tool_fini             (mega_session* s);
+
+gchar*          tool_convert_filename (const gchar* path, gboolean local);
 
 extern gboolean tool_allow_unknown_options;
 

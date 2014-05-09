@@ -88,7 +88,7 @@ static GOptionEntry auth_options[] =
 {
   { "username",            'u',  0, G_OPTION_ARG_STRING,  &opt_username,        "Account username (email)",               "USERNAME" },
   { "password",            'p',  0, G_OPTION_ARG_STRING,  &opt_password,        "Account password",                       "PASSWORD" },
-  { "config",             '\0',  0, G_OPTION_ARG_STRING,  &opt_config,          "Load configuration from a file",         "PATH"     },
+  { "config",             '\0',  0, G_OPTION_ARG_FILENAME,  &opt_config,          "Load configuration from a file",         "PATH"     },
   { "ignore-config-file", '\0',  0, G_OPTION_ARG_NONE,    &opt_no_config,       "Disable loading " MEGA_RC_FILENAME,      NULL       },
   { "no-ask-password",    '\0',  0, G_OPTION_ARG_NONE,    &opt_no_ask_password, "Never ask interactively for a password", NULL       },
   { "reload",             '\0',  0, G_OPTION_ARG_NONE,    &opt_reload_files,    "Reload filesystem cache",                NULL       },
@@ -287,6 +287,28 @@ static void print_version(void)
   }
 }
 
+gchar* tool_convert_filename(const gchar* path, gboolean local)
+{
+  gchar* locale_path;
+
+#ifdef G_OS_WIN32
+  locale_path = g_locale_to_utf8(path, -1, NULL, NULL, NULL);
+#else
+  if (local)
+    locale_path = g_strdup(path);
+  else
+    locale_path = g_locale_to_utf8(path, -1, NULL, NULL, NULL);
+#endif
+
+  if (locale_path == NULL)
+  {
+    g_printerr("ERROR: Invalid filename locale, can't convert file names specified on the command line to UTF-8.\n");
+    exit(1);
+  }
+
+  return locale_path;
+}
+
 void tool_init_bare(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries)
 {
   GError *local_err = NULL;
@@ -336,14 +358,20 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
   // load username/password from ini file
   if (!opt_no_config || opt_config)
   {
-    GKeyFile* kf = g_key_file_new();
-    gchar* tmp = g_build_filename(g_get_home_dir(), MEGA_RC_FILENAME, NULL);
     gboolean status;
+    gs_key_file_unref GKeyFile* kf = g_key_file_new();
 
     if (opt_config)
       status = g_key_file_load_from_file(kf, opt_config, 0, NULL);
     else
-      status = g_key_file_load_from_file(kf, tmp, 0, NULL) || g_key_file_load_from_file(kf, MEGA_RC_FILENAME, 0, NULL);
+    {
+      status = g_key_file_load_from_file(kf, MEGA_RC_FILENAME, 0, NULL);
+      if (!status)
+      {
+        gs_free gchar* tmp = g_build_filename(g_get_home_dir(), MEGA_RC_FILENAME, NULL);
+        status = g_key_file_load_from_file(kf, tmp, 0, NULL);
+      }
+    }
 
     if (status)
     {
@@ -358,8 +386,6 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
       else
         g_clear_error(&local_err);
     }
-    g_free(tmp);
-    g_key_file_free(kf);
   }
 
   if (!opt_username)

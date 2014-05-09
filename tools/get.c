@@ -25,7 +25,7 @@ static gboolean opt_noprogress = FALSE;
 
 static GOptionEntry entries[] =
 {
-  { "path",          '\0',   0, G_OPTION_ARG_STRING,  &opt_path,  "Local directory or file name, to save data to",  "PATH" },
+  { "path",          '\0',   0, G_OPTION_ARG_FILENAME,  &opt_path,  "Local directory or file name, to save data to",  "PATH" },
   { "no-progress",   '\0',   0, G_OPTION_ARG_NONE,    &opt_noprogress,  "Disable progress bar",   NULL},
   { NULL }
 };
@@ -47,14 +47,11 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
   if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
   {
-    gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
-    gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
+    gs_free gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
+    gs_free gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
 
     if (data->progress.total > 0)
       g_print(ESC_WHITE "%s" ESC_NORMAL ": " ESC_GREEN "%" G_GINT64_FORMAT  "%%" ESC_NORMAL " - " ESC_GREEN "%s" ESC_NORMAL " of %s" ESC_CLREOL "\r", cur_file, 100 * data->progress.done / data->progress.total, done_str, total_str);
-
-    g_free(done_str);
-    g_free(total_str);
   }
 
   return FALSE;
@@ -62,7 +59,7 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
 int main(int ac, char* av[])
 {
-  GError *local_err = NULL;
+  gs_free_error GError *local_err = NULL;
   mega_session* s;
 
   tool_init(&ac, &av, "- download individual files from mega.co.nz", entries);
@@ -96,12 +93,14 @@ int main(int ac, char* av[])
   gint i;
   for (i = 1; i < ac; i++)
   {
+    gs_free gchar* path = tool_convert_filename(av[i], FALSE);
+
     // perform download
-    if (!mega_session_get(s, opt_stream ? NULL : opt_path, av[i], &local_err))
+    if (!mega_session_get(s, opt_stream ? NULL : opt_path, path, &local_err))
     {
       if (!opt_noprogress)
         g_print("\r" ESC_CLREOL "\n");
-      g_printerr("ERROR: Download failed for '%s': %s\n", av[i], local_err->message);
+      g_printerr("ERROR: Download failed for '%s': %s\n", path, local_err->message);
       g_clear_error(&local_err);
     }
     else

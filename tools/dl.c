@@ -30,7 +30,7 @@ static gboolean opt_print_names = FALSE;
 
 static GOptionEntry entries[] =
 {
-  { "path",          '\0',   0, G_OPTION_ARG_STRING,  &opt_path,  "Local directory or file name, to save data to",  "PATH" },
+  { "path",          '\0',   0, G_OPTION_ARG_FILENAME,  &opt_path,  "Local directory or file name, to save data to",  "PATH" },
   { "no-progress",   '\0',   0, G_OPTION_ARG_NONE,    &opt_noprogress,  "Disable progress bar",   NULL},
   { "print-names",   '\0',   0, G_OPTION_ARG_NONE,    &opt_print_names,  "Print names of downloaded files",   NULL},
   { NULL }
@@ -54,14 +54,11 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
   if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
   {
-    gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
-    gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
+    gs_free gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
+    gs_free gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
 
     if (data->progress.total > 0)
       g_print(ESC_WHITE "%s" ESC_NORMAL ": " ESC_GREEN "%" G_GUINT64_FORMAT "%%" ESC_NORMAL " - " ESC_GREEN "%s" ESC_NORMAL " of %s" ESC_CLREOL "\r", cur_file, 100 * data->progress.done / data->progress.total, done_str, total_str);
-
-    g_free(done_str);
-    g_free(total_str);
   }
 
   return FALSE;
@@ -71,8 +68,8 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
 static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_path)
 {
-  GError *local_err = NULL;
-  gchar* local_path = g_file_get_path(file);
+  gs_free_error GError *local_err = NULL;
+  gs_free gchar* local_path = g_file_get_path(file);
 
   if (g_file_query_exists(file, NULL))
   {
@@ -88,7 +85,6 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
     if (!opt_noprogress)
       g_print("\r" ESC_CLREOL);
     g_printerr("ERROR: Download failed for %s: %s\n", remote_path, local_err->message);
-    g_clear_error(&local_err);
     return FALSE;
   }
 
@@ -103,8 +99,8 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
 
 static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_path)
 {
-  GError *local_err = NULL;
-  gchar* local_path = g_file_get_path(file);
+  gs_free_error GError *local_err = NULL;
+  gs_free gchar* local_path = g_file_get_path(file);
 
   if (!g_file_query_exists(file, NULL))
   {
@@ -114,7 +110,6 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
     if (!g_file_make_directory(file, NULL, &local_err))
     {
       g_printerr("ERROR: Can't create local directory %s: %s\n", local_path, local_err->message);
-      g_clear_error(&local_err);
       return FALSE;
     }
   }
@@ -132,8 +127,8 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
   for (i = children; i; i = i->next)
   {
     mega_node* child = i->data;
-    gchar* child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
-    GFile* child_file = g_file_get_child(file, child->name);
+    gs_free gchar* child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
+    gs_unref_object GFile* child_file = g_file_get_child(file, child->name);
 
     if (child->type == 0)
     {
@@ -143,9 +138,6 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
     {
       dl_sync_dir(child, child_file, child_remote_path);
     }
-
-    g_object_unref(child_file);
-    g_free(child_remote_path);
   }
 
   g_slist_free(children);
@@ -154,10 +146,8 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
 int main(int ac, char* av[])
 {
-  GError *local_err = NULL;
-  GRegex *file_regex, *folder_regex;
-  gchar* key;
-  gchar* handle;
+  gs_free_error GError *local_err = NULL;
+  gs_unref_regex GRegex *file_regex = NULL, *folder_regex = NULL;
   gint i;
   int status = 0;
 
@@ -204,12 +194,13 @@ int main(int ac, char* av[])
   // process links
   for (i = 1; i < ac; i++)
   {
-    GMatchInfo* m1 = NULL;
-    GMatchInfo* m2 = NULL;
-    key = NULL;
-    handle = NULL;
+    gs_unref_match_info GMatchInfo* m1 = NULL;
+    gs_unref_match_info GMatchInfo* m2 = NULL;
+    gs_free gchar* key = NULL;
+    gs_free gchar* handle = NULL;
+    gs_free gchar* link = tool_convert_filename(av[i], FALSE);
 
-    if (g_regex_match(file_regex, av[i], 0, &m1))
+    if (g_regex_match(file_regex, link, 0, &m1))
     {
       handle = g_match_info_fetch(m1, 1);
       key = g_match_info_fetch(m1, 2);
@@ -219,7 +210,7 @@ int main(int ac, char* av[])
       {
         if (!opt_noprogress)
           g_print("\r" ESC_CLREOL "\n");
-        g_printerr("ERROR: Download failed for '%s': %s\n", av[i], local_err->message);
+        g_printerr("ERROR: Download failed for '%s': %s\n", link, local_err->message);
         g_clear_error(&local_err);
         status++;
       }
@@ -231,15 +222,11 @@ int main(int ac, char* av[])
           g_print("%s\n", cur_file);
       }
     }
-    else if (g_regex_match(folder_regex, av[i], 0, &m2))
+    else if (g_regex_match(folder_regex, link, 0, &m2))
     {
       if (opt_stream)
       {
         g_printerr("ERROR: Can't stream from a directory!\n");
-        if (m1)
-          g_match_info_unref(m1);
-        if (m2)
-          g_match_info_unref(m2);
         tool_fini(s);
         return 1;
       }
@@ -250,7 +237,7 @@ int main(int ac, char* av[])
       // perform download
       if (!mega_session_open_exp_folder(s, handle, key, &local_err))
       {
-        g_printerr("ERROR: Can't open folder '%s': %s\n", av[i], local_err->message);
+        g_printerr("ERROR: Can't open folder '%s': %s\n", link, local_err->message);
         g_clear_error(&local_err);
       }
       else
@@ -260,7 +247,7 @@ int main(int ac, char* av[])
         {
           mega_node* root_node = l->data;
 
-          GFile* local_dir = g_file_new_for_path(opt_path);
+          gs_unref_object GFile* local_dir = g_file_new_for_path(opt_path);
           if (g_file_query_file_type(local_dir, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_DIRECTORY)
           {
             dl_sync_dir(root_node, local_dir, root_node->path);
@@ -274,19 +261,14 @@ int main(int ac, char* av[])
         {
           g_printerr("ERROR: EXP folder fs has multiple toplevel nodes? Weird!\n");
         }
+
+        g_slist_free(l);
       }
     }
     else
     {
-      g_printerr("WARNING: Skipping invalid Mega download link: %s\n", av[i]);
+      g_printerr("WARNING: Skipping invalid Mega download link: %s\n", link);
     }
-
-    if (m1)
-      g_match_info_unref(m1);
-    if (m2)
-      g_match_info_unref(m2);
-    g_free(handle);
-    g_free(key);
   }
 
   tool_fini(s);

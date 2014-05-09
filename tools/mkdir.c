@@ -28,7 +28,7 @@ static GOptionEntry entries[] =
 
 int main(int ac, char* av[])
 {
-  GError *local_err = NULL;
+  gs_free_error GError *local_err = NULL;
 
   tool_init(&ac, &av, "- create directories at mega.co.nz", entries);
 
@@ -49,9 +49,11 @@ int main(int ac, char* av[])
   gint i;
   for (i = 1; i < ac; i++)
   {
-    if (!mega_session_mkdir(s, av[i], &local_err))
+    gs_free gchar* path = tool_convert_filename(av[i], FALSE);
+
+    if (!mega_session_mkdir(s, path, &local_err))
     {
-      g_printerr("ERROR: Can't create directory %s: %s\n", av[i], local_err->message);
+      g_printerr("ERROR: Can't create directory %s: %s\n", path, local_err->message);
       g_clear_error(&local_err);
     }
   }

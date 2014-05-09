@@ -40,14 +40,11 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
   if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
   {
-    gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
-    gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
+    gs_free gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
+    gs_free gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
 
     if (data->progress.total > 0)
       g_print(ESC_WHITE "%s" ESC_NORMAL ": " ESC_GREEN "%" G_GUINT64_FORMAT "%%" ESC_NORMAL " - " ESC_GREEN "%s" ESC_NORMAL " of %s" ESC_CLREOL "\r", cur_file, 100 * data->progress.done / data->progress.total, done_str, total_str);
-
-    g_free(done_str);
-    g_free(total_str);
   }
 
   return FALSE;
@@ -55,7 +52,7 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
 int main(int ac, char* av[])
 {
-  GError *local_err = NULL;
+  gs_free_error GError *local_err = NULL;
   mega_session* s;
 
   tool_init(&ac, &av, "- upload files to mega.co.nz", entries);
@@ -76,14 +73,16 @@ int main(int ac, char* av[])
   gint i;
   for (i = 1; i < ac; i++)
   {
-    cur_file = g_path_get_basename(av[i]);
+    gs_free gchar* path = tool_convert_filename(av[i], TRUE);
+    cur_file = g_path_get_basename(path);
 
     // perform download
-    if (!mega_session_put(s, opt_path, av[i], &local_err))
+    if (!mega_session_put(s, opt_path, path, &local_err))
     {
       if (!opt_noprogress)
         g_print("\r" ESC_CLREOL "\n");
-      g_printerr("ERROR: Upload failed for '%s': %s\n", av[i], local_err->message);
+
+      g_printerr("ERROR: Upload failed for '%s': %s\n", path, local_err->message);
       g_clear_error(&local_err);
     }
     else
@@ -91,8 +90,6 @@ int main(int ac, char* av[])
       if (!opt_noprogress)
         g_print("\r" ESC_CLREOL "Uploaded %s\n", cur_file);
     }
-
-    g_free(cur_file);
   }
 
   mega_session_save(s, NULL);
