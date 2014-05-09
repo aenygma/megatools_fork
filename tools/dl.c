@@ -146,6 +146,7 @@ int main(int ac, char* av[])
   gchar* key;
   gchar* handle;
   gint i;
+  int status = 0;
 
   tool_init_bare(&ac, &av, "- download exported files from mega.co.nz", entries);
 
@@ -200,6 +201,7 @@ int main(int ac, char* av[])
           g_print("\r" ESC_CLREOL "\n");
         g_printerr("ERROR: Download failed for '%s': %s\n", av[i], local_err->message);
         g_clear_error(&local_err);
+        status++;
       }
       else
       {
@@ -266,5 +268,5 @@ int main(int ac, char* av[])
   }
 
   tool_fini(s);
-  return 0;
+  return status;
 }
