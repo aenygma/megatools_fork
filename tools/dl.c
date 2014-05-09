@@ -18,6 +18,10 @@
  */
 
 #include "tools.h"
+#ifdef G_OS_WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
 
 static gchar* opt_path = ".";
 static gboolean opt_stream = FALSE;
@@ -160,7 +164,14 @@ int main(int ac, char* av[])
   tool_init_bare(&ac, &av, "- download exported files from mega.co.nz", entries);
 
   if (!strcmp(opt_path, "-"))
+  {
     opt_noprogress = opt_stream = TRUE;
+
+    // see https://github.com/megous/megatools/issues/38
+#ifdef G_OS_WIN32
+    setmode(fileno(stdout), O_BINARY);
+#endif
+  }
 
   if (ac < 2)
   {
