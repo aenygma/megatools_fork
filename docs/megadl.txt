@@ -40,6 +40,9 @@ If `<path>` is `-`, remote file will be streamed to stdout.
 --no-progress::
 	Disable download progress reporting. This is implied when streaming.
 
+--print-names::
+	Print names/paths of successfully downloaded files (one per line).
+
 :mega-no-login: 1
 include::shared-options.txt[]
 

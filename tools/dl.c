@@ -22,11 +22,13 @@
 static gchar* opt_path = ".";
 static gboolean opt_stream = FALSE;
 static gboolean opt_noprogress = FALSE;
+static gboolean opt_print_names = FALSE;
 
 static GOptionEntry entries[] =
 {
   { "path",          '\0',   0, G_OPTION_ARG_STRING,  &opt_path,  "Local directory or file name, to save data to",  "PATH" },
   { "no-progress",   '\0',   0, G_OPTION_ARG_NONE,    &opt_noprogress,  "Disable progress bar",   NULL},
+  { "print-names",   '\0',   0, G_OPTION_ARG_NONE,    &opt_print_names,  "Print names of downloaded files",   NULL},
   { NULL }
 };
 
@@ -74,17 +76,23 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
     return FALSE;
   }
 
-  g_print("F %s\n", local_path);
+  if (!opt_noprogress)
+    g_print("F %s\n", local_path);
 
-  if (!mega_session_get(s, g_file_get_path(file), remote_path, &local_err))
+  if (!mega_session_get(s, local_path, remote_path, &local_err))
   {
-    g_print("\r" ESC_CLREOL);
+    if (!opt_noprogress)
+      g_print("\r" ESC_CLREOL);
     g_printerr("ERROR: Download failed for %s: %s\n", remote_path, local_err->message);
     g_clear_error(&local_err);
     return FALSE;
   }
 
-  g_print("\r" ESC_CLREOL);
+  if (!opt_noprogress)
+    g_print("\r" ESC_CLREOL);
+
+  if (opt_print_names)
+    g_print("%s\n", local_path);
 
   return TRUE;
 }
@@ -96,7 +104,8 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
   if (!g_file_query_exists(file, NULL))
   {
-    g_print("D %s\n", local_path);
+    if (!opt_noprogress)
+      g_print("D %s\n", local_path);
 
     if (!g_file_make_directory(file, NULL, &local_err))
     {
@@ -207,6 +216,8 @@ int main(int ac, char* av[])
       {
         if (!opt_noprogress)
           g_print("\r" ESC_CLREOL "Downloaded %s\n", cur_file);
+        if (opt_print_names)
+          g_print("%s\n", cur_file);
       }
     }
     else if (g_regex_match(folder_regex, av[i], 0, &m2))
