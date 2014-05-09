@@ -3056,8 +3056,18 @@ static gchar* create_preview(mega_session* s, const gchar* local_path, const guc
     {
       gint status = 1;
       gchar* thumb_path = g_strdup_printf("%s/thumb.jpg", dir);
-      gchar* qpath = g_shell_quote(local_path);
-      gchar* tmp = g_strdup_printf("convert %s -strip -resize 128x128^ -gravity center -crop 128x128+0+0 +repage %s/thumb.jpg", qpath, dir);
+      gchar* qpath = NULL;
+      if (g_regex_match_simple("\\.pdf$", local_path, G_REGEX_CASELESS, 0))
+      {
+        gchar* local_path_page = g_strdup_printf("%s[0]", local_path);
+        qpath = g_shell_quote(local_path_page);
+        g_free(local_path_page);
+      }
+      else
+      {
+        qpath = g_shell_quote(local_path);
+      }
+      gchar* tmp = g_strdup_printf("convert %s -strip -background white -flatten -resize 128x128^ -gravity center -crop 128x128+0+0 +repage %s/thumb.jpg", qpath, dir);
 
       if (g_spawn_command_line_sync(tmp, &tmp1, &tmp2, &status, &local_err))
       {
