@@ -69,6 +69,23 @@ file names, and even if the tool's terminal output is corrupted, files names
 of downloaded/uploaded files will be correct.
 
 
+Installation on Mac OS X (Mountain Lion)
+========================================
+
+1. Install glib-networking with a ca-bundle:
+
+  export BUNDLE=/usr/local/share/ca-bundle.crt
+  curl http://curl.haxx.se/ca/cacert.pem -o $BUNDLE
+  /usr/bin/sed -ie "s|--without-ca-certificates|--with-ca-certificates=$BUNDLE|" /usr/local/Library/Formula/glib-networking.rb
+  brew install glib-networking
+
+2. Make the pkgconfig (.pc) file for libcurl findable by megatools configure script:
+
+  export PKG_CONFIG_PATH=/usr/local/Library/ENV/pkgconfig/10.8
+
+3. Untar megatools, run `./configure`, `make` and `make install` as usual.
+
+
 Author
 ======
 
