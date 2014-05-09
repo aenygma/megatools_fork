@@ -2996,14 +2996,14 @@ static gchar* create_preview(mega_session* s, const gchar* local_path, const guc
   if (has_ffmpegthumbnailer < 0)
   {
     prg = g_find_program_in_path("ffmpegthumbnailer");
-    has_ffmpegthumbnailer = !!prg;
+    has_ffmpegthumbnailer = prg ? 1 : 0;
     g_free(prg);
   }
 
   if (has_convert < 0)
   {
     prg = g_find_program_in_path("convert");
-    has_ffmpegthumbnailer = !!prg;
+    has_ffmpegthumbnailer = prg ? 1 : 0;
     g_free(prg);
   }
 
@@ -3059,7 +3059,7 @@ static gchar* create_preview(mega_session* s, const gchar* local_path, const guc
       gchar* qpath = g_shell_quote(local_path);
       gchar* tmp = g_strdup_printf("convert %s -strip -resize 128x128^ -gravity center -crop 128x128+0+0 +repage %s/thumb.jpg", qpath, dir);
 
-      if (g_spawn_command_line_sync(tmp, &tmp1, &tmp2, &status, NULL))
+      if (g_spawn_command_line_sync(tmp, &tmp1, &tmp2, &status, &local_err))
       {
         if (g_file_test(thumb_path, G_FILE_TEST_IS_REGULAR))
         {
