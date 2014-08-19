@@ -294,6 +294,14 @@ static gboolean do_receive_headers(MegaHttpClient* http_client, GCancellable* ca
         goto err;
       }
 
+      if (status == 500 && g_str_equal(message, "Server Too Busy"))
+      {
+        g_set_error(err, MEGA_HTTP_CLIENT_ERROR, MEGA_HTTP_CLIENT_ERROR_SERVER_BUSY, "Server returned status %d: %s", status, message);
+        g_free(header);
+        g_free(message);
+        goto err;
+      }
+
       if (status != 200 && status != 201)
       {
         g_set_error(err, MEGA_HTTP_CLIENT_ERROR, MEGA_HTTP_CLIENT_ERROR_OTHER, "Server returned status %d: %s", status, message);

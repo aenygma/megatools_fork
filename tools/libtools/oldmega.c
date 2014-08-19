@@ -1269,7 +1269,7 @@ static gchar* api_request_unsafe(mega_session* s, const gchar* req_node, GError*
   // handle http errors
   if (!res_str)
   {
-    if (local_err->domain == MEGA_HTTP_CLIENT_ERROR && local_err->code == MEGA_HTTP_CLIENT_ERROR_CONNECTION_BROKEN)
+    if (local_err->domain == MEGA_HTTP_CLIENT_ERROR && (local_err->code == MEGA_HTTP_CLIENT_ERROR_CONNECTION_BROKEN || local_err->code == MEGA_HTTP_CLIENT_ERROR_SERVER_BUSY))
     {
       // simulate SRV_EAGAIN response if server drops connection
       return g_strdup_printf("%d", SRV_EAGAIN);

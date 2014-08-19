@@ -48,6 +48,7 @@ struct _MegaHttpClientClass
 typedef enum 
 {
   MEGA_HTTP_CLIENT_ERROR_CONNECTION_BROKEN,
+  MEGA_HTTP_CLIENT_ERROR_SERVER_BUSY,
   MEGA_HTTP_CLIENT_ERROR_OTHER
 } MegaHttpClientError;
 
