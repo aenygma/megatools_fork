@@ -1328,7 +1328,7 @@ again:
     g_usleep(delay);
     delay = delay * 2;
 
-    if (delay > 4 * 1000 * 1000)
+    if (delay > 64 * 1000 * 1000)
     {
       g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Server keeps asking us for EAGAIN, giving up");
       return NULL;
