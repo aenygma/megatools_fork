@@ -1,3 +1,34 @@
+megatools 1.9.92 - 2014-08-24
+=============================
+
+Created stable branch for bugfixes. This is the release from the stable 
+branch.
+
+This release contains mostly small bug fixes. Most important change is
+that Megatools now recognizes server busy errors as reported by mega.co.nz
+via HTTP status 500 Server Is Busy, and retries the communication. This
+reduces command failures by a lot, and you'll not see 500 Server Is Busy 
+errors anymore.
+
+Another major news is update to the windows package. There are now two 
+packages for 32bit and 64bit windows platform, and all dlls were updated to
+their latest versions.
+
+Other news:
+
+- Added 64bit windows package
+- Unmask Megatools to Mega.co.nz (user Megatools/VERSION User-Agent)
+- Check for a2x if --enable-docs-build=yes
+- Megadl now reports file download errors
+- Add megadl --print-names option
+- Fix megasync error (issue #45 on github)
+- Fix megadl used with pipe (--path -) on windows (issue #38)
+- Installation instructions for Mac
+- Add info about Gentoo ebuild to the README file (issue #26)
+- Fix Megatools thumbnails for PDF (issue #5)
+- Do repeated API calls after 500 Server Is Busy and increase retry delay
+- Fix issue to download a file with accent with megaget (issue #22)
+
 megatools 1.9.91 - 2013-04-14
 =============================
 
