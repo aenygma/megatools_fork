@@ -41,10 +41,26 @@ AC_SUBST(MEGA_REQUIRES)
 AC_SUBST(MEGA_CFLAGS)
 AC_SUBST(MEGA_LIBS)
 
-PKG_CHECK_MODULES(FUSE, [$FUSE_REQUIRES], [ENABLE_FUSE=yes], [ENABLE_FUSE=no])
-AC_SUBST(FUSE_CFLAGS)
-AC_SUBST(FUSE_LIBS)
-AM_CONDITIONAL([ENABLE_FUSE], [test x$ENABLE_FUSE = xyes])
+
+# check fuse
+AC_ARG_WITH([fuse],
+  AS_HELP_STRING([--without-fuse], [Ignore presence of fuse and disable it]))
+
+AS_IF([test "x$with_fuse" != "xno"],
+  [PKG_CHECK_MODULES(FUSE, [$FUSE_REQUIRES], [ENABLE_FUSE=yes], [ENABLE_FUSE=no])],
+  [ENABLE_FUSE=no])
+
+AS_IF([test "x$ENABLE_FUSE" = "xyes"],
+  [
+    AC_SUBST(FUSE_CFLAGS)
+    AC_SUBST(FUSE_LIBS)
+  ],
+    [AS_IF([test "x$with_fuse" = "xyes"],
+      [AC_MSG_ERROR([fuse support requested but not found])
+    ])
+])
+
+AM_CONDITIONAL([ENABLE_FUSE], [test "x$ENABLE_FUSE" = "xyes"])
 
 GLIB_MAKEFILE='$(top_srcdir)/Makefile.glib'
 AC_SUBST(GLIB_MAKEFILE)
