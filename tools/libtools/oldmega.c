@@ -2918,23 +2918,25 @@ struct _put_data
 
 static gsize put_process_data(gpointer buffer, gsize size, struct _put_data* data)
 {
+  gc_error_free GError* local_err = NULL;
   gsize bytes_read = 0;
 
   //XXX: this is not very effective
   gc_free guchar* in_buffer = g_malloc(size);
 
-  if (g_input_stream_read_all(G_INPUT_STREAM(data->stream), in_buffer, size, &bytes_read, NULL, NULL))
+  if (!g_input_stream_read_all(G_INPUT_STREAM(data->stream), in_buffer, size, &bytes_read, NULL, &local_err))
   {
-    if (bytes_read > 0)
-    {
-      AES_ctr128_encrypt(in_buffer, buffer, bytes_read, &data->k, data->iv, data->ecount, &data->num);
-      chunked_cbc_mac_update(&data->mac, in_buffer, bytes_read);
-    }
-
-    return bytes_read;
+    g_printerr("ERROR: Failed reading from stream: %s\n", local_err->message);
+    return 0;
   }
 
-  return 0;
+  if (bytes_read > 0)
+  {
+    AES_ctr128_encrypt(in_buffer, buffer, bytes_read, &data->k, data->iv, data->ecount, &data->num);
+    chunked_cbc_mac_update(&data->mac, in_buffer, bytes_read);
+  }
+
+  return bytes_read;
 }
 
 mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gchar* local_path, GError** err)
@@ -3136,6 +3138,7 @@ struct _get_data
 
 static gsize get_process_data(gpointer buffer, gsize size, struct _get_data* data)
 {
+  gc_error_free GError* local_err = NULL;
   gc_free gchar* out_buffer = g_malloc(size);
 
   AES_ctr128_encrypt(buffer, out_buffer, size, &data->k, data->iv, data->ecount, &data->num);
@@ -3151,10 +3154,13 @@ static gsize get_process_data(gpointer buffer, gsize size, struct _get_data* dat
   if (!data->stream)
     return size;
 
-  if (g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), out_buffer, size, NULL, NULL, NULL))
-    return size;
+  if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), out_buffer, size, NULL, NULL, &local_err))
+  {
+    g_printerr("ERROR: Failed writing to stream: %s\n", local_err->message);
+    return 0;
+  }
 
-  return 0;
+  return size;
 }
 
 gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err)
@@ -3307,6 +3313,7 @@ struct _dl_data
 
 static gsize dl_process_data(gpointer buffer, gsize size, struct _dl_data* data)
 {
+  gc_error_free GError* local_err = NULL;
   gc_free gchar* out_buffer = g_malloc(size);
 
   AES_ctr128_encrypt(buffer, out_buffer, size, &data->k, data->iv, data->ecount, &data->num);
@@ -3322,10 +3329,13 @@ static gsize dl_process_data(gpointer buffer, gsize size, struct _dl_data* data)
   if (!data->stream)
     return size;
 
-  if (g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), out_buffer, size, NULL, NULL, NULL))
-    return size;
+  if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), out_buffer, size, NULL, NULL, &local_err))
+  {
+    g_printerr("ERROR: Failed writing to stream: %s\n", local_err->message);
+    return 0;
+  }
 
-  return 0;
+  return size;
 }
 
 gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err)
