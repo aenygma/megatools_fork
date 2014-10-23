@@ -2793,7 +2793,7 @@ static gchar* create_preview(mega_session* s, const gchar* local_path, const guc
   {
     gc_free gchar* prg = g_find_program_in_path("convert");
 
-    has_ffmpegthumbnailer = prg ? 1 : 0;
+    has_convert = prg ? 1 : 0;
   }
 
   if (has_ffmpegthumbnailer && g_regex_match_simple("\\.(mpg|mpeg|avi|mkv|flv|rm|mp4|wmv|asf|ram|mov)$", local_path, G_REGEX_CASELESS, 0))
