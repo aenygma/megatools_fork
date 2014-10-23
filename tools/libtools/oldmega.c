@@ -139,7 +139,8 @@ struct _mega_sesssion
 static void print_node(const gchar* n, const gchar* prefix)
 {
   gc_free gchar* pretty = s_json_pretty(n);
-  g_print("%s%s\n", prefix, pretty);
+
+  g_printerr("%s%s\n", prefix, pretty);
 }
 
 // }}}
