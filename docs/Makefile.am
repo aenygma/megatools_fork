@@ -7,9 +7,9 @@ man5_MANS = $(addsuffix .5, $(MAN5))
 man7_MANS = $(addsuffix .7, $(MAN7))
 
 BUILT_SOURCES = \
-	$(addsuffix .1, $(MAN1)) \
-	$(addsuffix .5, $(MAN5)) \
-	$(addsuffix .7, $(MAN7))
+	$(man1_MANS) \
+	$(man5_MANS) \
+	$(man7_MANS)
 
 EXTRA_DIST = \
 	asciidoc.conf \
@@ -27,5 +27,11 @@ DISTCLEANFILES = $(BUILT_SOURCES)
 	a2x --asciidoc-opts="-f asciidoc.conf" -f manpage $<
 	sed -i 's/\[FIXME: manual]/Megatools Manual/' $@
 	sed -i 's/\[FIXME: source]/megatools $(VERSION)/' $@
+
+else
+
+%.1 %.5 %.7:
+	@echo You need to use --enable-docs-build if building from git tree
+	@false
 
 endif
