@@ -1,3 +1,19 @@
+megatools 1.9.93 - 2014-??-??
+=============================
+
+Added OpenSSL exemption to the license.
+
+Fixes:
+
+- megadf now returns correct values
+- fixed path sanitization in mega_session_stat
+- raised safety limit os size of POST responses from 32 to 256 MiB
+- show progress when downloading folder using megadl
+- optimized buffer allocation during donwload and upload
+- report details of errors when stream callback fails to read/write file
+- fix detection of convert executeable for preview generation
+- allow to disable file previews
+
 megatools 1.9.92 - 2014-08-24
 =============================
 
