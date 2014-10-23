@@ -36,6 +36,9 @@ DEFINE_CLEANUP_FUNCTION_NULL(GArray*, g_array_unref)
 DEFINE_CLEANUP_FUNCTION_NULL(GPtrArray*, g_ptr_array_unref)
 #define gc_ptr_array_unref CLEANUP(g_ptr_array_unref)
 
+DEFINE_CLEANUP_FUNCTION_NULL(GByteArray*, g_byte_array_unref)
+#define gc_byte_array_unref CLEANUP(g_byte_array_unref)
+
 DEFINE_CLEANUP_FUNCTION_NULL(GHashTable*, g_hash_table_unref)
 #define gc_hash_table_unref CLEANUP(g_hash_table_unref)
 

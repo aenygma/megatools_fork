@@ -2914,6 +2914,7 @@ struct _put_data
   gint num;
   guchar ecount[AES_BLOCK_SIZE];
   chunked_cbc_mac mac;
+  GByteArray* buffer;
 };
 
 static gsize put_process_data(gpointer buffer, gsize size, struct _put_data* data)
@@ -2921,10 +2922,10 @@ static gsize put_process_data(gpointer buffer, gsize size, struct _put_data* dat
   gc_error_free GError* local_err = NULL;
   gsize bytes_read = 0;
 
-  //XXX: this is not very effective
-  gc_free guchar* in_buffer = g_malloc(size);
+  if (size > data->buffer->len)
+    g_byte_array_set_size(data->buffer, size);
 
-  if (!g_input_stream_read_all(G_INPUT_STREAM(data->stream), in_buffer, size, &bytes_read, NULL, &local_err))
+  if (!g_input_stream_read_all(G_INPUT_STREAM(data->stream), data->buffer->data, size, &bytes_read, NULL, &local_err))
   {
     g_printerr("ERROR: Failed reading from stream: %s\n", local_err->message);
     return 0;
@@ -2932,8 +2933,8 @@ static gsize put_process_data(gpointer buffer, gsize size, struct _put_data* dat
 
   if (bytes_read > 0)
   {
-    AES_ctr128_encrypt(in_buffer, buffer, bytes_read, &data->k, data->iv, data->ecount, &data->num);
-    chunked_cbc_mac_update(&data->mac, in_buffer, bytes_read);
+    AES_ctr128_encrypt(data->buffer->data, buffer, bytes_read, &data->k, data->iv, data->ecount, &data->num);
+    chunked_cbc_mac_update(&data->mac, data->buffer->data, bytes_read);
   }
 
   return bytes_read;
@@ -2946,6 +2947,7 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
   mega_node *node, *parent_node;
   gc_free gchar* file_name = NULL;
   gc_object_unref GFileInputStream* stream = NULL;
+  gc_byte_array_unref GByteArray* buffer = NULL;
 
   g_return_val_if_fail(s != NULL, NULL);
   g_return_val_if_fail(s->fs_pathmap != NULL, NULL);
@@ -3051,6 +3053,9 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
   memcpy(data.iv, nonce, 8);
   chunked_cbc_mac_init8(&data.mac, aes_key, nonce);
 
+  // setup buffer
+  data.buffer = buffer = g_byte_array_new();
+
   // perform upload
   gc_http_free http* h = http_new();
   http_set_content_type(h, "application/octet-stream");
@@ -3134,27 +3139,30 @@ struct _get_data
   gint num;
   guchar ecount[AES_BLOCK_SIZE];
   chunked_cbc_mac mac;
+  GByteArray* buffer;
 };
 
 static gsize get_process_data(gpointer buffer, gsize size, struct _get_data* data)
 {
   gc_error_free GError* local_err = NULL;
-  gc_free gchar* out_buffer = g_malloc(size);
 
-  AES_ctr128_encrypt(buffer, out_buffer, size, &data->k, data->iv, data->ecount, &data->num);
+  if (size > data->buffer->len)
+    g_byte_array_set_size(data->buffer, size);
 
-  chunked_cbc_mac_update(&data->mac, out_buffer, size);
+  AES_ctr128_encrypt(buffer, data->buffer->data, size, &data->k, data->iv, data->ecount, &data->num);
+
+  chunked_cbc_mac_update(&data->mac, data->buffer->data, size);
 
   init_status(data->s, MEGA_STATUS_DATA);
   data->s->status_data.data.size = size;
-  data->s->status_data.data.buf = out_buffer;
+  data->s->status_data.data.buf = data->buffer->data;
   if (send_status(data->s)) 
     return 0;
 
   if (!data->stream)
     return size;
 
-  if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), out_buffer, size, NULL, NULL, &local_err))
+  if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), data->buffer->data, size, NULL, NULL, &local_err))
   {
     g_printerr("ERROR: Failed writing to stream: %s\n", local_err->message);
     return 0;
@@ -3172,6 +3180,7 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
   gboolean remove_file = FALSE;
   gc_free gchar* get_node = NULL, *url = NULL;
   gc_http_free http* h = NULL;
+  gc_byte_array_unref GByteArray* buffer = NULL;
 
   g_return_val_if_fail(s != NULL, FALSE);
   g_return_val_if_fail(s->fs_pathmap != NULL, FALSE);
@@ -3261,6 +3270,9 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
     goto err;
   }
 
+  // setup buffer
+  data.buffer = buffer = g_byte_array_new();
+
   // perform download
   h = http_new();
   http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
@@ -3309,27 +3321,30 @@ struct _dl_data
   gint num;
   guchar ecount[AES_BLOCK_SIZE];
   chunked_cbc_mac mac;
+  GByteArray* buffer;
 };
 
 static gsize dl_process_data(gpointer buffer, gsize size, struct _dl_data* data)
 {
   gc_error_free GError* local_err = NULL;
-  gc_free gchar* out_buffer = g_malloc(size);
 
-  AES_ctr128_encrypt(buffer, out_buffer, size, &data->k, data->iv, data->ecount, &data->num);
+  if (size > data->buffer->len)
+    g_byte_array_set_size(data->buffer, size);
 
-  chunked_cbc_mac_update(&data->mac, out_buffer, size);
+  AES_ctr128_encrypt(buffer, data->buffer->data, size, &data->k, data->iv, data->ecount, &data->num);
+
+  chunked_cbc_mac_update(&data->mac, data->buffer->data, size);
 
   init_status(data->s, MEGA_STATUS_DATA);
   data->s->status_data.data.size = size;
-  data->s->status_data.data.buf = out_buffer;
+  data->s->status_data.data.buf = data->buffer->data;
   if (send_status(data->s)) 
     return 0;
 
   if (!data->stream)
     return size;
 
-  if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), out_buffer, size, NULL, NULL, &local_err))
+  if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), data->buffer->data, size, NULL, NULL, &local_err))
   {
     g_printerr("ERROR: Failed writing to stream: %s\n", local_err->message);
     return 0;
@@ -3348,6 +3363,7 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
   gc_free guchar* node_key = NULL;
   gc_http_free http* h = NULL;
   gc_object_unref GFileOutputStream* stream = NULL;
+  gc_byte_array_unref GByteArray* buffer = NULL;
 
   g_return_val_if_fail(s != NULL, FALSE);
   g_return_val_if_fail(handle != NULL, FALSE);
@@ -3486,6 +3502,9 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
   // initialize decryption and mac calculation
   AES_set_encrypt_key(aes_key, 128, &data.k);
   chunked_cbc_mac_init8(&data.mac, aes_key, data.iv);
+
+  // setup buffer
+  data.buffer = buffer = g_byte_array_new();
 
   // perform download
   h = http_new();
