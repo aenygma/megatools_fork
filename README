@@ -97,7 +97,7 @@ Third-party ebuild is available at:
 Author
 ======
 
-Megatools were written by Ondřej Jirman <megous@megous.com>, 2013
+Megatools were written by Ondřej Jirman <megous@megous.com>, 2014
 Webiste: http://megatools.megous.com
 
 
@@ -111,4 +111,8 @@ information for recreating the issue to: megous@megous.com
 License
 =======
 
-Megatools are licensed under GPLv2, see LICENSE file for details.
+Megatools are licensed under GPLv2 with OpenSSL exemption, see LICENSE
+file for details.
+
+This product includes software developed by the OpenSSL Project for use
+in the OpenSSL Toolkit. (http://www.openssl.org/)
