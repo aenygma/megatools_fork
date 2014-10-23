@@ -735,9 +735,9 @@ GString* mega_http_client_post_simple(MegaHttpClient* http_client, const gchar* 
     return NULL;
   }
 
-  if (response_length > 32 * MB) 
+  if (response_length > 256 * MB) 
   {
-    g_set_error(err, MEGA_HTTP_CLIENT_ERROR, MEGA_HTTP_CLIENT_ERROR_OTHER, "Response length over 32 MiB not supported (for post_simple): %s", url);
+    g_set_error(err, MEGA_HTTP_CLIENT_ERROR, MEGA_HTTP_CLIENT_ERROR_OTHER, "Response length over 256 MiB not supported (for post_simple): %s", url);
     g_object_unref(io);
     return NULL;
   }
