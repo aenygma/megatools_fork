@@ -127,6 +127,7 @@ struct _mega_sesssion
   gpointer status_userdata;
 
   gint64 last_refresh;
+  gboolean create_preview;
 };
 
 // }}}
@@ -1961,6 +1962,16 @@ void mega_session_watch_status(mega_session* s, mega_status_callback cb, gpointe
 }
 
 // }}}
+// {{{ mega_session_enable_previews
+
+void mega_session_enable_previews(mega_session* s, gboolean enable)
+{
+  g_return_if_fail(s != NULL);
+
+  s->create_preview = enable;
+}
+
+// }}}
 
 // {{{ mega_session_open_exp_folder
 
@@ -3081,7 +3092,11 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
     return NULL;
   }
 
-  gc_free gchar* fa = create_preview(s, local_path, aes_key, NULL);
+  // create preview
+  gc_free gchar* fa = NULL;
+  if (s->create_preview)
+    fa = create_preview(s, local_path, aes_key, NULL);
+
   gc_free gchar* attrs = encode_node_attrs(file_name);
   gc_free gchar* attrs_enc = b64_aes128_cbc_encrypt_str(attrs, aes_key);
   guchar meta_mac[16];

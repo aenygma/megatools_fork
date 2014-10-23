@@ -16,6 +16,9 @@ ifndef::mega-no-login[]
 --no-ask-password::
 	Never ask interactively for a password
 
+--disable-previews::
+	Never generate and upload file previews, when uploading new files
+
 --reload::
 	Reload filesystem cache
 endif::mega-no-login[]

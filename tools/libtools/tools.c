@@ -48,6 +48,7 @@ static gint opt_cache_timout = 10 * 60;
 static gboolean opt_version;
 static gboolean opt_no_config;
 static gboolean opt_no_ask_password;
+static gboolean opt_disable_previews;
 gboolean tool_allow_unknown_options = FALSE;
 
 static gboolean opt_debug_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
@@ -79,19 +80,20 @@ static gboolean opt_debug_callback(const gchar *option_name, const gchar *value,
 
 static GOptionEntry basic_options[] =
 {
-  { "debug",              '\0',  G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, opt_debug_callback, "Enable debugging output", "OPTS"  },
-  { "version",            '\0',  0, G_OPTION_ARG_NONE,    &opt_version,      "Show version information",           NULL    },
+  { "debug",              '\0',  G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, opt_debug_callback, "Enable debugging output",  "OPTS"  },
+  { "version",            '\0',  0,                          G_OPTION_ARG_NONE,     &opt_version,       "Show version information", NULL    },
   { NULL }
 };
 
 static GOptionEntry auth_options[] =
 {
-  { "username",            'u',  0, G_OPTION_ARG_STRING,  &opt_username,        "Account username (email)",               "USERNAME" },
-  { "password",            'p',  0, G_OPTION_ARG_STRING,  &opt_password,        "Account password",                       "PASSWORD" },
-  { "config",             '\0',  0, G_OPTION_ARG_FILENAME,  &opt_config,          "Load configuration from a file",         "PATH"     },
-  { "ignore-config-file", '\0',  0, G_OPTION_ARG_NONE,    &opt_no_config,       "Disable loading " MEGA_RC_FILENAME,      NULL       },
-  { "no-ask-password",    '\0',  0, G_OPTION_ARG_NONE,    &opt_no_ask_password, "Never ask interactively for a password", NULL       },
-  { "reload",             '\0',  0, G_OPTION_ARG_NONE,    &opt_reload_files,    "Reload filesystem cache",                NULL       },
+  { "username",            'u',  0, G_OPTION_ARG_STRING,    &opt_username,         "Account username (email)",                    "USERNAME" },
+  { "password",            'p',  0, G_OPTION_ARG_STRING,    &opt_password,         "Account password",                            "PASSWORD" },
+  { "config",             '\0',  0, G_OPTION_ARG_FILENAME,  &opt_config,           "Load configuration from a file",              "PATH"     },
+  { "ignore-config-file", '\0',  0, G_OPTION_ARG_NONE,      &opt_no_config,        "Disable loading " MEGA_RC_FILENAME,           NULL       },
+  { "no-ask-password",    '\0',  0, G_OPTION_ARG_NONE,      &opt_no_ask_password,  "Never ask interactively for a password",      NULL       },
+  { "disable-previews",   '\0',  0, G_OPTION_ARG_NONE,      &opt_disable_previews, "Never generate previews when uploading file", NULL       },
+  { "reload",             '\0',  0, G_OPTION_ARG_NONE,      &opt_reload_files,     "Reload filesystem cache",                     NULL       },
   { NULL }
 };
 
@@ -444,6 +446,8 @@ mega_session* tool_start_session(void)
 
     mega_session_save(s, NULL);
   }
+
+  mega_session_enable_previews(s, !opt_disable_previews);
 
   g_free(sid);
   return s;

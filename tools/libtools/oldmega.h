@@ -142,6 +142,7 @@ mega_session*       mega_session_new                (void);
 void                mega_session_free               (mega_session* s);
 
 void                mega_session_watch_status       (mega_session* s, mega_status_callback cb, gpointer userdata);
+void                mega_session_enable_previews    (mega_session* s, gboolean enable);
 
 // this has side effect of the current session being closed
 gboolean            mega_session_open               (mega_session* s, const gchar* un, const gchar* pw, const gchar* sid, GError** err);
