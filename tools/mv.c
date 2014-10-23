@@ -10,7 +10,7 @@ static GOptionEntry entries[] =
 
 int main(int ac, char* av[])
 {
-  gs_free_error GError *local_err = NULL;
+  gc_error_free GError *local_err = NULL;
   mega_session* s;
 
   tool_init(&ac, &av, "- move files on the remote filesystem at mega.co.nz", entries);
@@ -26,7 +26,7 @@ int main(int ac, char* av[])
     return 1;
 
   gboolean rename = FALSE;
-  gs_free gchar* dest = tool_convert_filename(av[ac - 1], FALSE);
+  gc_free gchar* dest = tool_convert_filename(av[ac - 1], FALSE);
 
   // check destination path
   mega_node* destination = mega_session_stat(s, dest);
@@ -48,7 +48,7 @@ int main(int ac, char* av[])
   {
     rename = TRUE;
 
-    gs_free gchar* parent_path = g_path_get_dirname(dest);
+    gc_free gchar* parent_path = g_path_get_dirname(dest);
     destination = mega_session_stat(s, parent_path);
 
     if (!destination)
@@ -80,7 +80,7 @@ int main(int ac, char* av[])
   gint i;
   for (i = 1; i < ac - 1; i++)
   {
-    gs_free gchar* path = tool_convert_filename(av[i], FALSE);
+    gc_free gchar* path = tool_convert_filename(av[i], FALSE);
     mega_node* n = mega_session_stat(s, path);
 
     if (!n)
@@ -96,8 +96,8 @@ int main(int ac, char* av[])
     }
 
     // check destination
-    gs_free gchar* basename = g_path_get_basename(n->path);
-    gs_free gchar* tmp = g_strconcat(destination->path, "/", basename, NULL);
+    gc_free gchar* basename = g_path_get_basename(n->path);
+    gc_free gchar* tmp = g_strconcat(destination->path, "/", basename, NULL);
 
     // check destination path
     mega_node* dn = mega_session_stat(s, tmp);

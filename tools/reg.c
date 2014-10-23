@@ -39,16 +39,16 @@ static GOptionEntry entries[] =
 
 static gchar* serialize_reg_state(mega_reg_state* state)
 {
-  gs_free gchar* pk = g_base64_encode(state->password_key, 16);
-  gs_free gchar* ch = g_base64_encode(state->challenge, 16);
+  gc_free gchar* pk = g_base64_encode(state->password_key, 16);
+  gc_free gchar* ch = g_base64_encode(state->challenge, 16);
 
   return g_strdup_printf("%s:%s:%s", pk, ch, state->user_handle);
 }
 
 static mega_reg_state* unserialize_reg_state(const gchar* str)
 {
-  gs_unref_match_info GMatchInfo* m = NULL;
-  gs_unref_regex GRegex* r = g_regex_new("^([a-z0-9/+=]{24}):([a-z0-9/+=]{24}):(.*)$", G_REGEX_CASELESS, 0, NULL);
+  gc_match_info_unref GMatchInfo* m = NULL;
+  gc_regex_unref GRegex* r = g_regex_new("^([a-z0-9/+=]{24}):([a-z0-9/+=]{24}):(.*)$", G_REGEX_CASELESS, 0, NULL);
   gsize len;
 
   if (!r)
@@ -57,10 +57,10 @@ static mega_reg_state* unserialize_reg_state(const gchar* str)
   if (!g_regex_match(r, str, 0, &m))
     return NULL; 
 
-  gs_free gchar* pk = g_match_info_fetch(m, 1);
-  gs_free gchar* ch = g_match_info_fetch(m, 2);
-  gs_free guchar* decoded_ch = NULL;
-  gs_free guchar* decoded_pk = NULL;
+  gc_free gchar* pk = g_match_info_fetch(m, 1);
+  gc_free gchar* ch = g_match_info_fetch(m, 2);
+  gc_free guchar* decoded_ch = NULL;
+  gc_free guchar* decoded_pk = NULL;
 
   mega_reg_state* state = g_new0(mega_reg_state, 1);
   state->user_handle = g_match_info_fetch(m, 3);;
@@ -93,9 +93,9 @@ err:
 
 int main(int ac, char* av[])
 {
-  gs_free_error GError *local_err = NULL;
+  gc_error_free GError *local_err = NULL;
   mega_reg_state* state = NULL;
-  gs_free gchar* signup_key = NULL;
+  gc_free gchar* signup_key = NULL;
   mega_session* s;
 
   tool_init_bare(&ac, &av, "LINK - register a new mega.co.nz account", entries);
@@ -135,8 +135,8 @@ int main(int ac, char* av[])
       return 1;
     }
 
-    gs_unref_regex GRegex* r = g_regex_new("^(?:https?://mega.co.nz/#confirm)?([a-z0-9_-]{80,150})$", G_REGEX_CASELESS, 0, NULL);
-    gs_unref_match_info GMatchInfo* m = NULL;
+    gc_regex_unref GRegex* r = g_regex_new("^(?:https?://mega.co.nz/#confirm)?([a-z0-9_-]{80,150})$", G_REGEX_CASELESS, 0, NULL);
+    gc_match_info_unref GMatchInfo* m = NULL;
 
     g_assert(r != NULL);
 
@@ -170,7 +170,7 @@ int main(int ac, char* av[])
       goto err;
     }
 
-    gs_free gchar* serialized_state = serialize_reg_state(state);
+    gc_free gchar* serialized_state = serialize_reg_state(state);
 
     if (opt_script)
       g_print("%s --verify %s @LINK@\n", av[0], serialized_state);

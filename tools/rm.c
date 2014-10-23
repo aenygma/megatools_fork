@@ -26,7 +26,7 @@ static GOptionEntry entries[] =
 
 int main(int ac, char* av[])
 {
-  gs_free_error GError *local_err = NULL;
+  gc_error_free GError *local_err = NULL;
   static mega_session* s;
 
   tool_init(&ac, &av, "- remove files from mega.co.nz", entries);
@@ -48,7 +48,7 @@ int main(int ac, char* av[])
   gint i;
   for (i = 1; i < ac; i++)
   {
-    gs_free gchar* path = tool_convert_filename(av[i], FALSE);
+    gc_free gchar* path = tool_convert_filename(av[i], FALSE);
 
     if (!mega_session_rm(s, path, &local_err))
     {

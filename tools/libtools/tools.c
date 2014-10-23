@@ -359,7 +359,7 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
   if (!opt_no_config || opt_config)
   {
     gboolean status;
-    gs_key_file_unref GKeyFile* kf = g_key_file_new();
+    gc_key_file_unref GKeyFile* kf = g_key_file_new();
 
     if (opt_config)
       status = g_key_file_load_from_file(kf, opt_config, 0, NULL);
@@ -368,7 +368,7 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
       status = g_key_file_load_from_file(kf, MEGA_RC_FILENAME, 0, NULL);
       if (!status)
       {
-        gs_free gchar* tmp = g_build_filename(g_get_home_dir(), MEGA_RC_FILENAME, NULL);
+        gc_free gchar* tmp = g_build_filename(g_get_home_dir(), MEGA_RC_FILENAME, NULL);
         status = g_key_file_load_from_file(kf, tmp, 0, NULL);
       }
     }

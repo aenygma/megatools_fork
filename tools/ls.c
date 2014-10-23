@@ -47,7 +47,7 @@ static gint compare_node(mega_node* a, mega_node* b)
 int main(int ac, char* av[])
 {
   mega_session* s;
-  gs_free_error GError *local_err = NULL;
+  gc_error_free GError *local_err = NULL;
   GSList *l = NULL, *i;
   gint j;
 
@@ -70,7 +70,7 @@ int main(int ac, char* av[])
 
     for (j = 1; j < ac; j++)
     {
-      gs_free gchar* path = tool_convert_filename(av[j], FALSE);
+      gc_free gchar* path = tool_convert_filename(av[j], FALSE);
 
       mega_node* n = mega_session_stat(s, path);
       if (n && (n->type == MEGA_NODE_FILE || !opt_names))
@@ -108,10 +108,10 @@ int main(int ac, char* av[])
     if (opt_long)
     {
       GDateTime* dt = g_date_time_new_from_unix_local(n->timestamp);
-      gs_free gchar* time_str = g_date_time_format(dt, "%Y-%m-%d %H:%M:%S");
+      gc_free gchar* time_str = g_date_time_format(dt, "%Y-%m-%d %H:%M:%S");
       g_date_time_unref(dt);
 
-      gs_free gchar* size_str = NULL;
+      gc_free gchar* size_str = NULL;
       if (opt_human)
         size_str = n->size > 0 ? g_format_size_full(n->size, G_FORMAT_SIZE_IEC_UNITS) : g_strdup("-");
       else

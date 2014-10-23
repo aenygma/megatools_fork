@@ -1,80 +1,73 @@
-/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
- *
- * Copyright (C) 2012 Colin Walters <walters@verbum.org>.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
- */
-
-#ifndef __GSYSTEM_LOCAL_ALLOC_H__
-#define __GSYSTEM_LOCAL_ALLOC_H__
+#ifndef __ALLOC_H__
+#define __ALLOC_H__
 
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-#define GS_DEFINE_CLEANUP_FUNCTION(Type, name, func) \
-  static inline void name (void *v) \
+#define DEFINE_CLEANUP_FUNCTION_FULL(Type, func, null_safe, args...) \
+  static inline void __cleanup_##func (void *v) \
   { \
-    func (*(Type*)v); \
+    if (null_safe || *(Type*)v) \
+      func (*(Type*)v, ##args); \
   }
 
-#define GS_DEFINE_CLEANUP_FUNCTION0(Type, name, func) \
-  static inline void name (void *v) \
-  { \
-    if (*(Type*)v) \
-      func (*(Type*)v); \
-  }
+#define DEFINE_CLEANUP_FUNCTION(Type, func) \
+  DEFINE_CLEANUP_FUNCTION_FULL(Type, func, TRUE)
 
-/* These functions shouldn't be invoked directly;
- * they are stubs that:
- * 1) Take a pointer to the location (typically itself a pointer).
- * 2) Provide %NULL-safety where it doesn't exist already (e.g. g_object_unref)
- */
-GS_DEFINE_CLEANUP_FUNCTION0(GArray*, gs_local_array_unref, g_array_unref)
-GS_DEFINE_CLEANUP_FUNCTION0(GBytes*, gs_local_bytes_unref, g_bytes_unref)
-GS_DEFINE_CLEANUP_FUNCTION0(GChecksum*, gs_local_checksum_free, g_checksum_free)
-GS_DEFINE_CLEANUP_FUNCTION0(GError*, gs_local_free_error, g_error_free)
-GS_DEFINE_CLEANUP_FUNCTION0(GHashTable*, gs_local_hashtable_unref, g_hash_table_unref)
-GS_DEFINE_CLEANUP_FUNCTION0(GObject*, gs_local_obj_unref, g_object_unref)
-GS_DEFINE_CLEANUP_FUNCTION0(GPtrArray*, gs_local_ptrarray_unref, g_ptr_array_unref)
-GS_DEFINE_CLEANUP_FUNCTION0(GVariant*, gs_local_variant_unref, g_variant_unref)
-GS_DEFINE_CLEANUP_FUNCTION0(GVariantBuilder*, gs_local_variant_builder_unref, g_variant_builder_unref)
-GS_DEFINE_CLEANUP_FUNCTION0(GVariantIter*, gs_local_variant_iter_free, g_variant_iter_free)
-GS_DEFINE_CLEANUP_FUNCTION0(GRegex*, gs_local_regex_unref, g_regex_unref)
-GS_DEFINE_CLEANUP_FUNCTION0(GMatchInfo*, gs_local_match_info_unref, g_match_info_unref)
-GS_DEFINE_CLEANUP_FUNCTION0(GKeyFile*, gs_local_key_file_unref, g_key_file_unref)
+#define DEFINE_CLEANUP_FUNCTION_NULL(Type, func) \
+  DEFINE_CLEANUP_FUNCTION_FULL(Type, func, FALSE)
 
-GS_DEFINE_CLEANUP_FUNCTION(char**, gs_local_strfreev, g_strfreev)
-GS_DEFINE_CLEANUP_FUNCTION(void*, gs_local_free, g_free)
+#define CLEANUP(func) \
+  __attribute__ ((cleanup(__cleanup_##func)))
 
-#define gs_free __attribute__ ((cleanup(gs_local_free)))
-#define gs_unref_object __attribute__ ((cleanup(gs_local_obj_unref)))
-#define gs_unref_variant __attribute__ ((cleanup(gs_local_variant_unref)))
-#define gs_free_variant_iter __attribute__ ((cleanup(gs_local_variant_iter_free)))
-#define gs_unref_variant_builder __attribute__ ((cleanup(gs_local_variant_builder_unref)))
-#define gs_unref_array __attribute__ ((cleanup(gs_local_array_unref)))
-#define gs_unref_ptrarray __attribute__ ((cleanup(gs_local_ptrarray_unref)))
-#define gs_unref_hashtable __attribute__ ((cleanup(gs_local_hashtable_unref)))
-#define gs_free_checksum __attribute__ ((cleanup(gs_local_checksum_free)))
-#define gs_unref_bytes __attribute__ ((cleanup(gs_local_bytes_unref)))
-#define gs_strfreev __attribute__ ((cleanup(gs_local_strfreev)))
-#define gs_free_error __attribute__ ((cleanup(gs_local_free_error)))
-#define gs_unref_match_info __attribute__ ((cleanup(gs_local_match_info_unref)))
-#define gs_unref_regex __attribute__ ((cleanup(gs_local_regex_unref)))
-#define gs_key_file_unref __attribute__ ((cleanup(gs_local_key_file_unref)))
+DEFINE_CLEANUP_FUNCTION(void*, g_free)
+#define gc_free CLEANUP(g_free)
+
+DEFINE_CLEANUP_FUNCTION(char**, g_strfreev)
+#define gc_strfreev CLEANUP(g_strfreev)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GError*, g_error_free)
+#define gc_error_free CLEANUP(g_error_free)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GArray*, g_array_unref)
+#define gc_array_unref CLEANUP(g_array_unref)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GPtrArray*, g_ptr_array_unref)
+#define gc_ptr_array_unref CLEANUP(g_ptr_array_unref)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GHashTable*, g_hash_table_unref)
+#define gc_hash_table_unref CLEANUP(g_hash_table_unref)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GVariant*, g_variant_unref)
+#define gc_variant_unref CLEANUP(g_variant_unref)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GVariantIter*, g_variant_iter_free)
+#define gc_variant_iter_free CLEANUP(g_variant_iter_free)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GVariantBuilder*, g_variant_builder_unref)
+#define gc_variant_builder_unref CLEANUP(g_variant_builder_unref)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GBytes*, g_bytes_unref)
+#define gc_bytes_unref CLEANUP(g_bytes_unref)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GRegex*, g_regex_unref)
+#define gc_regex_unref CLEANUP(g_regex_unref)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GMatchInfo*, g_match_info_unref)
+#define gc_match_info_unref CLEANUP(g_match_info_unref)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GKeyFile*, g_key_file_unref)
+#define gc_key_file_unref CLEANUP(g_key_file_unref)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GChecksum*, g_checksum_free)
+#define gc_checksum_free CLEANUP(g_checksum_free)
+
+DEFINE_CLEANUP_FUNCTION_NULL(GObject*, g_object_unref)
+#define gc_object_unref CLEANUP(g_object_unref)
+
+DEFINE_CLEANUP_FUNCTION_FULL(GString*, g_string_free, FALSE, TRUE)
+#define gc_string_free CLEANUP(g_string_free)
 
 G_END_DECLS
 

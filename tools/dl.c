@@ -54,8 +54,8 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
   if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
   {
-    gs_free gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
-    gs_free gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
+    gc_free gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
+    gc_free gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
 
     if (data->progress.total > 0)
       g_print(ESC_WHITE "%s" ESC_NORMAL ": " ESC_GREEN "%" G_GUINT64_FORMAT "%%" ESC_NORMAL " - " ESC_GREEN "%s" ESC_NORMAL " of %s" ESC_CLREOL "\r", cur_file, 100 * data->progress.done / data->progress.total, done_str, total_str);
@@ -68,8 +68,8 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
 static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_path)
 {
-  gs_free_error GError *local_err = NULL;
-  gs_free gchar* local_path = g_file_get_path(file);
+  gc_error_free GError *local_err = NULL;
+  gc_free gchar* local_path = g_file_get_path(file);
 
   if (g_file_query_exists(file, NULL))
   {
@@ -99,8 +99,8 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
 
 static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_path)
 {
-  gs_free_error GError *local_err = NULL;
-  gs_free gchar* local_path = g_file_get_path(file);
+  gc_error_free GError *local_err = NULL;
+  gc_free gchar* local_path = g_file_get_path(file);
 
   if (!g_file_query_exists(file, NULL))
   {
@@ -127,8 +127,8 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
   for (i = children; i; i = i->next)
   {
     mega_node* child = i->data;
-    gs_free gchar* child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
-    gs_unref_object GFile* child_file = g_file_get_child(file, child->name);
+    gc_free gchar* child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
+    gc_object_unref GFile* child_file = g_file_get_child(file, child->name);
 
     if (child->type == 0)
     {
@@ -146,8 +146,8 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
 int main(int ac, char* av[])
 {
-  gs_free_error GError *local_err = NULL;
-  gs_unref_regex GRegex *file_regex = NULL, *folder_regex = NULL;
+  gc_error_free GError *local_err = NULL;
+  gc_regex_unref GRegex *file_regex = NULL, *folder_regex = NULL;
   gint i;
   int status = 0;
 
@@ -194,11 +194,11 @@ int main(int ac, char* av[])
   // process links
   for (i = 1; i < ac; i++)
   {
-    gs_unref_match_info GMatchInfo* m1 = NULL;
-    gs_unref_match_info GMatchInfo* m2 = NULL;
-    gs_free gchar* key = NULL;
-    gs_free gchar* handle = NULL;
-    gs_free gchar* link = tool_convert_filename(av[i], FALSE);
+    gc_match_info_unref GMatchInfo* m1 = NULL;
+    gc_match_info_unref GMatchInfo* m2 = NULL;
+    gc_free gchar* key = NULL;
+    gc_free gchar* handle = NULL;
+    gc_free gchar* link = tool_convert_filename(av[i], FALSE);
 
     if (g_regex_match(file_regex, link, 0, &m1))
     {
@@ -247,7 +247,7 @@ int main(int ac, char* av[])
         {
           mega_node* root_node = l->data;
 
-          gs_unref_object GFile* local_dir = g_file_new_for_path(opt_path);
+          gc_object_unref GFile* local_dir = g_file_new_for_path(opt_path);
           if (g_file_query_file_type(local_dir, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_DIRECTORY)
           {
             dl_sync_dir(root_node, local_dir, root_node->path);

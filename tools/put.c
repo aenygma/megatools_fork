@@ -40,8 +40,8 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
   if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
   {
-    gs_free gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
-    gs_free gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
+    gc_free gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
+    gc_free gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
 
     if (data->progress.total > 0)
       g_print(ESC_WHITE "%s" ESC_NORMAL ": " ESC_GREEN "%" G_GUINT64_FORMAT "%%" ESC_NORMAL " - " ESC_GREEN "%s" ESC_NORMAL " of %s" ESC_CLREOL "\r", cur_file, 100 * data->progress.done / data->progress.total, done_str, total_str);
@@ -52,7 +52,7 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
 int main(int ac, char* av[])
 {
-  gs_free_error GError *local_err = NULL;
+  gc_error_free GError *local_err = NULL;
   mega_session* s;
 
   tool_init(&ac, &av, "- upload files to mega.co.nz", entries);
@@ -73,7 +73,7 @@ int main(int ac, char* av[])
   gint i;
   for (i = 1; i < ac; i++)
   {
-    gs_free gchar* path = tool_convert_filename(av[i], TRUE);
+    gc_free gchar* path = tool_convert_filename(av[i], TRUE);
     cur_file = g_path_get_basename(path);
 
     // perform download
