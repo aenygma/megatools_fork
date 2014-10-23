@@ -2525,7 +2525,7 @@ mega_node* mega_session_stat(mega_session* s, const gchar* path)
 
   gc_free gchar* tmp = path_simplify(path);
 
-  return g_hash_table_lookup(s->fs_pathmap, path);
+  return g_hash_table_lookup(s->fs_pathmap, tmp);
 }
 
 // }}}
