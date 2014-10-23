@@ -2437,7 +2437,7 @@ mega_user_quota* mega_session_user_quota(mega_session* s, GError** err)
   g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
   // prepare request
-  gc_free gchar* quota_node = api_call(s, 'o', NULL, &local_err, "[{a:ug, strg:1, xfer:1, pro:1}]");
+  gc_free gchar* quota_node = api_call(s, 'o', NULL, &local_err, "[{a:uq, strg:1, xfer:1, pro:1}]");
   if (!quota_node)
   {
     g_propagate_error(err, local_err);
