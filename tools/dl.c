@@ -242,6 +242,8 @@ int main(int ac, char* av[])
       }
       else
       {
+        mega_session_watch_status(s, status_callback, NULL);
+
         GSList* l = mega_session_ls(s, "/", FALSE);
         if (g_slist_length(l) == 1)
         {
