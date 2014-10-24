@@ -3,9 +3,9 @@ AC_INIT([megatools],[1.9.94],[megous@megous.com],[megatools])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADER([config.h])
-AM_INIT_AUTOMAKE([foreign -Wno-portability])
+AM_INIT_AUTOMAKE([silent-rules foreign subdir-objects -Wno-portability])
 AM_MAINTAINER_MODE
-m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+AM_SILENT_RULES([yes])
 
 AC_PROG_CC
 AM_PROG_CC_C_O
@@ -24,23 +24,39 @@ AC_HEADER_STDC
 LIB_MEGA_VERSION=0:0:0
 AC_SUBST(LIB_MEGA_VERSION)
 
-GLIB_REQUIRED=2.32.0
-AM_PATH_GLIB_2_0($GLIB_REQUIRED,,,gobject gio)
-if test "$GLIB_LIBS" = ""; then
-   AC_MSG_ERROR(GLIB $GLIB_REQUIRED or later is required to build libmega)
-fi
-GLIB_CFLAGS="$GLIB_CFLAGS"
+# Define requirements
 
-MEGA_REQUIRES="gio-2.0 >= 2.32.0 libcurl openssl"
+GLIB_VERSION="2.32.0"
+GOBJECT_INTROSPECTION_VERSION="1.30"
+LIBCURL_REQUIRES="libcurl"
+OPENSSL_REQUIRES="openssl"
 FUSE_REQUIRES="fuse"
+MEGA_REQUIRES="gio-2.0 >= $GLIB_VERSION $LIBCURL_REQUIRES $OPENSSL_REQUIRES"
 
-GOBJECT_INTROSPECTION_CHECK([1.30])
-
-PKG_CHECK_MODULES(MEGA, [$MEGA_REQUIRES])
+# for libmega.pc
 AC_SUBST(MEGA_REQUIRES)
-AC_SUBST(MEGA_CFLAGS)
-AC_SUBST(MEGA_LIBS)
 
+# check for glib/gio
+AM_PATH_GLIB_2_0([$GLIB_VERSION],,AC_MSG_ERROR([Glib $GLIB_VERSION or later is required to build megatools]),[gobject gio])
+GLIB_MAKEFILE='$(top_srcdir)/Makefile.glib'
+AC_SUBST(GLIB_MAKEFILE)
+
+# check gobject-introspection
+AS_IF([test "x$enable_shared" = "xyes"], [
+  GOBJECT_INTROSPECTION_CHECK([$GOBJECT_INTROSPECTION_VERSION])
+], [
+  AM_CONDITIONAL([HAVE_INTROSPECTION], [false])
+])
+
+# check openssl
+PKG_CHECK_MODULES(OPENSSL, [$OPENSSL_REQUIRES])
+AC_SUBST(OPENSSL_CFLAGS)
+AC_SUBST(OPENSSL_LIBS)
+
+# check libcurl
+PKG_CHECK_MODULES(LIBCURL, [$LIBCURL_REQUIRES])
+AC_SUBST(LIBCURL_CFLAGS)
+AC_SUBST(LIBCURL_LIBS)
 
 # check fuse
 AC_ARG_WITH([fuse],
@@ -62,9 +78,7 @@ AS_IF([test "x$ENABLE_FUSE" = "xyes"],
 
 AM_CONDITIONAL([ENABLE_FUSE], [test "x$ENABLE_FUSE" = "xyes"])
 
-GLIB_MAKEFILE='$(top_srcdir)/Makefile.glib'
-AC_SUBST(GLIB_MAKEFILE)
-
+# glib for tests
 PKG_CHECK_MODULES(GLIBTESTS, [glib-2.0 >= 2.34.0], [ENABLE_TESTS=yes], [ENABLE_TESTS=no])
 AM_CONDITIONAL([ENABLE_TESTS], [test x$ENABLE_TESTS = xyes])
 
@@ -92,11 +106,6 @@ AS_IF([test "x$enable_docs_build" = "xyes"], [
 AC_CONFIG_FILES([
   Makefile
   libmega.pc
-  mega/Makefile
-  mega/gjs/Makefile
-  tools/Makefile
-  tests/Makefile
-  docs/Makefile
 ])
 
 AC_OUTPUT
