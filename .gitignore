@@ -2,6 +2,7 @@ Makefile
 Makefile.in
 .deps
 .libs
+.dirstamp
 *.o
 *.lo
 *.la
@@ -29,22 +30,23 @@ Makefile.in
 /mega/mega-marshal.h
 /mega/mega-marshal.list
 /mega/mega-marshal.list.stamp
-/mega/Mega-1.0.gir
-/mega/Mega-1.0.typelib
 
-/tools/megadf
-/tools/megadl
-/tools/megaget
-/tools/megals
-/tools/megamkdir
-/tools/megaput
-/tools/megareg
-/tools/megarm
-/tools/megamv
-/tools/megasync
-/tools/megatest
-/tools/megafs
-/tools/megasample
+/Mega-1.0.gir
+/Mega-1.0.typelib
+
+/megadf
+/megadl
+/megaget
+/megals
+/megamkdir
+/megaput
+/megareg
+/megarm
+/megamv
+/megasync
+/megatest
+/megafs
+/megasample
 
 /tests/test-aes
 /tests/test-rsa
