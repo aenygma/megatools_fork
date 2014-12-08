@@ -44,6 +44,8 @@ http* http_new(void)
     return NULL;
   }
 
+  curl_easy_setopt(h->curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+
 #if DEBUG_CURL == 1
   curl_easy_setopt(h->curl, CURLOPT_VERBOSE, 1L);
 #endif
