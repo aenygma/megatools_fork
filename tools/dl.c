@@ -252,7 +252,8 @@ int main(int ac, char* av[])
           gc_object_unref GFile* local_dir = g_file_new_for_path(opt_path);
           if (g_file_query_file_type(local_dir, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_DIRECTORY)
           {
-            dl_sync_dir(root_node, local_dir, root_node->path);
+            gc_free gchar* node_path = mega_node_get_path_dup(root_node);
+            dl_sync_dir(root_node, local_dir, node_path);
           }
           else
           {

@@ -41,7 +41,12 @@ static GOptionEntry entries[] =
 
 static gint compare_node(mega_node* a, mega_node* b)
 {
-  return strcmp(a->path, b->path);
+  gchar path1[4096];
+  gchar path2[4096];
+
+  if (mega_node_get_path(a, path1, 4096) && mega_node_get_path(b, path2, 4096))
+    return strcmp(path1, path2);
+  return 0;
 }
 
 int main(int ac, char* av[])
@@ -101,6 +106,7 @@ int main(int ac, char* av[])
   for (i = l; i; i = i->next)
   {
     mega_node* n = i->data;
+    gc_free gchar* node_path = mega_node_get_path_dup(n);
 
     if (opt_export)
       g_print("%73s ", n->link ? mega_node_get_link(n, TRUE) : "");
@@ -123,11 +129,11 @@ int main(int ac, char* av[])
         n->type,
         size_str,
         n->timestamp > 0 ? time_str : "", 
-        opt_names ? n->name : n->path
+        opt_names ? n->name : node_path
       );
     }
     else
-      g_print("%s\n", opt_names ? n->name : n->path);
+      g_print("%s\n", opt_names ? n->name : node_path);
   }
 
   g_slist_free(l);

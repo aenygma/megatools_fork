@@ -112,8 +112,8 @@ struct _mega_node
   // call addlinks after refresh to get links populated
   gchar* link;
 
-  gchar* path;
   mega_session* s;
+  mega_node* parent;
 };
 
 struct _mega_user_quota 
@@ -175,6 +175,8 @@ gboolean            mega_node_is_writable           (mega_session* s, mega_node*
 
 gchar*              mega_node_get_link              (mega_node* n, gboolean include_key);
 gchar*              mega_node_get_key               (mega_node* n);
+gboolean            mega_node_get_path              (mega_node* n, gchar* buf, gsize len);
+gchar*              mega_node_get_path_dup          (mega_node* n);
 
 gboolean            mega_session_register           (mega_session* s, const gchar* email, const gchar* password, const gchar* name, mega_reg_state** state, GError** err);
 gboolean            mega_session_register_verify    (mega_session* s, mega_reg_state* state, const gchar* signup_key, GError** err);

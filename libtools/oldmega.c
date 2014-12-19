@@ -119,7 +119,6 @@ struct _mega_sesssion
   GHashTable* share_keys;
 
   GSList* fs_nodes;
-  GHashTable* fs_pathmap;
 
   // progress reporting
   mega_status_callback status_callback;
@@ -1411,91 +1410,60 @@ static gchar* api_call(mega_session* s, gchar expects, gint* error_code, GError*
 
 // Remote filesystem helpers
 
-// {{{ build_pathmap
-
-static void build_pathmap(mega_session* s, const gchar* parent_handle, const gchar* base_path);
-
-static void build_su_pathmap(mega_session* s, const gchar* parent_handle, const gchar* base_path)
-{
-  GSList* i;
-
-  for (i = s->fs_nodes; i; i = i->next)
-  {
-    mega_node* n = i->data;
-
-    // for each node
-    if ((n->su_handle && parent_handle && !strcmp(n->su_handle, parent_handle)))
-    {
-      gchar* path = g_strdup_printf("%s/%s", base_path, n->name);
-
-      if (g_hash_table_lookup(s->fs_pathmap, path))
-      {
-        gchar* tmp = g_strconcat(path, ".", n->handle, NULL);
-        g_free(path);
-        path = tmp;
-
-        g_printerr("WARNING: Dup node detected, will be accessible as %s\n", path);
-      }
-
-      g_hash_table_insert(s->fs_pathmap, path, n);
-
-      build_pathmap(s, n->handle, path);
-
-      g_free(n->path);
-      n->path = g_strdup(path);
-    }
-  }
-}
-
-static void build_pathmap(mega_session* s, const gchar* parent_handle, const gchar* base_path)
-{
-  GSList* i;
-
-  for (i = s->fs_nodes; i; i = i->next)
-  {
-    mega_node* n = i->data;
-
-    // for each node
-    if ((!n->parent_handle && !parent_handle) // root nodes
-        || (n->parent_handle && parent_handle && !strcmp(n->parent_handle, parent_handle)))
-    {
-      gchar* path = g_strdup_printf("%s/%s", base_path, n->name);
-
-      if (g_hash_table_lookup(s->fs_pathmap, path))
-      {
-        gchar* tmp = g_strconcat(path, ".", n->handle, NULL);
-        g_free(path);
-        path = tmp;
-
-        g_printerr("WARNING: Dup node detected, will be accessible as %s\n", path);
-      }
-
-      g_hash_table_insert(s->fs_pathmap, path, n);
-
-      if (n->type == MEGA_NODE_CONTACT) 
-        build_su_pathmap(s, n->handle, path);
-      else
-        build_pathmap(s, n->handle, path);
-
-      g_free(n->path);
-      n->path = g_strdup(path);
-    }
-  }
-}
-
-// }}}
 // {{{ update_pathmap
+
+static void mega_node_free(mega_node* n);
 
 static void update_pathmap(mega_session* s)
 {
+  GSList *i, *prev, *next;
   g_return_if_fail(s != NULL);
 
-  if (!s->fs_pathmap)
-    s->fs_pathmap = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
-  else
-    g_hash_table_remove_all(s->fs_pathmap);
+  // node handles are assumed to be unique
+  GHashTable* handle_map = g_hash_table_new(g_str_hash, g_str_equal);
+  for (i = s->fs_nodes; i; i = i->next)
+  {
+    mega_node* n = i->data;
+    if (!g_hash_table_insert(handle_map, n->handle, n))
+      g_printerr("WARNING: Dup node handle detected %s\n", n->handle);
+  }
+  
+  prev = NULL;
+  for (i = s->fs_nodes; i;)
+  {
+    mega_node* n = i->data;
+    next = i->next;
 
-  build_pathmap(s, NULL, "");
+    if (n->type == MEGA_NODE_CONTACT) 
+    {
+      if (n->su_handle)
+        n->parent = g_hash_table_lookup(handle_map, n->su_handle);
+    }
+    else
+    {
+      if (n->parent_handle)
+        n->parent = g_hash_table_lookup(handle_map, n->parent_handle);
+    }
+
+    // remove parentless non-root nodes from the list
+    if (!n->parent && (n->type == MEGA_NODE_FILE || n->type == MEGA_NODE_FOLDER || n->type == MEGA_NODE_CONTACT))
+    {
+      // remove current node
+      if (prev) 
+        prev->next = next;
+      else 
+        s->fs_nodes = next;
+
+      g_slist_free_1(i);
+      mega_node_free(n);
+    }
+    else
+      prev = i;
+
+    i = next;
+  }
+
+  g_hash_table_unref(handle_map);
 }
 
 // }}}
@@ -1890,7 +1858,6 @@ static void mega_node_free(mega_node* n)
     g_free(n->su_handle);
     g_free(n->key);
     g_free(n->link);
-    g_free(n->path);
     memset(n, 0, sizeof(mega_node));
     g_free(n);
   }
@@ -1935,8 +1902,6 @@ void mega_session_free(mega_session* s)
   {
     g_object_unref(s->http);
     g_slist_free_full(s->fs_nodes, (GDestroyNotify)mega_node_free);
-    if (s->fs_pathmap)
-      g_hash_table_destroy(s->fs_pathmap);
     g_hash_table_destroy(s->share_keys);
     g_free(s->sid);
     g_free(s->rid);
@@ -2149,8 +2114,6 @@ void mega_session_close(mega_session* s)
   g_free(s->user_email);
 
   g_slist_free_full(s->fs_nodes, (GDestroyNotify)mega_node_free);
-  if (s->fs_pathmap)
-    g_hash_table_destroy(s->fs_pathmap);
 
   g_hash_table_remove_all(s->share_keys);
 
@@ -2160,7 +2123,6 @@ void mega_session_close(mega_session* s)
   s->user_handle = NULL;
   s->user_email = NULL;
   s->user_name = NULL;
-  s->fs_pathmap = NULL;
   s->fs_nodes = NULL;
   s->last_refresh = 0;
 
@@ -2468,22 +2430,14 @@ mega_user_quota* mega_session_user_quota(mega_session* s, GError** err)
 
 // {{{ mega_session_ls_all
 
-static void _ls_all(gchar* path, mega_node* n, GSList** l)
-{
-  *l = g_slist_prepend(*l, n);
-}
-
 // free gslist, not the data
 GSList* mega_session_ls_all(mega_session* s)
 {
   GSList* list = NULL;
 
   g_return_val_if_fail(s != NULL, NULL);
-  g_return_val_if_fail(s->fs_pathmap != NULL, NULL);
 
-  g_hash_table_foreach(s->fs_pathmap, (GHFunc)_ls_all, &list);
-
-  return g_slist_sort(list, (GCompareFunc)strcmp);
+  return g_slist_copy(s->fs_nodes);
 }
 
 // }}}
@@ -2496,10 +2450,14 @@ struct _ls_data
   gboolean recursive;
 };
 
-static void _ls(gchar* path, mega_node* n, struct _ls_data* data)
+static void _ls(mega_node* n, struct _ls_data* data)
 {
-  if (g_str_has_prefix(path, data->path) && (data->recursive || !strchr(path + strlen(data->path), '/')))
-    data->list = g_slist_prepend(data->list, n);
+  gchar path[4096];
+  if (mega_node_get_path(n, path, sizeof(path)))
+  {
+    if (g_str_has_prefix(path, data->path) && (data->recursive || !strchr(path + strlen(data->path), '/')))
+      data->list = g_slist_prepend(data->list, n);
+  }
 }
 
 // free gslist, not the data
@@ -2508,7 +2466,6 @@ GSList* mega_session_ls(mega_session* s, const gchar* path, gboolean recursive)
   struct _ls_data data;
 
   g_return_val_if_fail(s != NULL, NULL);
-  g_return_val_if_fail(s->fs_pathmap != NULL, NULL);
   g_return_val_if_fail(path != NULL, NULL);
 
   gc_free gchar* tmp = path_simplify(path);
@@ -2520,7 +2477,7 @@ GSList* mega_session_ls(mega_session* s, const gchar* path, gboolean recursive)
   data.recursive = recursive;
   data.list = NULL;
 
-  g_hash_table_foreach(s->fs_pathmap, (GHFunc)_ls, &data);
+  g_slist_foreach(s->fs_nodes, (GFunc)_ls, &data);
 
   g_free(data.path);
   return data.list;
@@ -2532,12 +2489,24 @@ GSList* mega_session_ls(mega_session* s, const gchar* path, gboolean recursive)
 mega_node* mega_session_stat(mega_session* s, const gchar* path)
 {
   g_return_val_if_fail(s != NULL, NULL);
-  g_return_val_if_fail(s->fs_pathmap != NULL, NULL);
   g_return_val_if_fail(path != NULL, NULL);
 
   gc_free gchar* tmp = path_simplify(path);
 
-  return g_hash_table_lookup(s->fs_pathmap, tmp);
+  GSList* iter;
+  gchar n_path[4096];
+  for (iter = s->fs_nodes; iter; iter = iter->next)
+  {
+    mega_node* n = iter->data;
+
+    if (mega_node_get_path(n, n_path, sizeof(n_path)))
+    {
+      if (!strcmp(n_path, path))
+        return n;
+    }
+  }
+
+  return NULL;
 }
 
 // }}}
@@ -2571,7 +2540,6 @@ mega_node* mega_session_mkdir(mega_session* s, const gchar* path, GError** err)
   mega_node* n = NULL;
 
   g_return_val_if_fail(s != NULL, NULL);
-  g_return_val_if_fail(s->fs_pathmap != NULL, NULL);
   g_return_val_if_fail(path != NULL, NULL);
   g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
@@ -2675,7 +2643,6 @@ gboolean mega_session_rm(mega_session* s, const gchar* path, GError** err)
   GError* local_err = NULL;
 
   g_return_val_if_fail(s != NULL, FALSE);
-  g_return_val_if_fail(s->fs_pathmap != NULL, FALSE);
   g_return_val_if_fail(path != NULL, FALSE);
   g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
@@ -2962,7 +2929,6 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
   gc_byte_array_unref GByteArray* buffer = NULL;
 
   g_return_val_if_fail(s != NULL, NULL);
-  g_return_val_if_fail(s->fs_pathmap != NULL, NULL);
   g_return_val_if_fail(remote_path != NULL, NULL);
   g_return_val_if_fail(local_path != NULL, NULL);
   g_return_val_if_fail(err == NULL || *err == NULL, NULL);
@@ -3138,7 +3104,7 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
 
   // add uploaded node to the filesystem
   s->fs_nodes = g_slist_append(s->fs_nodes, nn);
-  update_pathmap(s);
+  nn->parent = parent_node;
 
   return nn;
 }
@@ -3199,7 +3165,6 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
   gc_byte_array_unref GByteArray* buffer = NULL;
 
   g_return_val_if_fail(s != NULL, FALSE);
-  g_return_val_if_fail(s->fs_pathmap != NULL, FALSE);
   g_return_val_if_fail(remote_path != NULL, FALSE);
   g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
@@ -3592,6 +3557,68 @@ gchar* mega_node_get_key(mega_node* n)
     return base64urlencode(n->key, n->key_len);
 
   return NULL;
+}
+
+// }}}
+// {{{ mega_node_get_path
+
+gchar* mega_node_get_path_dup(mega_node* n)
+{
+  gchar path[4096];
+
+  if (mega_node_get_path(n, path, sizeof(path)))
+    return g_strndup(path, sizeof(path));
+
+  return NULL;
+}
+
+gboolean mega_node_get_path(mega_node* n, gchar* buf, gsize len)
+{
+  g_return_val_if_fail(n != NULL, FALSE);
+
+  // count parents
+  gint n_parents = 0;
+  mega_node* it = n;
+  while (it)
+  {
+    n_parents++;
+    it = it->parent;
+  }
+
+  // allocate pointer list on stack
+  mega_node** parents = g_alloca(sizeof(mega_node*) * n_parents);
+
+  // get parents into the pointer list
+  it = n;
+  n_parents = 0;
+  while (it)
+  {
+    parents[n_parents++] = it;
+    it = it->parent;
+  }
+
+  // reverse iteration
+  gint i;
+  gchar* p = buf;
+  for (i = n_parents - 1; i >= 0; i--) 
+  {
+    it = parents[i];
+    gint name_len = strlen(it->name);
+    gint remaining_buf_len = len - (p - buf);
+
+    if (remaining_buf_len < name_len + 2)
+      return FALSE;
+
+    *p = '/';
+    p += 1;
+
+    memcpy(p, it->name, name_len);
+    p += name_len;
+  }
+
+  *p = '\0';
+
+  return TRUE;
 }
 
 // }}}

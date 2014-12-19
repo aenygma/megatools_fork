@@ -34,13 +34,15 @@ int main(int ac, char* av[])
   {
     if (destination->type == MEGA_NODE_FILE)
     {
-      g_printerr("Destination file already exists: %s", destination->path);
+      gc_free gchar* path = mega_node_get_path_dup(destination);
+      g_printerr("Destination file already exists: %s", path);
       goto err;
     }
 
     if (!mega_node_is_writable(s, destination) || destination->type == MEGA_NODE_NETWORK || destination->type == MEGA_NODE_CONTACT)
     {
-      g_printerr("You can't move files into: %s", destination->path);
+      gc_free gchar* path = mega_node_get_path_dup(destination);
+      g_printerr("You can't move files into: %s", path);
       goto err;
     }
   }
@@ -59,13 +61,15 @@ int main(int ac, char* av[])
 
     if (destination->type == MEGA_NODE_FILE)
     {
-      g_printerr("Destination is not directory: %s", destination->path);
+      gc_free gchar* path = mega_node_get_path_dup(destination);
+      g_printerr("Destination is not directory: %s", path);
       goto err;
     }
 
     if (!mega_node_is_writable(s, destination) || destination->type == MEGA_NODE_NETWORK || destination->type == MEGA_NODE_CONTACT)
     {
-      g_printerr("You can't move files into: %s", destination->path);
+      gc_free gchar* path = mega_node_get_path_dup(destination);
+      g_printerr("You can't move files into: %s", path);
       goto err;
     }
   }
@@ -96,14 +100,17 @@ int main(int ac, char* av[])
     }
 
     // check destination
-    gc_free gchar* basename = g_path_get_basename(n->path);
-    gc_free gchar* tmp = g_strconcat(destination->path, "/", basename, NULL);
+    gc_free gchar* n_path = mega_node_get_path_dup(n);
+    gc_free gchar* destination_path = mega_node_get_path_dup(destination);
+    gc_free gchar* basename = g_path_get_basename(n_path);
+    gc_free gchar* tmp = g_strconcat(destination_path, "/", basename, NULL);
 
     // check destination path
     mega_node* dn = mega_session_stat(s, tmp);
     if (dn)
     {
-      g_printerr("Destination file already exists: %s", dn->path);
+      gc_free gchar* dn_path = mega_node_get_path_dup(dn);
+      g_printerr("Destination file already exists: %s", dn_path);
       goto err;
     }
 
@@ -114,7 +121,7 @@ int main(int ac, char* av[])
       //g_clear_error(&local_err);
     //}
 
-    g_print("mv %s %s/%s\n", n->path, destination->path, tmp);
+    g_print("mv %s %s/%s\n", n_path, destination_path, tmp);
   }
 
   mega_session_save(s, NULL);
