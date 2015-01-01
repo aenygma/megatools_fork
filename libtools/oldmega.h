@@ -173,6 +173,7 @@ gboolean            mega_session_dl                 (mega_session* s, const gcha
 
 gboolean            mega_node_is_writable           (mega_session* s, mega_node* n);
 
+gboolean            mega_node_is_container          (mega_node* n);
 gchar*              mega_node_get_link              (mega_node* n, gboolean include_key);
 gchar*              mega_node_get_key               (mega_node* n);
 gboolean            mega_node_get_path              (mega_node* n, gchar* buf, gsize len);

@@ -3630,6 +3630,14 @@ gboolean mega_node_get_path(mega_node* n, gchar* buf, gsize len)
 }
 
 // }}}
+// {{{
+
+gboolean mega_node_is_container(mega_node* n)
+{
+	return n && n->type != MEGA_NODE_FILE;
+}
+
+// }}}
 
 // {{{ mega_session_save
 

@@ -95,7 +95,7 @@ static gboolean up_sync_dir(GFile* root, GFile* file, const gchar* remote_path)
   if (root != file)
   {
     mega_node* node = mega_session_stat(s, remote_path);
-    if (node && node->type == 0)
+    if (node && node->type == MEGA_NODE_FILE)
     {
       g_printerr("ERROR: File already exists at %s\n", remote_path);
       return FALSE;
@@ -225,7 +225,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
     gchar* child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
     GFile* child_file = g_file_get_child(file, child->name);
 
-    if (child->type == 0)
+    if (child->type == MEGA_NODE_FILE)
     {
       dl_sync_file(child, child_file, child_remote_path);
     }
@@ -265,9 +265,14 @@ int main(int ac, char* av[])
 
   // check remote dir existence
   mega_node* remote_dir = mega_session_stat(s, opt_remote_path);
-  if (!remote_dir || remote_dir->type != 1)
+  if (!remote_dir)
   {
     g_printerr("ERROR: Remote directory not found %s\n", opt_remote_path);
+    goto err0;
+  }
+  else if (!mega_node_is_container(remote_dir))
+  {
+    g_printerr("ERROR: Remote path must be a folder: %s\n", opt_remote_path);
     goto err0;
   }
 
