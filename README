@@ -72,6 +72,14 @@ of downloaded/uploaded files will be correct.
 Installation on Mac OS X (Mountain Lion)
 ========================================
 
+Thanks to Carl Moden, megatools is available in Homebrew (http://brew.sh/).
+
+You can therefrore install megatools with:
+
+  brew install megatools
+
+To install megatools by hand you need to:
+
 1. Install glib-networking with a ca-bundle:
 
   export BUNDLE=/usr/local/share/ca-bundle.crt
@@ -92,6 +100,45 @@ Installation on Gentoo
 Third-party ebuild is available at:
 
   https://github.com/megabaks/stuff/tree/master/app-misc/megatools
+
+
+Installation on Debian
+======================
+
+Megatools is available in sid thanks to Alberto Garcia:
+
+  https://packages.debian.org/unstable/megatools
+
+
+Installation on FreeBSD
+=======================
+
+Megatools is available in freshports thanks to Maxim V. Kostikov:
+
+  http://www.freshports.org/net/megatools/
+
+
+Building megatools from source code
+===================================
+
+You will need to install dependnencies first, to be able to do the build from
+source code tarball.
+
+On Debian, Ubuntu:
+
+  apt-get -y install build-essential libglib2.0-dev libssl-dev libcurl4-openssl-dev libgirepository1.0-dev
+
+On Fedora:
+
+  yum -y install gcc make glib2-devel libcurl-devel openssl-devel gmp-devel tar
+
+On OpenSUSE:
+
+  zypper -n install gcc make glib2-devel libcurl-devel openssl-devel gmp-devel
+
+On Arch Linux:
+
+  pacman -Sy --noconfirm --needed pkg-config gcc make glib2 curl gmp nettle
 
 
 Author
