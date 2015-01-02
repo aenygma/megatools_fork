@@ -1,4 +1,21 @@
-megatools 1.9.93 - 2014-??-??
+megatools 1.9.94 - 2015-01-02
+=============================
+
+Bugfix and optimization release.
+
+Fixes:
+- Force use of IPv4 addresses
+- Fix path sanitization so that trailing slashes are ignored
+- Document config file oddities in megarc manpage
+- Add info on how to build/install megatools on various distros
+
+Improvements:
+- Optimize path handling code so that filesystems with many files are 
+  usable. Previously, megatools would hang for quite some time when
+  updating it's path map.
+- Use non-recursive makefile to build megatools
+
+megatools 1.9.93 - 2014-10-24
 =============================
 
 Added OpenSSL exemption to the license.
