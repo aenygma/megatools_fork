@@ -1015,6 +1015,7 @@ static void mega_http_client_init(MegaHttpClient *http_client)
 
   priv->client = g_socket_client_new();
   g_socket_client_set_timeout(priv->client, 60);
+  g_socket_client_set_family(priv->client, G_SOCKET_FAMILY_IPV4);
   priv->request_headers = g_hash_table_new_full(stri_hash, stri_equal, g_free, g_free);
   priv->response_headers = g_hash_table_new_full(stri_hash, stri_equal, g_free, g_free);
   priv->regex_url = g_regex_new("^([a-z]+)://([a-z0-9.-]+(?::([0-9]+))?)(/.+)?$", G_REGEX_CASELESS, 0, NULL);
