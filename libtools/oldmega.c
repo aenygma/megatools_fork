@@ -2509,7 +2509,7 @@ mega_node* mega_session_stat(mega_session* s, const gchar* path)
 
     if (mega_node_get_path(n, n_path, sizeof(n_path)))
     {
-      if (!strcmp(n_path, path))
+      if (!strcmp(n_path, tmp))
         return n;
     }
   }
@@ -2583,7 +2583,7 @@ mega_node* mega_session_mkdir(mega_session* s, const gchar* path, GError** err)
   if (p->type == MEGA_NODE_NETWORK)
   {
     // prepare contact add request
-    gc_free gchar* ur_node = api_call(s, 'o', NULL, &local_err, "[{a:ur, u:%S, l:1, i:%s}]", g_path_get_basename(path), s->rid);
+    gc_free gchar* ur_node = api_call(s, 'o', NULL, &local_err, "[{a:ur, u:%S, l:1, i:%s}]", g_path_get_basename(tmp), s->rid);
     if (!ur_node)
     {
       g_propagate_error(err, local_err);
@@ -2601,7 +2601,7 @@ mega_node* mega_session_mkdir(mega_session* s, const gchar* path, GError** err)
   else
   {
     gc_free guchar* node_key = make_random_key();
-    gc_free gchar* basename = g_path_get_basename(path);
+    gc_free gchar* basename = g_path_get_basename(tmp);
     gc_free gchar* attrs = encode_node_attrs(basename);
     gc_free gchar* dir_attrs = b64_aes128_cbc_encrypt_str(attrs, node_key);
     gc_free gchar* dir_key = b64_aes128_encrypt(node_key, 16, s->master_key);
@@ -3000,7 +3000,7 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
       return NULL;
     }
 
-    file_name = g_path_get_basename(remote_path);
+    file_name = g_path_get_basename(tmp);
   }
 
   // open local file for reading, and get file size
