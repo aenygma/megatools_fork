@@ -327,8 +327,6 @@ static CURLcode curl_easy_perform_retry_empty(CURL* curl)
   gint delay = 250000; // repeat after 250ms 500ms 1s ...
   CURLcode res;
 
-  g_return_val_if_fail(curl != NULL, CURLE_UNKNOWN_OPTION);
-
 again:
   res = curl_easy_perform(curl);
   if (res == CURLE_GOT_NOTHING)
