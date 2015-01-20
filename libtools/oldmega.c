@@ -1453,6 +1453,7 @@ static void update_pathmap(mega_session* s)
         n->parent = g_hash_table_lookup(handle_map, n->parent_handle);
     }
 
+    /*
     // remove parentless non-root nodes from the list
     if (!n->parent && (n->type == MEGA_NODE_FILE || n->type == MEGA_NODE_FOLDER || n->type == MEGA_NODE_CONTACT))
     {
@@ -1467,6 +1468,7 @@ static void update_pathmap(mega_session* s)
     }
     else
       prev = i;
+      */
 
     i = next;
   }
