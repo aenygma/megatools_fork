@@ -3828,26 +3828,18 @@ gboolean mega_session_load(mega_session* s, const gchar* un, const gchar* pw, gi
     const gchar* sk_nodes = s_json_get_member(cache_obj, "share_keys");
     if (s_json_get_type(sk_nodes) == S_JSON_TYPE_ARRAY)
     {
-      gint i = 0;
-      const gchar* sk_node;
-
-      while ((sk_node = s_json_get_element(sk_nodes, i++)))
-      {
+      S_JSON_FOREACH_ELEMENT(sk_nodes, sk_node)
         gc_free gchar* handle = s_json_get_member_string(sk_node, "handle");
         gc_free guchar* key = s_json_get_member_bytes(sk_node, "key", &len);
 
         add_share_key(s, handle, key);
-      }
+      S_JSON_FOREACH_END()
     }
 
     const gchar* fs_nodes = s_json_get_member(cache_obj, "fs_nodes");
     if (s_json_get_type(fs_nodes) == S_JSON_TYPE_ARRAY)
     {
-      gint i = 0;
-      const gchar* fs_node;
-
-      while ((fs_node = s_json_get_element(fs_nodes, i++)))
-      {
+      S_JSON_FOREACH_ELEMENT(fs_nodes, fs_node)
         mega_node* n = g_new0(mega_node, 1);
 
         n->name = s_json_get_member_string(fs_node, "name");
@@ -3862,7 +3854,7 @@ gboolean mega_session_load(mega_session* s, const gchar* un, const gchar* pw, gi
         n->link = s_json_get_member_string(fs_node, "link");
 
         s->fs_nodes = g_slist_prepend(s->fs_nodes, n);
-      }
+      S_JSON_FOREACH_END()
 
       s->fs_nodes = g_slist_reverse(s->fs_nodes);
     }
