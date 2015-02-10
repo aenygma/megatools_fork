@@ -3857,6 +3857,8 @@ gboolean mega_session_load(mega_session* s, const gchar* un, const gchar* pw, gi
       S_JSON_FOREACH_ELEMENT(fs_nodes, fs_node)
         mega_node* n = g_new0(mega_node, 1);
 
+	n->type = -1;
+
 	S_JSON_FOREACH_MEMBER(fs_node, k, v)
 		if (s_json_string_match(k, "name"))
 			n->name = s_json_get_string(v);
@@ -3873,9 +3875,9 @@ gboolean mega_session_load(mega_session* s, const gchar* un, const gchar* pw, gi
 		else if (s_json_string_match(k, "type"))
 			n->type = s_json_get_int(v, -1);
 		else if (s_json_string_match(k, "size"))
-			n->size = s_json_get_int(v, -1);
+			n->size = s_json_get_int(v, 0);
 		else if (s_json_string_match(k, "timestamp"))
-			n->timestamp = s_json_get_int(v, -1);
+			n->timestamp = s_json_get_int(v, 0);
 		else if (s_json_string_match(k, "link"))
 			n->link = s_json_get_string(v);
 	S_JSON_FOREACH_END()
