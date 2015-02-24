@@ -21,6 +21,7 @@
 #include "config.h"
 #include <curl/curl.h>
 #include <string.h>
+#include <time.h>
 
 #define DEBUG_CURL 0
 
@@ -31,6 +32,7 @@ struct _http
 
   http_progress_fn progress_cb;
   gpointer progress_data;
+  time_t last_progress;
 };
 
 http* http_new(void)
@@ -108,8 +110,16 @@ void http_set_user_agent(http* h, const gchar* ua)
 
 static int curl_progress(http* h, double dltotal, double dlnow, double ultotal, double ulnow)
 {
-  if (h->progress_cb)
+  if (h->progress_cb 
+#ifdef G_OS_WIN32
+    && (!h->last_progress || h->last_progress + 1 < time(NULL))
+#endif
+  )
   {
+#ifdef G_OS_WIN32
+    h->last_progress = time(NULL);
+#endif
+
     if (!h->progress_cb(dltotal + ultotal, dlnow + ulnow, h->progress_data))
       return 1; // cancel
   }
