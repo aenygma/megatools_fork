@@ -28,14 +28,13 @@ Tools
   megals       List all remote files
   megamkdir    Create remote directory
   megarm       Remove remote file or directory
-  megamv       Move and rename remote files
   megaput      Upload individual files
   megaget      Download individual files
   megadl       Download file from a "public" Mega link
                (doesn't require login)
   megastream   Streaming download of a file
                (can be used to preview videos or music)
-  megasync     Upload or download a directory tree
+  megacopy     Upload or download a directory tree
   megafs       Mount remote filesystem locally.
 
 
