@@ -16,7 +16,6 @@ SYNOPSIS
 'megamkdir' /Contacts/<contactemail>
 'megaget' [--no-progress] [--path <path>] <remotepaths>...
 'megaget' --path - <remotefile>
-'megamv' <srcpaths>... <destpath>
 'megarm' <remotepaths>...
 'megarm' /Contacts/<contactemail>
 'megadl' [--no-progress] [--path <path>] <links>...
@@ -65,9 +64,6 @@ man:megamkdir[1]::
 
 man:megarm[1]::
 	Remove remote file or directory
-
-man:megamv[1]::
-	Move and rename remote files
 
 man:megaput[1]::
 	Upload individual files

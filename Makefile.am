@@ -127,7 +127,7 @@ megafs_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(FUSE_CFLAGS)
 
-bin_PROGRAMS = megadf megadl megaget megals megamkdir megaput megareg megarm megamv megacopy
+bin_PROGRAMS = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy
 
 megadf_SOURCES     = tools/df.c $(TOOLS_SOURCES)
 megadl_SOURCES     = tools/dl.c $(TOOLS_SOURCES)
@@ -137,7 +137,6 @@ megamkdir_SOURCES  = tools/mkdir.c $(TOOLS_SOURCES)
 megaput_SOURCES    = tools/put.c $(TOOLS_SOURCES)
 megareg_SOURCES    = tools/reg.c $(TOOLS_SOURCES)
 megarm_SOURCES     = tools/rm.c $(TOOLS_SOURCES)
-megamv_SOURCES     = tools/mv.c $(TOOLS_SOURCES)
 megacopy_SOURCES   = tools/copy.c $(TOOLS_SOURCES)
 
 if ENABLE_FUSE
@@ -148,7 +147,7 @@ endif
 # }}}
 # {{{ docs
 
-MAN1 = megadf megadl megaget megals megamkdir megaput megareg megarm megamv megacopy megafs
+MAN1 = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy megafs
 MAN5 = megarc
 MAN7 = megatools
 
