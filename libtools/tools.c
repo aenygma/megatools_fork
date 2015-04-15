@@ -201,6 +201,8 @@ static void init(void)
   g_type_init();
 #endif
 
+  g_setenv("GSETTINGS_BACKEND", "memory", TRUE);
+
 #ifndef G_OS_WIN32
   signal(SIGPIPE, SIG_IGN);
 #endif
