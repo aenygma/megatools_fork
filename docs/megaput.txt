@@ -17,7 +17,7 @@ DESCRIPTION
 
 Uploads files to your Mega.co.nz account.
 
-*NOTE*: If you want to upload entire directories, use man:megasync[1].
+*NOTE*: If you want to upload entire directories, use man:megacopy[1].
 
 
 OPTIONS

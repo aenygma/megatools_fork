@@ -1,16 +1,16 @@
-megasync(1)
+megacopy(1)
 ===========
 
 NAME
 ----
-megasync - Upload/download entire directories to/from your Mega.co.nz account
+megacopy - Upload/download entire directories to/from your Mega.co.nz account
 
 
 SYNOPSIS
 --------
 [verse]
-'megasync' [-n] [--no-progress] --local <path> --remote <remotepath>
-'megasync' [-n] [--no-progress] --download --local <path> --remote <remotepath>
+'megacopy' [-n] [--no-progress] --local <path> --remote <remotepath>
+'megacopy' [-n] [--no-progress] --download --local <path> --remote <remotepath>
 
 
 DESCRIPTION
@@ -53,14 +53,14 @@ EXAMPLES
 * Upload directory.
 +
 ------------
-$ megasync --local MyBackups --remote /Root/Backups
+$ megacopy --local MyBackups --remote /Root/Backups
 ------------
 
 
 * Download directory.
 +
 ------------
-$ megasync --local MyBackups --remote /Root/Backups --download
+$ megacopy --local MyBackups --remote /Root/Backups --download
 ------------
 
 

@@ -18,7 +18,7 @@ DESCRIPTION
 
 Downloads files from your Mega.co.nz account.
 
-*NOTE*: If you want to download entire directories, use man:megasync[1].
+*NOTE*: If you want to download entire directories, use man:megacopy[1].
 
 
 OPTIONS
