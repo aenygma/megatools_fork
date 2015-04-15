@@ -1,3 +1,22 @@
+megatools 1.9.95 - 2015-04-15
+=============================
+
+Bugfix and optimization release.
+
+Fixes:
+- Improve compatibility wit older curl (whatever version is in centos 6.5)
+- Fix regression in megadl: fails to download exported folders #90
+- Remove megamv as it is not and will not be implemented in 1.9 branch
+- Slow down progress reporting on windows to once per second #102
+- Correct the default values in mega_session_load()
+
+Improvements:
+- Rename megasync to megacopy to avoid conflict with official mega sync client
+- Optimize session loading - issue #100
+- Optimize session loading - further optimization - issue #100
+- There's no need to use dbus-launcher when running megatools outside running
+  desktop to avoid a warning message.
+
 megatools 1.9.94 - 2015-01-02
 =============================
 
