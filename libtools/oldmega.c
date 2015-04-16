@@ -2070,6 +2070,9 @@ gboolean mega_session_open(mega_session* s, const gchar* un, const gchar* pw, co
     gc_free gchar* un_lower = g_ascii_strdown(un, -1);
     gc_free gchar* uh = make_username_hash(un_lower, s->password_key);
 
+    g_free(s->sid);
+    s->sid = NULL;
+
     // login user
     gc_free gchar* login_node = api_call(s, 'o', NULL, &local_err, "[{a:us, user:%s, uh:%s}]", un_lower, uh);
     if (!login_node)
