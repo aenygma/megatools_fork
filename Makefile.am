@@ -117,7 +117,10 @@ TOOLS_SOURCES = \
 	libtools/alloc.h
 
 LDADD = \
-	libmega.la
+	libmega.la \
+	$(GLIB_LIBS) \
+	$(OPENSSL_LIBS) \
+	$(LIBCURL_LIBS)
 
 megafs_LDADD = \
 	$(LDADD) \
