@@ -121,7 +121,16 @@ Building megatools from source code
 ===================================
 
 You will need to install dependnencies first, to be able to do the build from
-source code tarball.
+the official source code tarball, which is available only at 
+http://megatools.megous.com.
+
+You can also check that the code was released by me, using GPG signatures
+provided alongside the code.
+
+Please don't report build issues against code that you downloaded from github. 
+These reports will be closed without explanation, with reference to this README
+file. It is not expected to work on all distributions. Use the official tarball.
+
 
 On Debian, Ubuntu:
 
