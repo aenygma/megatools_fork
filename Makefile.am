@@ -105,6 +105,9 @@ endif
 # }}}
 # {{{ tools
 
+EXTRA_DIST += \
+	libtools/sjson.c
+
 TOOLS_SOURCES = \
 	libtools/sjson.gen.c \
 	libtools/sjson.h \
