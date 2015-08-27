@@ -179,10 +179,10 @@ int main(int ac, char* av[])
 
   // prepare link parsers
 
-  file_regex = g_regex_new("^https?://mega.co.nz/#!([a-z0-9_-]{8})!([a-z0-9_-]{43})$", G_REGEX_CASELESS, 0, NULL);
+  file_regex = g_regex_new("^https?://mega(?:\\.co)?\\.nz/#!([a-z0-9_-]{8})!([a-z0-9_-]{43})$", G_REGEX_CASELESS, 0, NULL);
   g_assert(file_regex != NULL);
 
-  folder_regex = g_regex_new("^https?://mega.co.nz/#F!([a-z0-9_-]{8})!([a-z0-9_-]{22})$", G_REGEX_CASELESS, 0, NULL);
+  folder_regex = g_regex_new("^https?://mega(?:\\.co)?\\.nz/#F!([a-z0-9_-]{8})!([a-z0-9_-]{22})$", G_REGEX_CASELESS, 0, NULL);
   g_assert(folder_regex != NULL);
 
   // create session
