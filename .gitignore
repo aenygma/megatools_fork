@@ -34,6 +34,7 @@ Makefile.in
 /Mega-1.0.gir
 /Mega-1.0.typelib
 
+/megacopy
 /megadf
 /megadl
 /megaget
