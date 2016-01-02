@@ -1202,9 +1202,9 @@ static gchar* api_request_unsafe(mega_session* s, const gchar* req_node, GError*
   // prepare URL
   s->id++;
   if (s->sid)
-    url = g_strdup_printf("https://eu.api.mega.nz/cs?id=%u&%s=%s", s->id, s->sid_param_name ? s->sid_param_name : "sid", s->sid);
+    url = g_strdup_printf("https://eu.api.mega.co.nz/cs?id=%u&%s=%s", s->id, s->sid_param_name ? s->sid_param_name : "sid", s->sid);
   else
-    url = g_strdup_printf("https://eu.api.mega.nz/cs?id=%u", s->id);
+    url = g_strdup_printf("https://eu.api.mega.co.nz/cs?id=%u", s->id);
 
   GString* res_str = mega_http_client_post_simple(s->http, url, req_node, -1, &local_err);
 
@@ -3565,10 +3565,10 @@ gchar* mega_node_get_link(mega_node* n, gboolean include_key)
     {
       gc_free gchar* key = mega_node_get_key(n);
 
-      return g_strdup_printf("https://mega.nz/#!%s!%s", n->link, key);
+      return g_strdup_printf("https://mega.co.nz/#!%s!%s", n->link, key);
     }
 
-    return g_strdup_printf("https://mega.nz/#!%s", n->link);
+    return g_strdup_printf("https://mega.co.nz/#!%s", n->link);
   }
 
   return NULL;

@@ -66,7 +66,7 @@ http* http_new(void)
   h->headers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
   // set default headers
-  http_set_referer(h, "https://mega.nz/");
+  http_set_referer(h, "https://mega.co.nz/");
   http_set_user_agent(h, "Megatools (" VERSION ")");
 
   return h;
