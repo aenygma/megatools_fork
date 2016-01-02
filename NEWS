@@ -1,3 +1,12 @@
+megatools 1.9.96 - 2016-01-02
+=============================
+
+Bugfix release.
+
+Fixes:
+- Refer to mega.nz and use mega.nz links instead of deprecated mega.co.nz
+- Fix various build issues
+
 megatools 1.9.95 - 2015-04-15
 =============================
 
