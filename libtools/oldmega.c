@@ -3565,10 +3565,10 @@ gchar* mega_node_get_link(mega_node* n, gboolean include_key)
     {
       gc_free gchar* key = mega_node_get_key(n);
 
-      return g_strdup_printf("https://mega.co.nz/#!%s!%s", n->link, key);
+      return g_strdup_printf("https://mega.nz/#!%s!%s", n->link, key);
     }
 
-    return g_strdup_printf("https://mega.co.nz/#!%s", n->link);
+    return g_strdup_printf("https://mega.nz/#!%s", n->link);
   }
 
   return NULL;
