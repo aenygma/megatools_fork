@@ -1022,7 +1022,7 @@ static void mega_http_client_init(MegaHttpClient *http_client)
   priv->regex_status = g_regex_new("^HTTP/([0-9]+\\.[0-9]+) ([0-9]+) (.+)$", 0, 0, NULL);
 
   // set default headers
-  mega_http_client_set_header(http_client, "Referer", "https://mega.co.nz/");
+  mega_http_client_set_header(http_client, "Referer", "https://mega.nz/");
   mega_http_client_set_header(http_client, "User-Agent", "Megatools (" VERSION ")");
   mega_http_client_set_header(http_client, "Connection", "keep-alive");
 }
