@@ -1,5 +1,5 @@
 /*
- *  megatools - Mega.co.nz client library and tools
+ *  megatools - Mega.nz client library and tools
  *  Copyright (C) 2013  Ondřej Jirman <megous@megous.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -246,7 +246,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
 int main(int ac, char* av[])
 {
-  tool_init(&ac, &av, "- synchronize local and remote mega.co.nz directories", entries);
+  tool_init(&ac, &av, "- synchronize local and remote mega.nz directories", entries);
 
   if (!opt_local_path || !opt_remote_path)
   {

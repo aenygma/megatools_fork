@@ -13,7 +13,7 @@ int main(int ac, char* av[])
   gc_error_free GError *local_err = NULL;
   mega_session* s;
 
-  tool_init(&ac, &av, "- move files on the remote filesystem at mega.co.nz", entries);
+  tool_init(&ac, &av, "- move files on the remote filesystem at mega.nz", entries);
 
   if (ac < 3)
   {

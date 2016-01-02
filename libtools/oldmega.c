@@ -1,5 +1,5 @@
 /*
- *  megatools - Mega.co.nz client library and tools
+ *  megatools - Mega.nz client library and tools
  *  Copyright (C) 2013  Ondřej Jirman <megous@megous.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -4046,7 +4046,7 @@ gboolean mega_session_register_verify(mega_session* s, mega_reg_state* state, co
 
   // send confirmation
   //
-  // https://mega.co.nz/#confirmZOB7VJrNXFvCzyZBIcdWhr5l4dJatrWpEjEpAmH17ieRRWFjWAUAtSqaVQ_TQKltZWdvdXNAZW1haWwuY3oJQm9iIEJyb3duMhVh8n67rBg
+  // https://mega.nz/#confirmZOB7VJrNXFvCzyZBIcdWhr5l4dJatrWpEjEpAmH17ieRRWFjWAUAtSqaVQ_TQKltZWdvdXNAZW1haWwuY3oJQm9iIEJyb3duMhVh8n67rBg
   //
   // [{"a":"ud","c":"ZOB7VJrNXFvCzyZBIcdWhr5l4dJatrWpEjEpAmH17ieRRWFjWAUAtSqaVQ_TQKltZWdvdXNAZW1haWwuY3oJQm9iIEJyb3duMhVh8n67rBg"}] 
   //

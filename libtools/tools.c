@@ -1,5 +1,5 @@
 /*
- *  megatools - Mega.co.nz client library and tools
+ *  megatools - Mega.nz client library and tools
  *  Copyright (C) 2013  Ondřej Jirman <megous@megous.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -284,7 +284,7 @@ static void print_version(void)
 {
   if (opt_version)
   {
-    g_print("megatools " VERSION " - command line tools for Mega.co.nz\n\n");
+    g_print("megatools " VERSION " - command line tools for Mega.nz\n\n");
     g_print("Written by Ondřej Jirman <megous@megous.com>, 2013\n");
     g_print("Go to http://megatools.megous.com for more information\n");
     exit(0);
@@ -394,13 +394,13 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
 
   if (!opt_username)
   {
-    g_printerr("ERROR: You must specify your mega.co.nz username (email)\n");
+    g_printerr("ERROR: You must specify your mega.nz username (email)\n");
     exit(1);
   }
 
   if (!opt_password && opt_no_ask_password)
   {
-    g_printerr("ERROR: You must specify your mega.co.nz password\n");
+    g_printerr("ERROR: You must specify your mega.nz password\n");
     exit(1);
   }
 
@@ -424,13 +424,13 @@ mega_session* tool_start_session(void)
 
     if (!mega_session_open(s, opt_username, opt_password, sid, &local_err))
     {
-      g_printerr("ERROR: Can't login to mega.co.nz: %s\n", local_err->message);
+      g_printerr("ERROR: Can't login to mega.nz: %s\n", local_err->message);
       goto err;
     }
 
     if (!mega_session_refresh(s, &local_err))
     {
-      g_printerr("ERROR: Can't read filesystem info from mega.co.nz: %s\n", local_err->message);
+      g_printerr("ERROR: Can't read filesystem info from mega.nz: %s\n", local_err->message);
       goto err;
     }
 
@@ -442,7 +442,7 @@ mega_session* tool_start_session(void)
   {
     if (!mega_session_refresh(s, &local_err))
     {
-      g_printerr("ERROR: Can't read filesystem info from mega.co.nz: %s\n", local_err->message);
+      g_printerr("ERROR: Can't read filesystem info from mega.nz: %s\n", local_err->message);
       goto err;
     }
 

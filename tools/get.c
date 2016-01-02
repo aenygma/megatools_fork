@@ -1,5 +1,5 @@
 /*
- *  megatools - Mega.co.nz client library and tools
+ *  megatools - Mega.nz client library and tools
  *  Copyright (C) 2013  Ondřej Jirman <megous@megous.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -62,7 +62,7 @@ int main(int ac, char* av[])
   gc_error_free GError *local_err = NULL;
   mega_session* s;
 
-  tool_init(&ac, &av, "- download individual files from mega.co.nz", entries);
+  tool_init(&ac, &av, "- download individual files from mega.nz", entries);
 
   if (!strcmp(opt_path, "-"))
     opt_noprogress = opt_stream = TRUE;

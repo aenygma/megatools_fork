@@ -1,5 +1,5 @@
 /*
- *  megatools - Mega.co.nz client library and tools
+ *  megatools - Mega.nz client library and tools
  *  Copyright (C) 2013  Ondřej Jirman <megous@megous.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -21,13 +21,13 @@
  * MegaRsaKey:
  *
  * 2048 bit RSA key is used for authentication and sharing file keys between
- * users of Mega.co.nz.
+ * users of Mega.nz.
  *
  * This object allows you to load RSA key in mega's format, and use it for
  * encryption/decryption.
  *
  * It is also possible to generate new RSA key, for example if you want to
- * change it, or register new Mega.co.nz account.
+ * change it, or register new Mega.nz account.
  *
  * There is also a helper method provided to simplify decryption of session id
  * during authentication.
@@ -335,7 +335,7 @@ GBytes* mega_rsa_key_decrypt(MegaRsaKey* rsa_key, const gchar* cipher)
 /**
  * mega_rsa_key_load_enc_privk:
  * @rsa_key: a #MegaRsaKey
- * @privk: Mega.co.nz formatted AES encrypted private key.
+ * @privk: Mega.nz formatted AES encrypted private key.
  * @enc_key: AES key used for decryption.
  *
  * Load encrypted private key.
@@ -394,7 +394,7 @@ bounds:
 /**
  * mega_rsa_key_load_pubk:
  * @rsa_key: a #MegaRsaKey
- * @pubk: Mega.co.nz formatted public key.
+ * @pubk: Mega.nz formatted public key.
  *
  * Load public key.
  *
@@ -441,7 +441,7 @@ bounds:
  * mega_rsa_key_get_pubk:
  * @rsa_key: a #MegaRsaKey
  *
- * Get public key in Mega.co.nz format.
+ * Get public key in Mega.nz format.
  *
  * Returns: Public key.
  */
@@ -466,7 +466,7 @@ gchar* mega_rsa_key_get_pubk(MegaRsaKey* rsa_key)
  * @rsa_key: a #MegaRsaKey
  * @enc_key: AES key used for encryption.
  *
- * Get encrypted private key in Mega.co.nz format.
+ * Get encrypted private key in Mega.nz format.
  *
  * Returns: Encrypted private key.
  */
@@ -547,7 +547,7 @@ gboolean mega_rsa_key_generate(MegaRsaKey* rsa_key)
  * @rsa_key: a #MegaRsaKey
  * @cipher: Encrypted session id (CSID).
  *
- * Decrypt Mega.co.nz session ID.
+ * Decrypt Mega.nz session ID.
  *
  * Returns: Session ID string.
  */

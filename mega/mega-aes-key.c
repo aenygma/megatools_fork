@@ -1,5 +1,5 @@
 /*
- *  megatools - Mega.co.nz client library and tools
+ *  megatools - Mega.nz client library and tools
  *  Copyright (C) 2013  Ondřej Jirman <megous@megous.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -396,7 +396,7 @@ void mega_aes_key_generate(MegaAesKey* aes_key)
  * @aes_key: a #MegaAesKey
  * @password: 
  *
- * Initialize key from plaintext password string. (Mega.co.nz algorithm)
+ * Initialize key from plaintext password string. (Mega.nz algorithm)
  */
 void mega_aes_key_generate_from_password(MegaAesKey* aes_key, const gchar* password)
 {
@@ -431,7 +431,7 @@ void mega_aes_key_generate_from_password(MegaAesKey* aes_key, const gchar* passw
  * @aes_key: a #MegaAesKey
  * @username: E-mail
  *
- * Generate username hash (uh paraemter for 'us' API call) used for authentication to Mega.co.nz.
+ * Generate username hash (uh paraemter for 'us' API call) used for authentication to Mega.nz.
  *
  * Returns: Username hash string
  */

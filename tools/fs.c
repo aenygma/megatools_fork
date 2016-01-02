@@ -187,7 +187,7 @@ int main(int ac, char* av[])
   GError *local_err = NULL;
 
   tool_allow_unknown_options = TRUE;
-  tool_init(&ac, &av, "mount_directory - mount files stored at mega.co.nz", NULL);
+  tool_init(&ac, &av, "mount_directory - mount files stored at mega.nz", NULL);
 
   s = tool_start_session();
   if (!s)

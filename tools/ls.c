@@ -1,5 +1,5 @@
 /*
- *  megatools - Mega.co.nz client library and tools
+ *  megatools - Mega.nz client library and tools
  *  Copyright (C) 2013  Ondřej Jirman <megous@megous.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -35,7 +35,7 @@ static GOptionEntry entries[] =
   { "header",       '\0',   0, G_OPTION_ARG_NONE,    &opt_header,       "Show columns header in long listing",         NULL },
   { "human",         'h',   0, G_OPTION_ARG_NONE,    &opt_human,        "Use a long listing format",                   NULL },
   //{ "color",         'c',   0, G_OPTION_ARG_NONE,    &opt_color,        "Use color highlighting of node types",        NULL },
-  { "export",        'e',   0, G_OPTION_ARG_NONE,    &opt_export,       "Show mega.co.nz download links (export)",     NULL },
+  { "export",        'e',   0, G_OPTION_ARG_NONE,    &opt_export,       "Show mega.nz download links (export)",     NULL },
   { NULL }
 };
 
@@ -56,7 +56,7 @@ int main(int ac, char* av[])
   GSList *l = NULL, *i;
   gint j;
 
-  tool_init(&ac, &av, "- list files stored at mega.co.nz", entries);
+  tool_init(&ac, &av, "- list files stored at mega.nz", entries);
 
   s = tool_start_session();
   if (!s)
@@ -90,7 +90,7 @@ int main(int ac, char* av[])
   // export if requested
   if (opt_export && !mega_session_addlinks(s, l, &local_err))
   {
-    g_printerr("ERROR: Can't read links info from mega.co.nz: %s\n", local_err->message);
+    g_printerr("ERROR: Can't read links info from mega.nz: %s\n", local_err->message);
     g_slist_free(l);
     tool_fini(s);
     return 1;

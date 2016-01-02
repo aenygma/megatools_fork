@@ -1,5 +1,5 @@
 --
--- megatools - Mega.co.nz client library and tools
+-- megatools - Mega.nz client library and tools
 -- Copyright (C) 2013  Ondřej Jirman <megous@megous.com>
 --
 -- This program is free software; you can redistribute it and/or modify
