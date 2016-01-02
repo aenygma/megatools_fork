@@ -3,7 +3,7 @@ megals(1)
 
 NAME
 ----
-megadl - download exported files and directories from Mega.co.nz
+megadl - download exported files and directories from Mega.nz
 
 
 SYNOPSIS
@@ -16,16 +16,16 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-Downloads exported files and folders from Mega.co.nz. Handles links like:
+Downloads exported files and folders from Mega.nz. Handles links like:
 
-* https://mega.co.nz/#!7YVWhCzZ!bauBlAkKKvv8hIm-8-qFmGOYS289ToQWN7rGFPzXB_w
-* https://mega.co.nz/#F!HIlFDajT!HLiVvQQkSe1d0ogxZuaOJg
+* https://mega.nz/#!7YVWhCzZ!bauBlAkKKvv8hIm-8-qFmGOYS289ToQWN7rGFPzXB_w
+* https://mega.nz/#F!HIlFDajT!HLiVvQQkSe1d0ogxZuaOJg
 
 When downloading individual files, these are placed into `<path>`. When
 downloading folders, the contents of the folder are placed into directory
 specified by `<path>`.
 
-To export files, you can use Mega.co.nz web application, or man:megals[1]'s
+To export files, you can use Mega.nz web application, or man:megals[1]'s
 `--export` option.
 
 
@@ -59,14 +59,14 @@ EXAMPLES
 * Download exported file:
 +
 ------------
-$ megadl 'https://mega.co.nz/#!7YVWhCzZ!bauBlAkKKvv8hIm-8-qFmGOYS289ToQWN7rGFPzXB_w'
+$ megadl 'https://mega.nz/#!7YVWhCzZ!bauBlAkKKvv8hIm-8-qFmGOYS289ToQWN7rGFPzXB_w'
 ------------
 
 
 * Download exported folder:
 +
 ------------
-$ megadl 'https://mega.co.nz/#F!HIlFDajT!HLiVvQQkSe1d0ogxZuaOJg'
+$ megadl 'https://mega.nz/#F!HIlFDajT!HLiVvQQkSe1d0ogxZuaOJg'
 ------------
 
 

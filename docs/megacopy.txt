@@ -3,7 +3,7 @@ megacopy(1)
 
 NAME
 ----
-megacopy - Upload/download entire directories to/from your Mega.co.nz account
+megacopy - Upload/download entire directories to/from your Mega.nz account
 
 
 SYNOPSIS
@@ -35,7 +35,7 @@ OPTIONS
 
 -d::
 --download::
-	Download files from the Mega.co.nz. The default is to upload.
+	Download files from the Mega.nz. The default is to upload.
 
 -n::
 --dryrun::

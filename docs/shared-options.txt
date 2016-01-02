@@ -30,8 +30,8 @@ endif::mega-no-login[]
 +
 Available options are:
 
-	* `api`: Dump Mega.co.nz API calls
-	* `fs`: Dump Mega.co.nz filesystem (may require `--reload` to actually print something)
+	* `api`: Dump Mega.nz API calls
+	* `fs`: Dump Mega.nz filesystem (may require `--reload` to actually print something)
 	* `cache`: Dump cache contents
 
 --version::

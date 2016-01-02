@@ -3,7 +3,7 @@ megaget(1)
 
 NAME
 ----
-megaget - download files from your Mega.co.nz account
+megaget - download files from your Mega.nz account
 
 
 SYNOPSIS
@@ -16,7 +16,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-Downloads files from your Mega.co.nz account.
+Downloads files from your Mega.nz account.
 
 *NOTE*: If you want to download entire directories, use man:megacopy[1].
 

@@ -57,7 +57,7 @@ Created stable branch for bugfixes. This is the release from the stable
 branch.
 
 This release contains mostly small bug fixes. Most important change is
-that Megatools now recognizes server busy errors as reported by mega.co.nz
+that Megatools now recognizes server busy errors as reported by mega.nz
 via HTTP status 500 Server Is Busy, and retries the communication. This
 reduces command failures by a lot, and you'll not see 500 Server Is Busy 
 errors anymore.
@@ -69,7 +69,7 @@ their latest versions.
 Other news:
 
 - Added 64bit windows package
-- Unmask Megatools to Mega.co.nz (user Megatools/VERSION User-Agent)
+- Unmask Megatools to Mega.nz (user Megatools/VERSION User-Agent)
 - Check for a2x if --enable-docs-build=yes
 - Megadl now reports file download errors
 - Add megadl --print-names option
@@ -140,7 +140,7 @@ people develop GNOME GUI for Mega in the future.
 
 New command line tools:
 
-  megafs  - mount mega.co.nz filesystem usong FUSE (Linux only)
+  megafs  - mount mega.nz filesystem usong FUSE (Linux only)
   megamv  - move and rename remote files and directories
 
 

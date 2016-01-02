@@ -1,14 +1,14 @@
 REMOTE FILESYSTEM
 -----------------
 
-Mega.co.nz filesystem is represented as a tree of nodes of various types. Nodes
+Mega.nz filesystem is represented as a tree of nodes of various types. Nodes
 are identified by a 8 character node handles (eg. `7Fdi3ZjC`). Structure of the
 filesystem is not encrypted.
 
 Megatools maps node tree structure to a traditional filesystem paths (eg.
 `/Root/SomeFile.DAT`). 
 
-*NOTE*: By the nature of Mega.co.nz storage, several files in the directory can
+*NOTE*: By the nature of Mega.nz storage, several files in the directory can
 have the same name. To allow access to such files, the names of conflicting
 files are extended by appending dot and their node handle like this:
 
@@ -24,7 +24,7 @@ You need to be aware of several special folders:
 	Writable directory representing the root of the filesystem.
 
 /Trash::
-	Trash directory where Mega.co.nz web client moves deleted files. This
+	Trash directory where Mega.nz web client moves deleted files. This
 	directory is not used by megatools when removing files.
 
 /Inbox::

@@ -3,7 +3,7 @@ megarm(1)
 
 NAME
 ----
-megarm - Remove files and folders from your Mega.co.nz account
+megarm - Remove files and folders from your Mega.nz account
 
 
 SYNOPSIS
@@ -16,7 +16,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-Removes files and folders from your Mega.co.nz account.
+Removes files and folders from your Mega.nz account.
 
 *NOTE*: This command removes folders recursively without asking. Be careful.
 

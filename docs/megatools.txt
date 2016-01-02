@@ -3,7 +3,7 @@ megatools(7)
 
 NAME
 ----
-megatools - Mega.co.nz command line tools
+megatools - Mega.nz command line tools
 
 
 SYNOPSIS
@@ -42,7 +42,7 @@ servers allow. Memory requirements and CPU utilization are kept at minimum.
 You can register account using a man:megareg[1] tool, with the benefit of having 
 true control of your encryption keys.
 
-Mega website can be found at http://mega.co.nz.
+Mega website can be found at http://mega.nz.
 
 Megatools can be downloaded at http://megatools.megous.com
 
@@ -97,7 +97,7 @@ parameter.
 SESSION CACHE
 -------------
 
-If you modify cloud filesystem from the Mega.co.nz website or from another computer,
+If you modify cloud filesystem from the Mega.nz website or from another computer,
 you'll need to refresh your session cache. This can be done by using the
 --reload option to any tool, or by waiting for a cache timeout (default timeout is set to 10 minutes).
 

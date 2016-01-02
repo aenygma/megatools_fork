@@ -3,7 +3,7 @@ megamkdir(1)
 
 NAME
 ----
-megamkdir - Create remote folder under your Mega.co.nz account
+megamkdir - Create remote folder under your Mega.nz account
 
 
 SYNOPSIS
@@ -16,7 +16,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-Creates folders on Mega.co.nz.
+Creates folders on Mega.nz.
 
 As a special case, by creating a new folder under /Contacts, you're adding
 a `<contactemail>` to your contacts list.

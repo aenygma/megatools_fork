@@ -3,7 +3,7 @@ megaput(1)
 
 NAME
 ----
-megaput - upload files to your Mega.co.nz account
+megaput - upload files to your Mega.nz account
 
 
 SYNOPSIS
@@ -15,7 +15,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-Uploads files to your Mega.co.nz account.
+Uploads files to your Mega.nz account.
 
 *NOTE*: If you want to upload entire directories, use man:megacopy[1].
 

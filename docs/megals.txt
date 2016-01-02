@@ -15,7 +15,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-Lists files stored on Mega.co.nz, exports public download links.
+Lists files stored on Mega.nz, exports public download links.
 
 
 OPTIONS
@@ -108,7 +108,7 @@ udtDgR7I    Xz2tWWB5Dmo 0    4405067776 2013-04-10 19:16:02 bigfile
 ------------
 $ megals -e /Root/README
 
-https://mega.co.nz/#!OFFRlbgR!k5rWmLp3mxB0gsq07Ii67PLd9L0wq4KondFLDlfH3Uw /Root/README
+https://mega.nz/#!OFFRlbgR!k5rWmLp3mxB0gsq07Ii67PLd9L0wq4KondFLDlfH3Uw /Root/README
 ------------
 
 

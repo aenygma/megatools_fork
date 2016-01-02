@@ -3,7 +3,7 @@ megareg(1)
 
 NAME
 ----
-megareg - Register new Mega.co.nz account
+megareg - Register new Mega.nz account
 
 
 SYNOPSIS
@@ -16,7 +16,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-Registers new Mega.co.nz account. Registration is split into two steps:
+Registers new Mega.nz account. Registration is split into two steps:
 
 . `--register`: Creates a new non-verified account
 . `--verify`: Verifies account with the link that was sent to `<email>`
@@ -74,7 +74,7 @@ Now wait for a verification mail and run the command as asked:
 
 ------------
 $ megareg --verify vbFFFv7AFM25etzkFXLs9A==:Z7FFbgAAAAAAAAAArL33eA==:inEONh3tmwY \
-    'https://mega.co.nz/#confirmciyfWXRGFNcM...'
+    'https://mega.nz/#confirmciyfWXRGFNcM...'
 
 Account registered successfully!
 ------------
