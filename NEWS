@@ -1,3 +1,13 @@
+megatools 1.9.97 - 2016-02-02
+=============================
+
+Bugfix release.
+
+Fixes:
+- Mega started compressing HTTP responses to API calls. Megatools now
+  uses libcurl to handle API requests, so HTTP compression is now 
+  supproted.
+
 megatools 1.9.96 - 2016-01-02
 =============================
 
