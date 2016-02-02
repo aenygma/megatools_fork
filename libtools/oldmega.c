@@ -1432,7 +1432,7 @@ static void mega_node_free(mega_node* n);
 
 static void update_pathmap(mega_session* s)
 {
-  GSList *i, *prev, *next;
+  GSList *i, *next;
   g_return_if_fail(s != NULL);
 
   // node handles are assumed to be unique
@@ -1452,7 +1452,6 @@ static void update_pathmap(mega_session* s)
 #endif
   }
   
-  prev = NULL;
   for (i = s->fs_nodes; i;)
   {
     mega_node* n = i->data;
