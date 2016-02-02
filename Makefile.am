@@ -37,19 +37,10 @@ libmega_la_SOURCES = \
 	mega/mega-rsa-key.h \
 	mega/mega-chunked-cbc-mac.c \
 	mega/mega-chunked-cbc-mac.h \
-	mega/mega-http-client.c \
-	mega/mega-http-client.h \
-	mega/mega-http-io-stream.c \
-	mega/mega-http-io-stream.h \
-	mega/mega-http-input-stream.c \
-	mega/mega-http-input-stream.h \
-	mega/mega-http-output-stream.c \
-	mega/mega-http-output-stream.h \
 	mega/mega-aes-ctr-encryptor.c \
 	mega/mega-aes-ctr-encryptor.h \
 	mega/utils.c \
 	mega/utils.h \
-	mega/megatypes.h \
 	mega/mega.h \
 	$(GLIB_GENERATED)
 
@@ -209,12 +200,8 @@ EXTRA_DIST += \
 	tests/test-bindings.lua \
 	tests/test-bindings.rb \
 	tests/test-bindings.sh \
-	tests/test-http.sh \
-	tests/test-http.js \
 	tests/test-server.sh \
-	tests/test-server.js \
-	tests/test-api.sh \
-	tests/test-api.js
+	tests/test-server.js
 
 EXTRA_DIST += LICENSE Makefile.glib HACKING
 

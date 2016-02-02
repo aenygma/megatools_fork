@@ -21,10 +21,6 @@
 #define __MEGA_H__
 
 #include <mega/mega-rsa-key.h>
-#include <mega/mega-http-io-stream.h>
-#include <mega/mega-http-input-stream.h>
-#include <mega/mega-http-output-stream.h>
-#include <mega/mega-http-client.h>
 #include <mega/mega-chunked-cbc-mac.h>
 #include <mega/mega-aes-ctr-encryptor.h>
 #include <mega/utils.h>

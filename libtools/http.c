@@ -52,12 +52,6 @@ http* http_new(void)
   curl_easy_setopt(h->curl, CURLOPT_VERBOSE, 1L);
 #endif
 
-  //XXX: because we don't distribute cert database on windows
-#ifdef G_OS_WIN32
-  curl_easy_setopt(h->curl, CURLOPT_SSL_VERIFYPEER, 0L);
-  curl_easy_setopt(h->curl, CURLOPT_SSL_VERIFYHOST, 0L);
-#endif
-
   //XXX: don't use alarm signal to time out dns queries
   //curl_easy_setopt(h->curl, CURLOPT_NOSIGNAL, 1L);
 
@@ -203,9 +197,13 @@ GString* http_post(http* h, const gchar* url, const gchar* body, gssize body_len
   {
     if (curl_easy_getinfo(h->curl, CURLINFO_RESPONSE_CODE, &http_status) == CURLE_OK)
     {
-      if (http_status == 200)
+      if (http_status == 200 || http_status == 201)
       {
         goto out;
+      }
+      else if (http_status == 500)
+      {
+        g_set_error(err, HTTP_ERROR, HTTP_ERROR_SERVER_BUSY, "Server returned %ld (probably busy)", http_status);
       }
       else
       {

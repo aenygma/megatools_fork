@@ -17,6 +17,7 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "config.h"
 #include "oldmega.h"
 #include "http.h"
 #include "sjson.h"
@@ -101,7 +102,7 @@ struct _rsa_key {
 
 struct _mega_sesssion 
 {
-  MegaHttpClient* http;
+  http* http;
 
   gint id;
   gchar* sid;
@@ -1206,12 +1207,12 @@ static gchar* api_request_unsafe(mega_session* s, const gchar* req_node, GError*
   else
     url = g_strdup_printf("https://eu.api.mega.co.nz/cs?id=%u", s->id);
 
-  GString* res_str = mega_http_client_post_simple(s->http, url, req_node, -1, &local_err);
+  GString* res_str = http_post(s->http, url, req_node, strlen(req_node), &local_err);
 
   // handle http errors
   if (!res_str)
   {
-    if (local_err->domain == MEGA_HTTP_CLIENT_ERROR && (local_err->code == MEGA_HTTP_CLIENT_ERROR_CONNECTION_BROKEN || local_err->code == MEGA_HTTP_CLIENT_ERROR_SERVER_BUSY))
+    if (local_err->domain == HTTP_ERROR && (local_err->code == HTTP_ERROR_NO_RESPONSE || local_err->code == HTTP_ERROR_SERVER_BUSY))
     {
       // simulate SRV_EAGAIN response if server drops connection
       return g_strdup_printf("%d", SRV_EAGAIN);
@@ -1226,6 +1227,7 @@ static gchar* api_request_unsafe(mega_session* s, const gchar* req_node, GError*
   // decode JSON
   if (!s_json_is_valid(res_str->str))
   {
+	  write(1, res_str->str, res_str->len);
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Invalid response JSON");
     g_string_free(res_str, TRUE);
     return NULL;
@@ -1907,8 +1909,8 @@ mega_session* mega_session_new(void)
 {
   mega_session* s = g_new0(mega_session, 1);
 
-  s->http = mega_http_client_new();
-  mega_http_client_set_content_type(s->http, "application/json");
+  s->http = http_new();
+  http_set_content_type(s->http, "application/json");
 
   s->id = time(NULL);
   s->rid = make_request_id();
@@ -1925,7 +1927,7 @@ void mega_session_free(mega_session* s)
 {
   if (s)
   {
-    g_object_unref(s->http);
+    http_free(s->http);
     g_slist_free_full(s->fs_nodes, (GDestroyNotify)mega_node_free);
     g_hash_table_destroy(s->share_keys);
     g_free(s->sid);

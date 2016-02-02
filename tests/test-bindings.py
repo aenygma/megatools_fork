@@ -28,7 +28,3 @@ print(pkey.get_ubase64())
 
 print(Mega.format_hex(pkey.get_enc_binary(mkey), Mega.HexFormat.PACKED))
 print(Mega.format_hex(mkey.encrypt_raw(pkey.get_binary()), Mega.HexFormat.PACKED))
-
-http = Mega.HttpClient.new()
-x = http.post_simple('http://localhost', b'qwe')
-print(x.str)
