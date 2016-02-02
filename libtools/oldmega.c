@@ -1227,7 +1227,6 @@ static gchar* api_request_unsafe(mega_session* s, const gchar* req_node, GError*
   // decode JSON
   if (!s_json_is_valid(res_str->str))
   {
-	  write(1, res_str->str, res_str->len);
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Invalid response JSON");
     g_string_free(res_str, TRUE);
     return NULL;
