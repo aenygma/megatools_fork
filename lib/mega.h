@@ -21,8 +21,6 @@
 #define __MEGA_H__
 
 #include <mega/mega-rsa-key.h>
-#include <mega/mega-chunked-cbc-mac.h>
-#include <mega/mega-aes-ctr-encryptor.h>
 #include <mega/utils.h>
 
 #endif

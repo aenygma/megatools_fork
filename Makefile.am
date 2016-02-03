@@ -32,10 +32,6 @@ libmega_a_SOURCES = \
 	lib/mega-aes-key.h \
 	lib/mega-rsa-key.c \
 	lib/mega-rsa-key.h \
-	lib/mega-chunked-cbc-mac.c \
-	lib/mega-chunked-cbc-mac.h \
-	lib/mega-aes-ctr-encryptor.c \
-	lib/mega-aes-ctr-encryptor.h \
 	lib/utils.c \
 	lib/utils.h \
 	lib/mega.h
