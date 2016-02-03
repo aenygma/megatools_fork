@@ -28,8 +28,6 @@ libmega_a_SOURCES = \
 	lib/tools.c \
 	lib/tools.h \
 	lib/alloc.h \
-	lib/utils.c \
-	lib/utils.h \
 	lib/mega.h
 
 # }}}
