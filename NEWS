@@ -4,7 +4,8 @@ megatools 1.9.98 - 2016-02-??
 Bugfix release.
 
 Cleanups:
-- Remove libmega.so public library support
+- Remove libmega.so public library support and a lot of unused code
+  that was planned to be used for 2.0
 - Cleanup build system a bit
 
 Fixes:
