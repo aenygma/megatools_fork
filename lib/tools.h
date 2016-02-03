@@ -25,7 +25,7 @@
 #include <gio/gio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "oldmega.h"
+#include "mega.h"
 #include "alloc.h"
 
 void            tool_init_bare        (gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries);

@@ -58,10 +58,6 @@ AS_IF([test "x$ENABLE_FUSE" = "xyes"],
 
 AM_CONDITIONAL([ENABLE_FUSE], [test "x$ENABLE_FUSE" = "xyes"])
 
-# glib for tests
-PKG_CHECK_MODULES(GLIBTESTS, [glib-2.0 >= 2.34.0], [ENABLE_TESTS=yes], [ENABLE_TESTS=no])
-AM_CONDITIONAL([ENABLE_TESTS], [test x$ENABLE_TESTS = xyes])
-
 # enable dev compiler warnings
 AC_ARG_ENABLE([warnings], AC_HELP_STRING([--enable-warnings], [Build with compiler warnings enabled.]))
 AS_IF([test "x$enable_warnings" = "xyes"], [
@@ -96,7 +92,6 @@ Configured features:
   docs build: $enable_docs_build
   warnings: $enable_warnings
   megafs: $ENABLE_FUSE (requires fuse)
-  tests: $ENABLE_TESTS (requires glib-2.0 >= 2.34.0)
 
 Run make now.
 

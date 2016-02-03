@@ -23,15 +23,11 @@ libmega_a_SOURCES = \
 	lib/sjson.h \
 	lib/http.c \
 	lib/http.h \
-	lib/oldmega.c \
-	lib/oldmega.h \
+	lib/mega.c \
+	lib/mega.h \
 	lib/tools.c \
 	lib/tools.h \
 	lib/alloc.h \
-	lib/mega-aes-key.c \
-	lib/mega-aes-key.h \
-	lib/mega-rsa-key.c \
-	lib/mega-rsa-key.h \
 	lib/utils.c \
 	lib/utils.h \
 	lib/mega.h
@@ -121,13 +117,6 @@ endif
 
 # }}}
 # {{{ tests
-
-if ENABLE_TESTS
-noinst_PROGRAMS = tests/test-aes tests/test-rsa
-endif
-
-tests_test_aes_SOURCES = tests/test-aes.c
-tests_test_rsa_SOURCES = tests/test-rsa.c
 
 EXTRA_DIST += LICENSE HACKING
 

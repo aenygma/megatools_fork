@@ -18,10 +18,9 @@
  */
 
 #include "config.h"
-#include "oldmega.h"
+#include "mega.h"
 #include "http.h"
 #include "sjson.h"
-#include "mega/mega.h"
 #include "alloc.h"
 
 #include <gio/gio.h>
