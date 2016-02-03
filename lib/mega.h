@@ -25,6 +25,4 @@
 #include <mega/mega-aes-ctr-encryptor.h>
 #include <mega/utils.h>
 
-#include <mega/mega-enum-types.h>
-
 #endif

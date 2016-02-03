@@ -8,26 +8,15 @@ AM_MAINTAINER_MODE
 AM_SILENT_RULES([yes])
 
 AC_PROG_CC
+AC_PROG_RANLIB
 AM_PROG_CC_C_O
-AC_LIBTOOL_WIN32_DLL
-AM_PROG_LIBTOOL
+#AC_LIBTOOL_WIN32_DLL
+#AM_PROG_LIBTOOL
 AC_HEADER_STDC
-
-# Before making a release, the version string should be modified.
-# The string is of the form C:R:A.
-# - If interfaces have been changed or added, but binary compatibility has
-#   been preserved, change to C+1:0:A+1
-# - If binary compatibility has been broken (eg removed or changed interfaces)
-#   change to C+1:0:0
-# - If the interface is the same as the previous version, change to C:R+1:A
-
-LIB_MEGA_VERSION=0:0:0
-AC_SUBST(LIB_MEGA_VERSION)
 
 # Define requirements
 
 GLIB_VERSION="2.32.0"
-GOBJECT_INTROSPECTION_VERSION="1.30"
 LIBCURL_REQUIRES="libcurl"
 OPENSSL_REQUIRES="openssl"
 FUSE_REQUIRES="fuse"
@@ -38,15 +27,6 @@ AC_SUBST(MEGA_REQUIRES)
 
 # check for glib/gio
 AM_PATH_GLIB_2_0([$GLIB_VERSION],,AC_MSG_ERROR([Glib $GLIB_VERSION or later is required to build megatools]),[gobject gio])
-GLIB_MAKEFILE='$(top_srcdir)/Makefile.glib'
-AC_SUBST(GLIB_MAKEFILE)
-
-# check gobject-introspection
-AS_IF([test "x$enable_shared" = "xyes"], [
-  GOBJECT_INTROSPECTION_CHECK([$GOBJECT_INTROSPECTION_VERSION])
-], [
-  AM_CONDITIONAL([HAVE_INTROSPECTION], [false])
-])
 
 # check openssl
 PKG_CHECK_MODULES(OPENSSL, [$OPENSSL_REQUIRES])
@@ -105,7 +85,6 @@ AS_IF([test "x$enable_docs_build" = "xyes"], [
 
 AC_CONFIG_FILES([
   Makefile
-  libmega.pc
 ])
 
 AC_OUTPUT
