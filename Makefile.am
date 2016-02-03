@@ -144,9 +144,13 @@ endif
 # }}}
 # {{{ docs
 
-MAN1 = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy megafs
+MAN1 = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy
 MAN5 = megarc
 MAN7 = megatools
+
+if ENABLE_FUSE
+MAN1 += megafs
+endif
 
 man1_MANS = $(addprefix docs/,$(addsuffix .1, $(MAN1)))
 man5_MANS = $(addprefix docs/,$(addsuffix .5, $(MAN5)))
