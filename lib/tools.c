@@ -227,7 +227,7 @@ static void init(void)
 static gchar* input_password(void)
 {
   gint tries = 3;
-  gchar buf[256];
+  gchar buf[1025];
   gchar* password = NULL;
 
 #ifdef G_OS_WIN32
@@ -245,7 +245,7 @@ static gchar* input_password(void)
 
 again:
   g_print("Enter password for (%s): ", opt_username);
-  if (fgets(buf, 256, stdin))
+  if (fgets(buf, 1024, stdin))
   {
     if (strlen(buf) > 1)
     {
