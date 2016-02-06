@@ -9,7 +9,8 @@ Cleanups:
 - Cleanup build system a bit
 
 Fixes:
-- 
+- enable automatic decompression (CURLOPT_ACCEPT_ENCODING) (by protomouse)
+  (This finally fixes the problem with HTTP compression.)
 
 megatools 1.9.97 - 2016-02-02
 =============================
