@@ -130,7 +130,7 @@ static gboolean up_sync_dir(GFile* root, GFile* file, const gchar* remote_path)
   {
     const gchar* name = g_file_info_get_name(i);
     GFile* child = g_file_get_child(file, name);
-    GFileType type = g_file_query_file_type(child, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL);
+    GFileType type = g_file_query_file_type(child, 0, NULL);
     gchar* child_remote_path = g_strconcat(remote_path, "/", name, NULL);
 
     if (type == G_FILE_TYPE_DIRECTORY)
@@ -210,7 +210,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
   }
   else
   {
-    if (g_file_query_file_type(file, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) != G_FILE_TYPE_DIRECTORY)
+    if (g_file_query_file_type(file, 0, NULL) != G_FILE_TYPE_DIRECTORY)
     {
       g_printerr("ERROR: Can't create local directory %s: file exists\n", local_path);
       return FALSE;
