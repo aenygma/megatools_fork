@@ -97,9 +97,9 @@ To install megatools by hand you need to:
 Installation on Gentoo
 ======================
 
-Third-party ebuild is available at:
+There is official ebuild available:
 
-  https://github.com/megabaks/stuff/tree/master/app-misc/megatools
+  https://packages.gentoo.org/packages/net-misc/megatools
 
 
 Installation on Debian
