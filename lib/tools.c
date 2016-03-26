@@ -224,6 +224,31 @@ static void init(void)
 #endif
 }
 
+void tool_show_progress(const gchar* file, const mega_status_data *data)
+{
+  if (data->progress.total <= 0)
+    return;
+
+  gc_free gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS | G_FORMAT_SIZE_LONG_FORMAT);
+  gc_free gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
+  const guint64 rate = (data->progress.done - data->progress.last) * 1e6 / data->progress.span;
+  gc_free gchar* rate_str = g_format_size(rate);
+  const double percentage = (double)(data->progress.done * 100 * 1000 / data->progress.total) / 1000.0;
+
+  g_print(
+    ESC_WHITE "%s"
+    ESC_NORMAL ": " ESC_YELLOW "%.2f%%"
+    ESC_NORMAL " - " ESC_GREEN "%s"
+    ESC_BLUE " of %s"
+    ESC_NORMAL " (%s/s)" ESC_CLREOL "\r",
+    file,
+    percentage,
+    done_str,
+    total_str,
+    rate_str
+  );
+}
+
 static gchar* input_password(void)
 {
   gint tries = 3;

@@ -33,6 +33,7 @@ void            tool_init             (gint* ac, gchar*** av, const gchar* tool_
 mega_session*   tool_start_session    (void);
 void            tool_fini             (mega_session* s);
 
+void            tool_show_progress    (const gchar* file, const mega_status_data *data);
 gchar*          tool_convert_filename (const gchar* path, gboolean local);
 
 extern gboolean tool_allow_unknown_options;

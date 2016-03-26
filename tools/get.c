@@ -46,7 +46,7 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
   }
 
   if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
-    mega_status_output_progress(cur_file, data);
+    tool_show_progress(cur_file, data);
 
   return FALSE;
 }

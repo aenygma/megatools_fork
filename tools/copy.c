@@ -39,7 +39,7 @@ static GOptionEntry entries[] =
 static gboolean status_callback(mega_status_data* data, gpointer userdata)
 {
   if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
-    mega_status_output_progress("copying...", data);
+    tool_show_progress("copying...", data);
 
   return FALSE;
 }

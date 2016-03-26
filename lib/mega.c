@@ -22,7 +22,6 @@
 #include "http.h"
 #include "sjson.h"
 #include "alloc.h"
-#include "tools.h"
 
 #include <gio/gio.h>
 #include <glib/gstdio.h>
@@ -4155,37 +4154,6 @@ gboolean mega_session_register_verify(mega_session* s, mega_reg_state* state, co
   //[{"a":"up","privk":"KSUujv7KB8QYL2At2sWeMPi2DQd_e09FwbR2RwileC9NxYw0MxFTKFj7Yxha__borDmBUacxaWXRCnMnAmMlsyWc8zw_ml9tysYHOsL4cQEzpBJtCCIrhnRjwnQk8JUVK--5fyQRS6G2RiOVdeFjkKQyifmXgBsiAlhHKhzSY0VD6ruR9htGfDsgImim_S-MzuWaHQN8TJkBkSZRAgXy6O2tUh0Bk4aEp8NaEV0GHdV7ec1S1jbR9FzwKB7cNkKxk2nd7wRS9rnl_QPz4MTv84dS6qHxahT0ebU5njC2_IkFLxuVlloyO2UTPRPHa9JHaPa3R2BrEmb-eWMmsZ5icNwJl8PLzuc9YlSI09-IR5rHZLm2uW-V05GI1IHIjw9LGzqli6WL7tzlMVhHrsq-xj70iXjVvOXJ3XhwbbW99S8O-3sQ2gG36fSHUcg0WMSD-8KiD-DhmhfqX8iqg-2YDfXrsYUNhq_VHJF83Zm0itPdRIkgUtBR9MFdASSPe_8uxlEBsCATTHNGIWbH0wiKRo2tEqbUTZCJjXhAyTyMhdjbSdS1ARKNr12YHkLKi12uhIJRO73VJGmjZD8De59cPduGihLGt3ipIKVIxsm-Xy6f9p29BtDHE1go_yacqbW1n8d1anN8WhmG8Q_1PwY1h-opagpd-Nf0geFti_3PI8dY75NPAuDyknv0kgn8OZ4ItzO10-4H3_GgLa5m8zb6usk-eeVCo4lkC4Z2YHHlY4YLRIL7rWC0m_kFcsyvVi1-PVNJ8GauLt9PYmW9hj20yJLwCYkEVSQyM4Yxgh55hSa3La3FnUt3Nls_ImOdcDWtYpB0UKJSKN_IYH4NlD60VwvFUifJndRB_JlJGvqzR4s","pubk":"B_9lGyG4ImN-3idVOARGr6dk-4Nn6VwVYxCTSk1nDvXztCNQ-eFwxIJoS3ykODSH_AjHhst_Loj_erSgX-AUOBAjkh5rQuriA4ciT76tIh_IarC5Yf2Zey8Ao_gLPgaqrLTIWPxDhSAmCLd3pa3X9weAuGK_7eiVxmXU4tK_5j7dyn949C4OMNhxp9vRgZqaOzcjouwKm8xH9nWqXTR7F2WKW2BcXxeBkRnFVJz6cd5IqmJENabhDH1-UDf9eCW7GeD2MHU8xnbJk2fXqnru35nxz9OG6VvVDMzrS6dtQU8mC7xnIut_N6eyMRWsHpm8N1bSxHgz1XWCodnOBHFIJSoJAAUR"}] -> ["-a1DHeWfguY"]
 
   return TRUE;
-}
-
-// }}}
-// {{{ mega_status_output_progress
-
-void mega_status_output_progress (const gchar* file, const mega_status_data *data)
-{
-  if (data->progress.total <= 0)
-    return;
-
-  {
-    gc_free gchar* done_str = g_format_size_full(
-      data->progress.done, G_FORMAT_SIZE_IEC_UNITS | G_FORMAT_SIZE_LONG_FORMAT);
-    gc_free gchar* total_str = g_format_size_full(
-      data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
-    const guint64 rate = (data->progress.done - data->progress.last) * 1e6 / data->progress.span;
-    gc_free gchar* rate_str = g_format_size(rate);
-    const double percentage = (double)(data->progress.done * 100 * 1000 / data->progress.total) / 1000.0;
-
-    g_print(
-      ESC_WHITE "%s"
-      ESC_NORMAL ": " ESC_YELLOW "%.2f%%"
-      ESC_NORMAL " - " ESC_GREEN "%s"
-      ESC_BLUE " of %s"
-      ESC_NORMAL " (%s/s)" ESC_CLREOL "\r",
-      file,
-      percentage,
-      done_str,
-      total_str,
-      rate_str);
-  }
 }
 
 // }}}
