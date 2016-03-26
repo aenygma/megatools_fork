@@ -39,16 +39,7 @@ static GOptionEntry entries[] =
 static gboolean status_callback(mega_status_data* data, gpointer userdata)
 {
   if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
-  {
-    gchar* done_str = g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS);
-    gchar* total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
-
-    if (data->progress.total > 0)
-      g_print("  " ESC_GREEN "%" G_GUINT64_FORMAT "%%" ESC_NORMAL " - " ESC_GREEN "%s" ESC_NORMAL " of %s" ESC_CLREOL "\r", 100 * data->progress.done / data->progress.total, done_str, total_str);
-
-    g_free(done_str);
-    g_free(total_str);
-  }
+    mega_status_output_progress("copying...", data);
 
   return FALSE;
 }

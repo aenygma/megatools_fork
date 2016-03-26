@@ -59,6 +59,8 @@ struct _mega_status_data
     {
       guint64 total;
       guint64 done;
+      guint64 last;
+      gint64 span;
     } progress;
 
     struct
@@ -181,5 +183,7 @@ gchar*              mega_node_get_path_dup          (mega_node* n);
 
 gboolean            mega_session_register           (mega_session* s, const gchar* email, const gchar* password, const gchar* name, mega_reg_state** state, GError** err);
 gboolean            mega_session_register_verify    (mega_session* s, mega_reg_state* state, const gchar* signup_key, GError** err);
+
+void                mega_status_output_progress     (const gchar* file, const mega_status_data *data);
 
 #endif

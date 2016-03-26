@@ -41,12 +41,16 @@ extern gboolean tool_allow_unknown_options;
 #define ESC_CLREOL ""
 #define ESC_WHITE ""
 #define ESC_GREEN ""
+#define ESC_YELLOW ""
+#define ESC_BLUE ""
 #define ESC_GRAY ""
 #define ESC_NORMAL ""
 #else
 #define ESC_CLREOL "\x1b[0K"
 #define ESC_WHITE "\x1b[37;1m"
 #define ESC_GREEN "\x1b[32;1m"
+#define ESC_YELLOW "\x1b[33;1m"
+#define ESC_BLUE "\x1b[34;1m"
 #define ESC_GRAY "\x1b[30;1m"
 #define ESC_NORMAL "\x1b[0m"
 #endif
