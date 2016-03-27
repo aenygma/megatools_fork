@@ -42,14 +42,6 @@ LDADD = \
 	$(OPENSSL_LIBS) \
 	$(LIBCURL_LIBS)
 
-megafs_LDADD = \
-	$(LDADD) \
-	$(FUSE_LIBS)
-
-megafs_CFLAGS = \
-	$(AM_CFLAGS) \
-	$(FUSE_CFLAGS)
-
 bin_PROGRAMS = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy
 
 megadf_SOURCES     = tools/df.c
@@ -62,21 +54,12 @@ megareg_SOURCES    = tools/reg.c
 megarm_SOURCES     = tools/rm.c
 megacopy_SOURCES   = tools/copy.c
 
-if ENABLE_FUSE
-bin_PROGRAMS += megafs
-megafs_SOURCES     = tools/fs.c $(TOOLS_SOURCES)
-endif
-
 # }}}
 # {{{ docs
 
 MAN1 = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy
 MAN5 = megarc
 MAN7 = megatools
-
-if ENABLE_FUSE
-MAN1 += megafs
-endif
 
 man1_MANS = $(addprefix docs/,$(addsuffix .1, $(MAN1)))
 man5_MANS = $(addprefix docs/,$(addsuffix .5, $(MAN5)))

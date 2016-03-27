@@ -22,7 +22,6 @@ SYNOPSIS
 'megadl' --path - <filelink>
 'megareg' [--scripted] --register --email <email> --name <realname> --password <password>
 'megareg' [--scripted] --verify <state> <link>
-'megafs' [-o <options>...] [-d] [-f] <mountpoint>
 
 
 DESCRIPTION
@@ -76,9 +75,6 @@ man:megadl[1]::
 
 man:megacopy[1]::
 	Upload or download a directory tree
-
-man:megafs[1]::
-	Mount remote filesystem locally.
 
 
 CONFIGURATION FILES

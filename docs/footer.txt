@@ -10,8 +10,7 @@ man:megamkdir[1],
 man:megaput[1],
 man:megareg[1],
 man:megarm[1],
-man:megacopy[1],
-man:megafs[1].
+man:megacopy[1].
 
 
 MEGATOOLS

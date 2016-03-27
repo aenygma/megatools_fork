@@ -19,7 +19,6 @@ AC_HEADER_STDC
 GLIB_VERSION="2.32.0"
 LIBCURL_REQUIRES="libcurl"
 OPENSSL_REQUIRES="openssl"
-FUSE_REQUIRES="fuse"
 MEGA_REQUIRES="gio-2.0 >= $GLIB_VERSION $LIBCURL_REQUIRES $OPENSSL_REQUIRES"
 
 # for libmega.pc
@@ -37,26 +36,6 @@ AC_SUBST(OPENSSL_LIBS)
 PKG_CHECK_MODULES(LIBCURL, [$LIBCURL_REQUIRES])
 AC_SUBST(LIBCURL_CFLAGS)
 AC_SUBST(LIBCURL_LIBS)
-
-# check fuse
-AC_ARG_WITH([fuse],
-  AS_HELP_STRING([--without-fuse], [Ignore presence of fuse and disable it]))
-
-AS_IF([test "x$with_fuse" != "xno"],
-  [PKG_CHECK_MODULES(FUSE, [$FUSE_REQUIRES], [ENABLE_FUSE=yes], [ENABLE_FUSE=no])],
-  [ENABLE_FUSE=no])
-
-AS_IF([test "x$ENABLE_FUSE" = "xyes"],
-  [
-    AC_SUBST(FUSE_CFLAGS)
-    AC_SUBST(FUSE_LIBS)
-  ],
-    [AS_IF([test "x$with_fuse" = "xyes"],
-      [AC_MSG_ERROR([fuse support requested but not found])
-    ])
-])
-
-AM_CONDITIONAL([ENABLE_FUSE], [test "x$ENABLE_FUSE" = "xyes"])
 
 # enable dev compiler warnings
 AC_ARG_ENABLE([warnings], AC_HELP_STRING([--enable-warnings], [Build with compiler warnings enabled.]))
@@ -91,7 +70,6 @@ Configured features:
 
   docs build: $enable_docs_build
   warnings: $enable_warnings
-  megafs: $ENABLE_FUSE (requires fuse)
 
 Run make now.
 
