@@ -46,7 +46,11 @@ http* http_new(void)
     return NULL;
   }
 
+#if CURL_AT_LEAST_VERSION(7,21,6)
   curl_easy_setopt(h->curl, CURLOPT_ACCEPT_ENCODING, "");
+#else
+  curl_easy_setopt(h->curl, CURLOPT_ENCODING, "");
+#endif
   curl_easy_setopt(h->curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 
 #if DEBUG_CURL == 1
