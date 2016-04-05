@@ -61,6 +61,15 @@ MAN1 = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy
 MAN5 = megarc
 MAN7 = megatools
 
+EXTRA_DIST += \
+	docs/asciidoc.conf \
+	docs/footer.txt \
+	docs/remote-paths.txt \
+	docs/shared-options.txt \
+	$(addprefix docs/,$(addsuffix .txt, $(MAN1) $(MAN5) $(MAN7)))
+
+if ENABLE_DOCS
+
 man1_MANS = $(addprefix docs/,$(addsuffix .1, $(MAN1)))
 man5_MANS = $(addprefix docs/,$(addsuffix .5, $(MAN5)))
 man7_MANS = $(addprefix docs/,$(addsuffix .7, $(MAN7)))
@@ -68,31 +77,14 @@ man7_MANS = $(addprefix docs/,$(addsuffix .7, $(MAN7)))
 MANS_ALL = $(man1_MANS) $(man5_MANS) $(man7_MANS)
 
 BUILT_SOURCES += $(MANS_ALL)
-
-EXTRA_DIST += \
-	docs/asciidoc.conf \
-	docs/footer.txt \
-	docs/remote-paths.txt \
-	docs/shared-options.txt \
-	$(man1_MANS:.1=.txt) \
-	$(man5_MANS:.5=.txt) \
-	$(man7_MANS:.7=.txt) \
-	$(MANS_ALL)
-
-if ENABLE_DOCS_BUILD
-
 DISTCLEANFILES += $(MANS_ALL)
+EXTRA_DIST += $(MANS_ALL)
 
 %.1 %.5 %.7: %.txt docs/shared-options.txt docs/remote-paths.txt docs/footer.txt docs/asciidoc.conf
-	$(AM_V_GEN)a2x --asciidoc-opts="-f docs/asciidoc.conf" -f manpage $<
+	$(AM_V_GEN)mkdir -p "$(top_builddir)/docs"
+	$(AM_V_GEN)a2x --asciidoc-opts="-f $(top_srcdir)/docs/asciidoc.conf -o $@" --destination-dir $(top_builddir)/docs -f manpage $<
 	@sed -i 's/\[FIXME: manual]/Megatools Manual/' $@
 	@sed -i 's/\[FIXME: source]/megatools $(VERSION)/' $@
-
-else
-
-%.1 %.5 %.7:
-	@echo You need to use --enable-docs-build if building from git tree
-	@false
 
 endif
 

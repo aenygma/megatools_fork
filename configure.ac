@@ -49,14 +49,15 @@ AS_IF([test "x$enable_warnings" = "xyes"], [
 ])
 
 # enable docs building
-AC_ARG_ENABLE([docs-build], AC_HELP_STRING([--enable-docs-build], [Build man pages instead of using bundled ones.]))
-AM_CONDITIONAL([ENABLE_DOCS_BUILD], [test "x$enable_docs_build" = xyes])
-AS_IF([test "x$enable_docs_build" = "xyes"], [
+AC_ARG_ENABLE([docs], AC_HELP_STRING([--disable-docs], [Don't build and install man pages.]))
+AM_CONDITIONAL([ENABLE_DOCS], [test "x$enable_docs" != xno])
+AS_IF([test "x$enable_docs" != "xno"], [
   AC_PATH_PROG([A2X], [a2x], [no])
   AS_IF([test "x$A2X" = xno], [
     AC_MSG_ERROR([a2x is required to build docs, install asciidoc])
   ])
-], [enable_docs_build=no])
+  enable_docs=yes
+])
 
 AC_CONFIG_FILES([
   Makefile
@@ -68,7 +69,7 @@ cat << EOF
 
 Configured features:
 
-  docs build: $enable_docs_build
+  docs build: $enable_docs
   warnings: $enable_warnings
 
 Run make now.
