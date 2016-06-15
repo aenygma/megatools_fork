@@ -97,6 +97,12 @@ static GOptionEntry auth_options[] =
   { NULL }
 };
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100004L
+static void init_openssl_locking()
+{
+	// OpenSSL >= 1.1.0-pre4 doesn't require specific callback setup
+}
+#else
 #if GLIB_CHECK_VERSION(2, 32, 0)
 
 static GMutex* openssl_mutexes = NULL;
@@ -163,6 +169,7 @@ static void init_openssl_locking()
   CRYPTO_set_locking_callback(openssl_locking_callback);
 }
 
+#endif
 #endif
 
 #ifdef G_OS_WIN32
@@ -498,5 +505,4 @@ void tool_fini(mega_session* s)
 
   CRYPTO_set_id_callback(NULL);
   CRYPTO_set_locking_callback(NULL);
-  g_free(openssl_mutexes);
 }

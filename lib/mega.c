@@ -29,6 +29,7 @@
 #include <string.h>
 #include <time.h>
 #include <openssl/aes.h>
+#include <openssl/modes.h>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/rand.h>
@@ -776,8 +777,20 @@ static gboolean rsa_key_gen(rsa_key* k)
   g_return_val_if_fail(k->p == NULL, FALSE);
   g_return_val_if_fail(k->m == NULL, FALSE);
 
-  key = RSA_generate_key(2048, RSA_3, NULL, NULL);
+  key = RSA_new();
   if (!key)
+    return FALSE;
+
+  BIGNUM* e = BN_new();
+  if (!e) 
+  {
+    RSA_free(key);
+    return FALSE;
+  }
+
+  BN_set_word(e, RSA_3);
+
+  if (!RSA_generate_key_ex(key, 2048, e, NULL))
     return FALSE;
 
   if (RSA_check_key(key) != 1)
@@ -786,6 +799,18 @@ static gboolean rsa_key_gen(rsa_key* k)
     return FALSE;
   }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  RSA_get0_key(key, &k->m, &k->e, &k->d);
+  RSA_get0_factors(key, &k->q, &k->p);
+  RSA_get0_crt_params(key, NULL, NULL, &k->u);
+
+  k->p = BN_dup(k->p);
+  k->q = BN_dup(k->q);
+  k->d = BN_dup(k->d);
+  k->u = BN_dup(k->u);
+  k->m = BN_dup(k->m);
+  k->e = BN_dup(k->e);
+#else
   // private part
   k->p = BN_dup(key->q);
   k->q = BN_dup(key->p);
@@ -795,8 +820,10 @@ static gboolean rsa_key_gen(rsa_key* k)
   // public part
   k->m = BN_dup(key->n);
   k->e = BN_dup(key->e);
+#endif
 
   RSA_free(key);
+  BN_free(e);
 
   return TRUE;
 }
@@ -2936,6 +2963,20 @@ struct _put_data
   chunked_cbc_mac mac;
   GByteArray* buffer;
 };
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+void AES_ctr128_encrypt(
+  const unsigned char *in, 
+  unsigned char *out,
+  size_t length, 
+  const AES_KEY *key,
+  unsigned char ivec[AES_BLOCK_SIZE],
+  unsigned char ecount_buf[AES_BLOCK_SIZE],
+  unsigned int *num) 
+{
+  CRYPTO_ctr128_encrypt(in, out, length, key, ivec, ecount_buf, num, (block128_f)AES_encrypt);
+}
+#endif
 
 static gsize put_process_data(gpointer buffer, gsize size, struct _put_data* data)
 {
