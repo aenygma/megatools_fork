@@ -19,8 +19,11 @@
 
 #include "tools.h"
 
+static gboolean opt_abortonerror = FALSE;
+
 static GOptionEntry entries[] =
 {
+  { "abort-on-error",'\0',   0, G_OPTION_ARG_NONE,    &opt_abortonerror,"Abort on error (non zero exit code)",   NULL},
   { NULL }
 };
 
@@ -45,8 +48,9 @@ int main(int ac, char* av[])
     return 1;
   }
 
+  gint errcode = 0;
   gint i;
-  for (i = 1; i < ac; i++)
+  for (i = 1; i < ac && !errcode; i++)
   {
     gc_free gchar* path = tool_convert_filename(av[i], FALSE);
 
@@ -54,11 +58,14 @@ int main(int ac, char* av[])
     {
       g_printerr("ERROR: Can't remove %s: %s\n", path, local_err->message);
       g_clear_error(&local_err);
+
+      if (opt_abortonerror)
+        errcode = 2;
     }
   }
 
   mega_session_save(s, NULL);
 
   tool_fini(s);
-  return 0;
+  return errcode;
 }

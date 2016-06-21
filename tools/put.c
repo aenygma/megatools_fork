@@ -21,11 +21,13 @@
 
 static gchar* opt_path = "/Root";
 static gboolean opt_noprogress = FALSE;
+static gboolean opt_abortonerror = FALSE;
 
 static GOptionEntry entries[] =
 {
   { "path",          '\0',   0, G_OPTION_ARG_STRING,  &opt_path,  "Remote path to save files to",  "PATH" },
   { "no-progress",   '\0',   0, G_OPTION_ARG_NONE,    &opt_noprogress,  "Disable progress bar",   NULL},
+  { "abort-on-error",'\0',   0, G_OPTION_ARG_NONE,    &opt_abortonerror,"Abort on error (non zero exit code)",   NULL},
   { NULL }
 };
 
@@ -64,8 +66,9 @@ int main(int ac, char* av[])
 
   mega_session_watch_status(s, status_callback, NULL);
 
+  gint errcode = 0;
   gint i;
-  for (i = 1; i < ac; i++)
+  for (i = 1; i < ac && !errcode; i++)
   {
     gc_free gchar* path = tool_convert_filename(av[i], TRUE);
     cur_file = g_path_get_basename(path);
@@ -78,6 +81,9 @@ int main(int ac, char* av[])
 
       g_printerr("ERROR: Upload failed for '%s': %s\n", path, local_err->message);
       g_clear_error(&local_err);
+
+      if (opt_abortonerror)
+        errcode = 2;
     }
     else
     {
@@ -89,5 +95,5 @@ int main(int ac, char* av[])
   mega_session_save(s, NULL);
 
   tool_fini(s);
-  return 0;
+  return errcode;
 }
