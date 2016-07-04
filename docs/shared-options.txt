@@ -16,6 +16,9 @@ ifndef::mega-no-login[]
 --no-ask-password::
 	Never ask interactively for a password
 
+--enable-previews::
+	Generate and upload file previews, when uploading new files (default)
+
 --disable-previews::
 	Never generate and upload file previews, when uploading new files
 

@@ -39,6 +39,8 @@
 #define MEGA_RC_FILENAME ".megarc"
 #endif
 
+#define BOOLEAN_UNSET_BUT_TRUE 2
+
 static GOptionContext* opt_context;
 static gchar* opt_username;
 static gchar* opt_password;
@@ -48,7 +50,7 @@ static gint opt_cache_timout = 10 * 60;
 static gboolean opt_version;
 static gboolean opt_no_config;
 static gboolean opt_no_ask_password;
-static gboolean opt_disable_previews;
+static gboolean opt_enable_previews = BOOLEAN_UNSET_BUT_TRUE;
 gboolean tool_allow_unknown_options = FALSE;
 
 static gboolean opt_debug_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
@@ -92,7 +94,8 @@ static GOptionEntry auth_options[] =
   { "config",             '\0',  0, G_OPTION_ARG_FILENAME,  &opt_config,           "Load configuration from a file",              "PATH"     },
   { "ignore-config-file", '\0',  0, G_OPTION_ARG_NONE,      &opt_no_config,        "Disable loading " MEGA_RC_FILENAME,           NULL       },
   { "no-ask-password",    '\0',  0, G_OPTION_ARG_NONE,      &opt_no_ask_password,  "Never ask interactively for a password",      NULL       },
-  { "disable-previews",   '\0',  0, G_OPTION_ARG_NONE,      &opt_disable_previews, "Never generate previews when uploading file", NULL       },
+  { "enable-previews",    '\0',  0, G_OPTION_ARG_NONE,      &opt_enable_previews,  "Generate previews when uploading file (default)", NULL       },
+  { "disable-previews",   '\0',  G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE,      &opt_enable_previews,  "Never generate previews when uploading file", NULL       },
   { "reload",             '\0',  0, G_OPTION_ARG_NONE,      &opt_reload_files,     "Reload filesystem cache",                     NULL       },
   { NULL }
 };
@@ -421,6 +424,15 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
         opt_cache_timout = to;
       else
         g_clear_error(&local_err);
+      
+      if(opt_enable_previews == BOOLEAN_UNSET_BUT_TRUE)
+      {
+        gboolean enable = g_key_file_get_boolean(kf, "Upload", "CreatePreviews", &local_err);
+        if(local_err == NULL)
+          opt_enable_previews = enable;
+        else
+          g_clear_error(&local_err);
+      }
     }
   }
 
@@ -481,7 +493,7 @@ mega_session* tool_start_session(void)
     mega_session_save(s, NULL);
   }
 
-  mega_session_enable_previews(s, !opt_disable_previews);
+  mega_session_enable_previews(s, !!opt_enable_previews);
 
   g_free(sid);
   return s;
