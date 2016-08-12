@@ -135,7 +135,7 @@ int main(int ac, char* av[])
       return 1;
     }
 
-    gc_regex_unref GRegex* r = g_regex_new("^(?:https?://mega(?:\\.co)?\\.nz/#confirm)?([a-z0-9_-]{80,150})$", G_REGEX_CASELESS, 0, NULL);
+    gc_regex_unref GRegex* r = g_regex_new("^(?:https?://mega(?:\\.co)?\\.nz/#confirm)?([a-z0-9_-]{80,512})$", G_REGEX_CASELESS, 0, NULL);
     gc_match_info_unref GMatchInfo* m = NULL;
 
     g_assert(r != NULL);
