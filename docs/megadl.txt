@@ -1,4 +1,4 @@
-megals(1)
+megadl(1)
 =========
 
 NAME
