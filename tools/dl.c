@@ -27,12 +27,14 @@ static gchar* opt_path = ".";
 static gboolean opt_stream = FALSE;
 static gboolean opt_noprogress = FALSE;
 static gboolean opt_print_names = FALSE;
+static gint opt_speed_limit = 0;
 
 static GOptionEntry entries[] =
 {
   { "path",          '\0',   0, G_OPTION_ARG_FILENAME,  &opt_path,  "Local directory or file name, to save data to",  "PATH" },
   { "no-progress",   '\0',   0, G_OPTION_ARG_NONE,    &opt_noprogress,  "Disable progress bar",   NULL},
   { "print-names",   '\0',   0, G_OPTION_ARG_NONE,    &opt_print_names,  "Print names of downloaded files",   NULL},
+  { "limit-speed",        's',   0, G_OPTION_ARG_INT, &opt_speed_limit, "Limit download speed (KB/s)",  "KBPS"  },
   { NULL }
 };
 
@@ -171,6 +173,12 @@ int main(int ac, char* av[])
     return 1;
   }
 
+  if (opt_speed_limit < 0)
+  {
+    g_printerr("ERROR: You must specify a valid speed limit\n");
+    exit(1);
+  }
+
   // prepare link parsers
 
   file_regex = g_regex_new("^https?://mega(?:\\.co)?\\.nz/#!([a-z0-9_-]{8})!([a-z0-9_-]{43})$", G_REGEX_CASELESS, 0, NULL);
@@ -182,6 +190,7 @@ int main(int ac, char* av[])
   // create session
 
   s = mega_session_new();
+  mega_session_set_speed(s, 0, opt_speed_limit);
 
   mega_session_watch_status(s, status_callback, NULL);
 
