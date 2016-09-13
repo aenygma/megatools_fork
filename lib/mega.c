@@ -1936,7 +1936,7 @@ GQuark mega_error_quark(void)
 
 // {{{ mega_session_new
 
-mega_session* mega_session_new()
+mega_session* mega_session_new(void)
 {
   mega_session* s = g_new0(mega_session, 1);
 

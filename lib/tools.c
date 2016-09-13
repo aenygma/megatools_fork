@@ -435,17 +435,23 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
       // Load speed limits from settings file
       if (opt_speed_limit == 0)
       {
-        gint ul = g_key_file_get_integer(kf, "Network", "UploadSpeedLimit", NULL);
+        gint ul = g_key_file_get_integer(kf, "Network", "UploadSpeedLimit", &local_err);
         if (local_err == NULL)
           opt_max_ul = ul;
         else
+        {
+          g_printerr("WARNING: Invalid upload speed limit set on config file: %s\n", local_err->message);
           g_clear_error(&local_err);
+        }
 
-        gint dl = g_key_file_get_integer(kf, "Network", "DownloadSpeedLimit", NULL);
+        gint dl = g_key_file_get_integer(kf, "Network", "DownloadSpeedLimit", &local_err);
         if (local_err == NULL)
           opt_max_dl = dl;
         else
+        {
+          g_printerr("WARNING: Invalid download speed limit set on config file: %s\n", local_err->message);
           g_clear_error(&local_err);
+        }
       }
     }
   }
