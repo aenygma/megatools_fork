@@ -105,6 +105,9 @@ struct _rsa_key {
 struct _mega_sesssion 
 {
   http* http;
+  // UL/DL speed settings
+  gint max_ul;
+  gint max_dl;
 
   gint id;
   gchar* sid;
@@ -1948,6 +1951,12 @@ mega_session* mega_session_new(void)
   return s;
 }
 
+void mega_session_set_speed(mega_session* s, gint ul, gint dl)
+{
+  s->max_ul = ul;
+  s->max_dl = dl;
+}
+
 // }}}
 // {{{ mega_session_free
 
@@ -3120,6 +3129,7 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
   gc_http_free http* h = http_new();
   http_set_content_type(h, "application/octet-stream");
   http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
+  http_set_speed(h, s->max_ul, s->max_dl);
   gc_string_free GString* up_handle = http_post_stream_upload(h, p_url, file_size, (http_data_fn)put_process_data, &data, &local_err);
 
   if (!up_handle)
@@ -3339,6 +3349,7 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
   // perform download
   h = http_new();
   http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
+  http_set_speed(h, s->max_ul, s->max_dl);
   if (!http_post_stream_download(h, url, (http_data_fn)get_process_data, &data, &local_err))
   {
     g_propagate_prefixed_error(err, local_err, "Data download failed: ");
@@ -3572,6 +3583,7 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
   // perform download
   h = http_new();
   http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
+  http_set_speed(h, s->max_ul, s->max_dl);
   if (!http_post_stream_download(h, url, (http_data_fn)dl_process_data, &data, &local_err))
   {
     g_propagate_prefixed_error(err, local_err, "Data download failed: ");

@@ -50,6 +50,9 @@ static gboolean opt_no_config;
 static gboolean opt_no_ask_password;
 static gboolean opt_disable_previews;
 gboolean tool_allow_unknown_options = FALSE;
+static gint opt_speed_limit = 0;
+static gint opt_max_ul = 0;
+static gint opt_max_dl = 0;
 
 static gboolean opt_debug_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
 {
@@ -94,6 +97,12 @@ static GOptionEntry auth_options[] =
   { "no-ask-password",    '\0',  0, G_OPTION_ARG_NONE,      &opt_no_ask_password,  "Never ask interactively for a password",      NULL       },
   { "disable-previews",   '\0',  0, G_OPTION_ARG_NONE,      &opt_disable_previews, "Never generate previews when uploading file", NULL       },
   { "reload",             '\0',  0, G_OPTION_ARG_NONE,      &opt_reload_files,     "Reload filesystem cache",                     NULL       },
+  { NULL }
+};
+
+static GOptionEntry network_options[] =
+{
+  { "limit-speed",              's',  0, G_OPTION_ARG_INT, &opt_speed_limit, "Limit transfer speed (KB/s)",  "KBPS"  },
   { NULL }
 };
 
@@ -381,6 +390,7 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
     g_option_context_add_main_entries(opt_context, tool_entries, NULL);
   g_option_context_add_main_entries(opt_context, auth_options, NULL);
   g_option_context_add_main_entries(opt_context, basic_options, NULL);
+  g_option_context_add_main_entries(opt_context, network_options, NULL);
 
   if (!g_option_context_parse(opt_context, ac, av, &local_err))
   {
@@ -391,7 +401,6 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
 
   print_version();
 
-  // load username/password from ini file
   if (!opt_no_config || opt_config)
   {
     gboolean status;
@@ -411,16 +420,39 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
 
     if (status)
     {
+      // load username/password from ini file
       if (!opt_username)
         opt_username = g_key_file_get_string(kf, "Login", "Username", NULL);
       if(!opt_password)
         opt_password = g_key_file_get_string(kf, "Login", "Password", NULL);
-
       gint to = g_key_file_get_integer(kf, "Cache", "Timeout", &local_err);
       if (local_err == NULL)
         opt_cache_timout = to;
       else
         g_clear_error(&local_err);
+      
+
+      // Load speed limits from settings file
+      if (opt_speed_limit == 0)
+      {
+        gint ul = g_key_file_get_integer(kf, "Network", "UploadSpeedLimit", &local_err);
+        if (local_err == NULL)
+          opt_max_ul = ul;
+        else
+        {
+          g_printerr("WARNING: Invalid upload speed limit set on config file: %s\n", local_err->message);
+          g_clear_error(&local_err);
+        }
+
+        gint dl = g_key_file_get_integer(kf, "Network", "DownloadSpeedLimit", &local_err);
+        if (local_err == NULL)
+          opt_max_dl = dl;
+        else
+        {
+          g_printerr("WARNING: Invalid download speed limit set on config file: %s\n", local_err->message);
+          g_clear_error(&local_err);
+        }
+      }
     }
   }
 
@@ -436,8 +468,20 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
     exit(1);
   }
 
+  if (opt_speed_limit < 0)
+  {
+    g_printerr("ERROR: You must specify a valid speed limit\n");
+    exit(1);
+  }
+
   if (!opt_password)
     opt_password = input_password();
+
+  if (opt_max_ul == 0 && opt_max_dl == 0) {
+    // Default to whichever speed limit was specified over commandline
+    opt_max_ul = opt_speed_limit;
+    opt_max_dl = opt_speed_limit;
+  }
 }
 
 mega_session* tool_start_session(void)
@@ -447,6 +491,7 @@ mega_session* tool_start_session(void)
   gboolean loaded = FALSE;
 
   mega_session* s = mega_session_new();
+  mega_session_set_speed(s, opt_max_ul, opt_max_dl);
 
   // try to load cached session data (they are valid for 10 minutes since last
   // user_get or refresh)

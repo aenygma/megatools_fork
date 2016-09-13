@@ -47,6 +47,7 @@ void http_set_content_length(http* h, goffset len);
 void http_no_expect(http* h);
 void http_set_header(http* h, const gchar* name, const gchar* value);
 void http_set_progress_callback(http* h, http_progress_fn cb, gpointer data);
+void http_set_speed(http* h, gint max_ul, gint max_dl);
 
 GString* http_post(http* h, const gchar* url, const gchar* body, gssize body_len, GError** err);
 GString* http_post_stream_upload(http* h, const gchar* url, goffset len, http_data_fn read_cb, gpointer user_data, GError** err);
