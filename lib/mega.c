@@ -1942,7 +1942,6 @@ mega_session* mega_session_new(void)
   mega_session* s = g_new0(mega_session, 1);
 
   s->http = http_new();
-  http_set_proxy(s->http, s->proxy);
   http_set_content_type(s->http, "application/json");
 
   s->id = time(NULL);
@@ -1969,6 +1968,7 @@ void mega_session_set_proxy(mega_session* s, const gchar* proxy)
 {
   g_free(s->proxy);
   s->proxy = g_strdup(proxy);
+  http_set_proxy(s->http, s->proxy);
 }
 
 // }}}
