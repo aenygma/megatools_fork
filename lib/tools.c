@@ -470,7 +470,12 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
   }
 
   if (opt_proxy)
-    proxy = opt_proxy;
+  {
+    if (!strcmp(opt_proxy, "none"))
+      proxy = NULL;
+    else
+      proxy = opt_proxy;
+  }
 
   if (!(flags & TOOL_INIT_AUTH))
     return;
