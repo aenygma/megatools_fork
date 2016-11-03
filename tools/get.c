@@ -84,7 +84,7 @@ int main(int ac, char* av[])
 
   mega_session_watch_status(s, status_callback, NULL);
 
-  gint i;
+  gint i, status = 0;
   for (i = 1; i < ac; i++)
   {
     gc_free gchar* path = tool_convert_filename(av[i], FALSE);
@@ -96,6 +96,7 @@ int main(int ac, char* av[])
         g_print("\r" ESC_CLREOL "\n");
       g_printerr("ERROR: Download failed for '%s': %s\n", path, local_err->message);
       g_clear_error(&local_err);
+			status = 1;
     }
     else
     {
@@ -105,5 +106,5 @@ int main(int ac, char* av[])
   }
 
   tool_fini(s);
-  return 0;
+  return status;
 }

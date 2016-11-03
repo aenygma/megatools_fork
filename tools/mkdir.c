@@ -46,7 +46,7 @@ int main(int ac, char* av[])
     return 1;
   }
 
-  gint i;
+  gint i, status = 0;
   for (i = 1; i < ac; i++)
   {
     gc_free gchar* path = tool_convert_filename(av[i], FALSE);
@@ -55,11 +55,12 @@ int main(int ac, char* av[])
     {
       g_printerr("ERROR: Can't create directory %s: %s\n", path, local_err->message);
       g_clear_error(&local_err);
+			status = 1;
     }
   }
 
   mega_session_save(s, NULL);
 
   tool_fini(s);
-  return 0;
+  return status;
 }

@@ -118,6 +118,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
   // sync children
   GSList* children = mega_session_get_node_chilren(s, node), *i;
+	gboolean status = TRUE;
   for (i = children; i; i = i->next)
   {
     mega_node* child = i->data;
@@ -126,16 +127,18 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
     if (child->type == 0)
     {
-      dl_sync_file(child, child_file, child_remote_path);
+      if (!dl_sync_file(child, child_file, child_remote_path))
+				status = FALSE;
     }
     else
     {
-      dl_sync_dir(child, child_file, child_remote_path);
+      if (!dl_sync_dir(child, child_file, child_remote_path))
+				status = FALSE;
     }
   }
 
   g_slist_free(children);
-  return TRUE;
+  return status;
 }
 
 int main(int ac, char* av[])
@@ -206,7 +209,7 @@ int main(int ac, char* av[])
           g_print("\r" ESC_CLREOL "\n");
         g_printerr("ERROR: Download failed for '%s': %s\n", link, local_err->message);
         g_clear_error(&local_err);
-        status++;
+        status = 1;
       }
       else
       {
@@ -233,6 +236,7 @@ int main(int ac, char* av[])
       {
         g_printerr("ERROR: Can't open folder '%s': %s\n", link, local_err->message);
         g_clear_error(&local_err);
+				status = 1;
       }
       else
       {
@@ -247,16 +251,19 @@ int main(int ac, char* av[])
           if (g_file_query_file_type(local_dir, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_DIRECTORY)
           {
             gc_free gchar* node_path = mega_node_get_path_dup(root_node);
-            dl_sync_dir(root_node, local_dir, node_path);
+            if (!dl_sync_dir(root_node, local_dir, node_path))
+							status = 1;
           }
           else
           {
             g_printerr("ERROR: %s must be a directory\n", opt_path);
+						status = 1;
           }
         }
         else
         {
           g_printerr("ERROR: EXP folder fs has multiple toplevel nodes? Weird!\n");
+					status = 1;
         }
 
         g_slist_free(l);

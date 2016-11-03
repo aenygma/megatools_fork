@@ -119,6 +119,7 @@ static gboolean up_sync_dir(GFile* root, GFile* file, const gchar* remote_path)
     return FALSE;
   }
 
+	gboolean status = TRUE;
   while ((i = g_file_enumerator_next_file(e, NULL, NULL)))
   {
     const gchar* name = g_file_info_get_name(i);
@@ -128,15 +129,17 @@ static gboolean up_sync_dir(GFile* root, GFile* file, const gchar* remote_path)
 
     if (type == G_FILE_TYPE_DIRECTORY)
     {
-      up_sync_dir(root, child, child_remote_path);
+      if (!up_sync_dir(root, child, child_remote_path))
+				status = FALSE;
     }
     else if (type == G_FILE_TYPE_REGULAR)
     {
-      up_sync_file(root, child, child_remote_path);
+      if (!up_sync_file(root, child, child_remote_path))
+				status = FALSE;
     }
     else
     {
-      g_printerr("ERROR: Skipping file %s\n", g_file_get_relative_path(root, file));
+      g_printerr("WARNING: Skipping special file %s\n", g_file_get_relative_path(root, file));
     }
 
     g_free(child_remote_path);
@@ -145,7 +148,7 @@ static gboolean up_sync_dir(GFile* root, GFile* file, const gchar* remote_path)
   }
 
   g_object_unref(e);
-  return TRUE;
+  return status;
 }
 
 // download operation
@@ -211,6 +214,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
   }
 
   // sync children
+	gboolean status = TRUE;
   GSList* children = mega_session_get_node_chilren(s, node), *i;
   for (i = children; i; i = i->next)
   {
@@ -220,11 +224,13 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
     if (child->type == MEGA_NODE_FILE)
     {
-      dl_sync_file(child, child_file, child_remote_path);
+      if (!dl_sync_file(child, child_file, child_remote_path))
+				status = FALSE;
     }
     else
     {
-      dl_sync_dir(child, child_file, child_remote_path);
+      if (!dl_sync_dir(child, child_file, child_remote_path))
+				status = FALSE;
     }
 
     g_object_unref(child_file);
@@ -232,7 +238,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
   }
 
   g_slist_free(children);
-  return TRUE;
+  return status;
 }
 
 // main program
@@ -273,10 +279,12 @@ int main(int ac, char* av[])
 
   // check local dir existence
   GFile* local_file = g_file_new_for_path(opt_local_path);
+	gint status = 0;
 
   if (opt_download)
   {
-    dl_sync_dir(remote_dir, local_file, opt_remote_path);
+    if (!dl_sync_dir(remote_dir, local_file, opt_remote_path))
+			status = 1;
   }
   else
   {
@@ -286,13 +294,15 @@ int main(int ac, char* av[])
       goto err1;
     }
 
-    up_sync_dir(local_file, local_file, opt_remote_path);
+    if (!up_sync_dir(local_file, local_file, opt_remote_path))
+			status = 1;
+
     mega_session_save(s, NULL);
   }
 
   g_object_unref(local_file);
   tool_fini(s);
-  return 0;
+  return status;
 
 err1:
   g_object_unref(local_file);
