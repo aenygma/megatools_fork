@@ -25,7 +25,8 @@ a `<contactemail>` to your contacts list.
 OPTIONS
 -------
 
-include::shared-options.txt[]
+include::auth-options.txt[]
+include::basic-options.txt[]
 
 <remotepaths>::
 	One or more remote directories to create.

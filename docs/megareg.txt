@@ -52,8 +52,7 @@ OPTIONS
 	After registration, print the command that can be used to finish the 
 	registration in a format suitable for scripting purposes.
 
-:mega-no-login: 1
-include::shared-options.txt[]
+include::basic-options.txt[]
 
 EXAMPLE
 -------

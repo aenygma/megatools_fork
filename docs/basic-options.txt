@@ -1,27 +1,19 @@
-ifndef::mega-no-login[]
--u <email>::
---username <email>::
-	Account username (email)
+--speed-limit <speed>::
+	Set maximum allowed upload and download speed in KiB/s.
 
--p <password>::
---password <password>::
-	Account password
+--proxy <proxy>::
+	Use proxy server to connect to mega.nz.
+	More information can be found in libcurl documentation at
+	link:https://curl.haxx.se/libcurl/c/CURLOPT_PROXY.html[].
+	Some acceptable values are:
+	* `socks5://localhost:9050` : Local SOCKSv5 proxy server
+	* `socks5h://localhost:9050` : Local SOCKSv5 proxy server with DNS handled by the proxy
 
 --config <path>::
 	Load configuration from a file
 
 --ignore-config-file::
 	Disable loading .megarc
-
---no-ask-password::
-	Never ask interactively for a password
-
---disable-previews::
-	Never generate and upload file previews, when uploading new files
-
---reload::
-	Reload filesystem cache
-endif::mega-no-login[]
 
 --debug [<options>]::
 	Enable debugging of various aspects of the megatools 

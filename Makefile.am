@@ -65,7 +65,8 @@ EXTRA_DIST += \
 	docs/asciidoc.conf \
 	docs/footer.txt \
 	docs/remote-paths.txt \
-	docs/shared-options.txt \
+	docs/basic-options.txt \
+	docs/auth-options.txt \
 	$(addprefix docs/,$(addsuffix .txt, $(MAN1) $(MAN5) $(MAN7)))
 
 if ENABLE_DOCS
@@ -80,7 +81,7 @@ BUILT_SOURCES += $(MANS_ALL)
 DISTCLEANFILES += $(MANS_ALL)
 EXTRA_DIST += $(MANS_ALL)
 
-%.1 %.5 %.7: %.txt docs/shared-options.txt docs/remote-paths.txt docs/footer.txt docs/asciidoc.conf
+%.1 %.5 %.7: %.txt docs/auth-options.txt docs/basic-options.txt docs/remote-paths.txt docs/footer.txt docs/asciidoc.conf
 	$(AM_V_GEN)mkdir -p "$(top_builddir)/docs"
 	$(AM_V_GEN)a2x --asciidoc-opts="-f $(top_srcdir)/docs/asciidoc.conf -o $@" --destination-dir $(top_builddir)/docs -f manpage $<
 	@sed -i 's/\[FIXME: manual]/Megatools Manual/' $@

@@ -53,7 +53,8 @@ OPTIONS
 	has effect only if you specified a single path on a command 
 	line.
 
-include::shared-options.txt[]
+include::auth-options.txt[]
+include::basic-options.txt[]
 
 <remotepaths>::
 	One or more remote filesystem paths to list. If path points to

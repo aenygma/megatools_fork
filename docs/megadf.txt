@@ -41,7 +41,8 @@ OPTIONS
 --gb::
 	Show in GiB units.
 
-include::shared-options.txt[]
+include::auth-options.txt[]
+include::basic-options.txt[]
 
 
 EXAMPLES

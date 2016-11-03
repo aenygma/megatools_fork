@@ -44,7 +44,11 @@ OPTIONS
 --no-progress::
 	Disable upload progress reporting.
 
-include::shared-options.txt[]
+--disable-previews::
+	Never generate and upload file previews, when uploading new files
+
+include::auth-options.txt[]
+include::basic-options.txt[]
 
 
 EXAMPLES
