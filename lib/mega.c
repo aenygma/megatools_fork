@@ -108,6 +108,7 @@ struct _mega_sesssion
 
   gint max_ul;
   gint max_dl;
+  gchar* proxy;
 
   gint id;
   gchar* sid;
@@ -1941,6 +1942,7 @@ mega_session* mega_session_new(void)
   mega_session* s = g_new0(mega_session, 1);
 
   s->http = http_new();
+  http_set_proxy(s->http, s->proxy);
   http_set_content_type(s->http, "application/json");
 
   s->id = time(NULL);
@@ -1958,6 +1960,15 @@ void mega_session_set_speed(mega_session* s, gint ul, gint dl)
 {
   s->max_ul = ul;
   s->max_dl = dl;
+}
+
+// }}}
+// {{{ mega_session_set_proxy
+
+void mega_session_set_proxy(mega_session* s, const gchar* proxy)
+{
+  g_free(s->proxy);
+  s->proxy = g_strdup(proxy);
 }
 
 // }}}
@@ -2798,6 +2809,7 @@ gchar* mega_session_new_node_attribute(mega_session* s, const guchar* data, gsiz
 
   // upload
   gc_http_free http* h = http_new();
+  http_set_proxy(h, s->proxy);
   http_set_content_type(h, "application/octet-stream");
   gc_string_free GString* handle = http_post(h, p_url, cipher, len + pad, &local_err);
 
@@ -3133,6 +3145,7 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
   http_set_content_type(h, "application/octet-stream");
   http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
   http_set_speed(h, s->max_ul, s->max_dl);
+  http_set_proxy(h, s->proxy);
   gc_string_free GString* up_handle = http_post_stream_upload(h, p_url, file_size, (http_data_fn)put_process_data, &data, &local_err);
 
   if (!up_handle)
@@ -3353,6 +3366,7 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
   h = http_new();
   http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
   http_set_speed(h, s->max_ul, s->max_dl);
+  http_set_proxy(h, s->proxy);
   if (!http_post_stream_download(h, url, (http_data_fn)get_process_data, &data, &local_err))
   {
     g_propagate_prefixed_error(err, local_err, "Data download failed: ");
@@ -3587,6 +3601,7 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
   h = http_new();
   http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
   http_set_speed(h, s->max_ul, s->max_dl);
+  http_set_proxy(h, s->proxy);
   if (!http_post_stream_download(h, url, (http_data_fn)dl_process_data, &data, &local_err))
   {
     g_propagate_prefixed_error(err, local_err, "Data download failed: ");

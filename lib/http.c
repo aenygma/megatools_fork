@@ -141,6 +141,11 @@ void http_set_speed(http* h, gint max_ul, gint max_dl)
     curl_easy_setopt(h->curl, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t)max_dl * 1024);
 }
 
+void http_set_proxy(http* h, const gchar* proxy)
+{
+  curl_easy_setopt(h->curl, CURLOPT_PROXY, proxy);
+}
+
 void http_set_progress_callback(http* h, http_progress_fn cb, gpointer data)
 {
   if (cb)

@@ -48,7 +48,9 @@ static gboolean opt_version;
 static gboolean opt_no_config;
 static gboolean opt_no_ask_password;
 static gint opt_speed_limit = -1; /* -1 means limit not set */
+static gchar* opt_proxy;
 
+static gchar* proxy;
 static gint upload_speed_limit;
 static gint download_seed_limit;
 static gint cache_timout = 10 * 60;
@@ -101,6 +103,7 @@ static GOptionEntry auth_options[] =
 static GOptionEntry network_options[] =
 {
   { "limit-speed",        '\0',  0, G_OPTION_ARG_INT,       &opt_speed_limit,      "Limit transfer speed (KiB/s)",    "SPEED"  },
+  { "proxy",              '\0',  0, G_OPTION_ARG_STRING,    &opt_proxy,            "Proxy setup string",              "PROXY"  },
   { NULL }
 };
 
@@ -455,6 +458,8 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
 					g_clear_error(&local_err);
 				}
 			}
+
+			proxy = g_key_file_get_string(kf, "Network", "Proxy", NULL);
     }
   }
 
@@ -463,6 +468,9 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
     upload_speed_limit = opt_speed_limit;
     download_seed_limit = opt_speed_limit;
   }
+
+  if (opt_proxy)
+    proxy = opt_proxy;
 
   if (!(flags & TOOL_INIT_AUTH))
     return;
@@ -492,6 +500,9 @@ mega_session* tool_start_session(ToolSessionFlags flags)
   mega_session* s = mega_session_new();
 
   mega_session_set_speed(s, upload_speed_limit, download_seed_limit);
+
+  if (proxy)
+    mega_session_set_proxy(s, proxy);
 
   mega_session_enable_previews(s, TRUE);
 
