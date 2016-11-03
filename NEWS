@@ -1,16 +1,32 @@
-megatools 1.9.98 - 2016-02-??
+megatools 1.9.98 - 2016-11-03
 =============================
 
-Bugfix release.
+Bugfix release with some UI imporvements.
 
-Cleanups:
+New features:
+- Support upload/download speed limit settings
+- Support socks proxy
+- Improved progress reporting
+- Support for OpenSSL 1.1.x
+
+Removals:
+- Remove undocummented --abort-on-error option. Tools now always
+  report errors through exit status.
 - Remove libmega.so public library support and a lot of unused code
   that was planned to be used for 2.0
+- Remove megamv (it was never implemented and confused users)
+- Remove megafs (it was just an experiment and confused users)
+
+Cleanups:
 - Cleanup build system a bit
+- Cleanup CLI option handling, improved --help output
 
 Fixes:
-- enable automatic decompression (CURLOPT_ACCEPT_ENCODING) (by protomouse)
+- Enable automatic decompression (CURLOPT_ACCEPT_ENCODING) (by protomouse)
   (This finally fixes the problem with HTTP compression.)
+- Exit status from all the tools is now correctly reported
+- Fix syncing of symlinked files
+- Support very long passwords in the password prompt (up to 1024 chars)
 
 megatools 1.9.97 - 2016-02-02
 =============================
