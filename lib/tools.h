@@ -29,11 +29,11 @@
 #include "alloc.h"
 
 typedef enum {
-	TOOL_SESSION_OPEN = 1
+  TOOL_SESSION_OPEN = 1
 } ToolSessionFlags;
 
 typedef enum {
-	TOOL_INIT_AUTH = 1
+  TOOL_INIT_AUTH = 1
 } ToolInitFlags;
 
 void            tool_init             (gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries, ToolInitFlags flags);

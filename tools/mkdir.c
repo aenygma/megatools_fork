@@ -55,7 +55,7 @@ int main(int ac, char* av[])
     {
       g_printerr("ERROR: Can't create directory %s: %s\n", path, local_err->message);
       g_clear_error(&local_err);
-			status = 1;
+      status = 1;
     }
   }
 

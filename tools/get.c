@@ -96,7 +96,7 @@ int main(int ac, char* av[])
         g_print("\r" ESC_CLREOL "\n");
       g_printerr("ERROR: Download failed for '%s': %s\n", path, local_err->message);
       g_clear_error(&local_err);
-			status = 1;
+      status = 1;
     }
     else
     {

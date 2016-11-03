@@ -181,7 +181,7 @@ static guchar* s_json_get_member_bytes(const gchar* node, const gchar* name, gsi
 
   const gchar* v = s_json_get_member(node, name);
   if (v) 
-	  return s_json_get_bytes(v, out_len);
+    return s_json_get_bytes(v, out_len);
 
   return NULL;
 }
@@ -3738,7 +3738,7 @@ gboolean mega_node_get_path(mega_node* n, gchar* buf, gsize len)
 
 gboolean mega_node_is_container(mega_node* n)
 {
-	return n && n->type != MEGA_NODE_FILE;
+  return n && n->type != MEGA_NODE_FILE;
 }
 
 // }}}
@@ -3944,30 +3944,30 @@ gboolean mega_session_load(mega_session* s, const gchar* un, const gchar* pw, gi
       S_JSON_FOREACH_ELEMENT(fs_nodes, fs_node)
         mega_node* n = g_new0(mega_node, 1);
 
-	n->type = -1;
+        n->type = -1;
 
-	S_JSON_FOREACH_MEMBER(fs_node, k, v)
-		if (s_json_string_match(k, "name"))
-			n->name = s_json_get_string(v);
-		else if (s_json_string_match(k, "handle"))
-			n->handle = s_json_get_string(v);
-		else if (s_json_string_match(k, "parent_handle"))
-			n->parent_handle = s_json_get_string(v);
-		else if (s_json_string_match(k, "user_handle"))
-			n->user_handle = s_json_get_string(v);
-		else if (s_json_string_match(k, "su_handle"))
-			n->su_handle = s_json_get_string(v);
-		else if (s_json_string_match(k, "key"))
-			n->key = s_json_get_bytes(v, &n->key_len);
-		else if (s_json_string_match(k, "type"))
-			n->type = s_json_get_int(v, -1);
-		else if (s_json_string_match(k, "size"))
-			n->size = s_json_get_int(v, 0);
-		else if (s_json_string_match(k, "timestamp"))
-			n->timestamp = s_json_get_int(v, 0);
-		else if (s_json_string_match(k, "link"))
-			n->link = s_json_get_string(v);
-	S_JSON_FOREACH_END()
+        S_JSON_FOREACH_MEMBER(fs_node, k, v)
+          if (s_json_string_match(k, "name"))
+            n->name = s_json_get_string(v);
+          else if (s_json_string_match(k, "handle"))
+            n->handle = s_json_get_string(v);
+          else if (s_json_string_match(k, "parent_handle"))
+            n->parent_handle = s_json_get_string(v);
+          else if (s_json_string_match(k, "user_handle"))
+            n->user_handle = s_json_get_string(v);
+          else if (s_json_string_match(k, "su_handle"))
+            n->su_handle = s_json_get_string(v);
+          else if (s_json_string_match(k, "key"))
+            n->key = s_json_get_bytes(v, &n->key_len);
+          else if (s_json_string_match(k, "type"))
+            n->type = s_json_get_int(v, -1);
+          else if (s_json_string_match(k, "size"))
+            n->size = s_json_get_int(v, 0);
+          else if (s_json_string_match(k, "timestamp"))
+            n->timestamp = s_json_get_int(v, 0);
+          else if (s_json_string_match(k, "link"))
+            n->link = s_json_get_string(v);
+        S_JSON_FOREACH_END()
 
         s->fs_nodes = g_slist_prepend(s->fs_nodes, n);
       S_JSON_FOREACH_END()

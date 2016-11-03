@@ -37,7 +37,7 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 {
   if (data->type == MEGA_STATUS_FILEINFO)
   {
-		g_free(cur_file);
+    g_free(cur_file);
     cur_file = g_strdup(data->fileinfo.name);
   }
 
@@ -75,7 +75,7 @@ int main(int ac, char* av[])
   {
     gc_free gchar* path = tool_convert_filename(av[i], TRUE);
 
-		g_free(cur_file);
+    g_free(cur_file);
     cur_file = g_path_get_basename(path);
 
     // perform download
@@ -87,7 +87,7 @@ int main(int ac, char* av[])
       g_printerr("ERROR: Upload failed for '%s': %s\n", path, local_err->message);
       g_clear_error(&local_err);
 
-			status = 1;
+      status = 1;
     }
     else
     {

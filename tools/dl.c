@@ -118,7 +118,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
   // sync children
   GSList* children = mega_session_get_node_chilren(s, node), *i;
-	gboolean status = TRUE;
+  gboolean status = TRUE;
   for (i = children; i; i = i->next)
   {
     mega_node* child = i->data;
@@ -128,12 +128,12 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
     if (child->type == 0)
     {
       if (!dl_sync_file(child, child_file, child_remote_path))
-				status = FALSE;
+        status = FALSE;
     }
     else
     {
       if (!dl_sync_dir(child, child_file, child_remote_path))
-				status = FALSE;
+        status = FALSE;
     }
   }
 
@@ -236,7 +236,7 @@ int main(int ac, char* av[])
       {
         g_printerr("ERROR: Can't open folder '%s': %s\n", link, local_err->message);
         g_clear_error(&local_err);
-				status = 1;
+        status = 1;
       }
       else
       {
@@ -252,18 +252,18 @@ int main(int ac, char* av[])
           {
             gc_free gchar* node_path = mega_node_get_path_dup(root_node);
             if (!dl_sync_dir(root_node, local_dir, node_path))
-							status = 1;
+              status = 1;
           }
           else
           {
             g_printerr("ERROR: %s must be a directory\n", opt_path);
-						status = 1;
+            status = 1;
           }
         }
         else
         {
           g_printerr("ERROR: EXP folder fs has multiple toplevel nodes? Weird!\n");
-					status = 1;
+          status = 1;
         }
 
         g_slist_free(l);

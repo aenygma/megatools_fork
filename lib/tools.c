@@ -110,7 +110,7 @@ static GOptionEntry network_options[] =
 #if OPENSSL_VERSION_NUMBER >= 0x10100004L
 static void init_openssl_locking()
 {
-	// OpenSSL >= 1.1.0-pre4 doesn't require specific callback setup
+  // OpenSSL >= 1.1.0-pre4 doesn't require specific callback setup
 }
 #else
 #if GLIB_CHECK_VERSION(2, 32, 0)
@@ -365,20 +365,20 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
   if (tool_entries)
     g_option_context_add_main_entries(opt_context, tool_entries, NULL);
 
-	GOptionGroup* basic_group = g_option_group_new("basic", "Basic Options:", "Show basic options", NULL, NULL);
-	g_option_group_add_entries(basic_group, basic_options);
+  GOptionGroup* basic_group = g_option_group_new("basic", "Basic Options:", "Show basic options", NULL, NULL);
+  g_option_group_add_entries(basic_group, basic_options);
   g_option_context_add_group(opt_context, basic_group);
 
-	GOptionGroup* network_group = g_option_group_new("network", "Network Options:", "Show network options", NULL, NULL);
-	g_option_group_add_entries(network_group, network_options);
+  GOptionGroup* network_group = g_option_group_new("network", "Network Options:", "Show network options", NULL, NULL);
+  g_option_group_add_entries(network_group, network_options);
   g_option_context_add_group(opt_context, network_group);
 
   if (flags & TOOL_INIT_AUTH)
-	{
-	  GOptionGroup* auth_group = g_option_group_new("auth", "Authentication Options:", "Show authentication options", NULL, NULL);
-	  g_option_group_add_entries(auth_group, auth_options);
+  {
+    GOptionGroup* auth_group = g_option_group_new("auth", "Authentication Options:", "Show authentication options", NULL, NULL);
+    g_option_group_add_entries(auth_group, auth_options);
     g_option_context_add_group(opt_context, auth_group);
-	}
+  }
 
   if (!g_option_context_parse(opt_context, ac, av, &local_err))
   {
@@ -399,7 +399,7 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
       if (!g_key_file_load_from_file(kf, opt_config, 0, &local_err))
       {
         g_printerr("ERROR: Failed to open config file: %s: %s\n", opt_config, local_err->message);
-				g_clear_error(&local_err);
+        g_clear_error(&local_err);
         exit(1);
       }
     } 
@@ -429,37 +429,37 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
         g_clear_error(&local_err);
 
       // Load speed limits from settings file
-			if (g_key_file_has_key(kf, "Network", "SpeedLimit", NULL))
-			{
-				download_seed_limit = upload_speed_limit = g_key_file_get_integer(kf, "Network", "SpeedLimit", &local_err);
-				if (local_err)
-				{
-					g_printerr("WARNING: Invalid speed limit set in the config file: %s\n", local_err->message);
-					g_clear_error(&local_err);
-				}
-			}
+      if (g_key_file_has_key(kf, "Network", "SpeedLimit", NULL))
+      {
+        download_seed_limit = upload_speed_limit = g_key_file_get_integer(kf, "Network", "SpeedLimit", &local_err);
+        if (local_err)
+        {
+          g_printerr("WARNING: Invalid speed limit set in the config file: %s\n", local_err->message);
+          g_clear_error(&local_err);
+        }
+      }
 
-			if (g_key_file_has_key(kf, "Network", "UploadSpeedLimit", NULL))
-			{
-				upload_speed_limit = g_key_file_get_integer(kf, "Network", "UploadSpeedLimit", &local_err);
-				if (local_err)
-				{
-					g_printerr("WARNING: Invalid upload speed limit set in the config file: %s\n", local_err->message);
-					g_clear_error(&local_err);
-				}
-			}
+      if (g_key_file_has_key(kf, "Network", "UploadSpeedLimit", NULL))
+      {
+        upload_speed_limit = g_key_file_get_integer(kf, "Network", "UploadSpeedLimit", &local_err);
+        if (local_err)
+        {
+          g_printerr("WARNING: Invalid upload speed limit set in the config file: %s\n", local_err->message);
+          g_clear_error(&local_err);
+        }
+      }
 
-			if (g_key_file_has_key(kf, "Network", "DownloadSpeedLimit", NULL))
-			{
-				download_seed_limit = g_key_file_get_integer(kf, "Network", "DownloadSpeedLimit", &local_err);
-				if (local_err)
-				{
-					g_printerr("WARNING: Invalid download speed limit set in the config file: %s\n", local_err->message);
-					g_clear_error(&local_err);
-				}
-			}
+      if (g_key_file_has_key(kf, "Network", "DownloadSpeedLimit", NULL))
+      {
+        download_seed_limit = g_key_file_get_integer(kf, "Network", "DownloadSpeedLimit", &local_err);
+        if (local_err)
+        {
+          g_printerr("WARNING: Invalid download speed limit set in the config file: %s\n", local_err->message);
+          g_clear_error(&local_err);
+        }
+      }
 
-			proxy = g_key_file_get_string(kf, "Network", "Proxy", NULL);
+      proxy = g_key_file_get_string(kf, "Network", "Proxy", NULL);
     }
   }
 
