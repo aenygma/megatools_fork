@@ -63,6 +63,30 @@ Timeout::
 	Cache timeout in seconds (default is 10 minutes).
 
 
+[Network] Section
+~~~~~~~~~~~~~~~
+
+DownloadSpeedLimit::
+	Set maximum allowed download speed in KiB/s.
+	0 means no limit. Overrides SpeedLimit setting.
+
+UploadSpeedLimit::
+	Set maximum allowed upload speed in KiB/s.
+	0 means no limit. Overrides SpeedLimit setting.
+
+SpeedLimit::
+	Set maximum allowed upload and download speed in KiB/s.
+	0 means no limit.
+
+Proxy::
+	Use proxy server to connect to mega.nz.
+	More information can be found in libcurl documentation at
+	link:https://curl.haxx.se/libcurl/c/CURLOPT_PROXY.html[].
+	Some acceptable values are:
+	* `socks5://localhost:9050` : Local SOCKSv5 proxy server
+	* `socks5h://localhost:9050` : Local SOCKSv5 proxy server with DNS handled by the proxy
+
+
 EXAMPLE
 -------
 
@@ -72,6 +96,12 @@ Create ~/.megarc (on linux) or mega.ini file containing these 3 lines:
 [Login]
 Username = your@email
 Password = yourpassword
+
+[Network]
+; 1MiB/s
+SpeedLimit = 1024
+; Use over TOR
+Proxy = socks5://127.0.0.1:9050
 ------------
 
 Run man:megadf[1] to check that megatools are able to login to your account.

@@ -35,7 +35,6 @@ Tools
   megastream   Streaming download of a file
                (can be used to preview videos or music)
   megacopy     Upload or download a directory tree
-  megafs       Mount remote filesystem locally.
 
 
 All of these tools do:
