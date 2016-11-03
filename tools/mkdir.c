@@ -30,7 +30,7 @@ int main(int ac, char* av[])
 {
   gc_error_free GError *local_err = NULL;
 
-  tool_init(&ac, &av, "- create directories at mega.nz", entries);
+  tool_init(&ac, &av, "- create directories at mega.nz", entries, TOOL_INIT_AUTH);
 
   if (ac < 2)
   {
@@ -39,7 +39,7 @@ int main(int ac, char* av[])
     return 1;
   }
 
-  s = tool_start_session();
+  s = tool_start_session(TOOL_SESSION_OPEN);
   if (!s)
   {
     tool_fini(NULL);

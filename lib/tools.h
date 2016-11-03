@@ -28,15 +28,20 @@
 #include "mega.h"
 #include "alloc.h"
 
-void            tool_init_bare        (gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries);
-void            tool_init             (gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries);
-mega_session*   tool_start_session    (void);
+typedef enum {
+	TOOL_SESSION_OPEN = 1
+} ToolSessionFlags;
+
+typedef enum {
+	TOOL_INIT_AUTH = 1
+} ToolInitFlags;
+
+void            tool_init             (gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries, ToolInitFlags flags);
+mega_session*   tool_start_session    (ToolSessionFlags flags);
 void            tool_fini             (mega_session* s);
 
 void            tool_show_progress    (const gchar* file, const mega_status_data *data);
 gchar*          tool_convert_filename (const gchar* path, gboolean local);
-
-extern gboolean tool_allow_unknown_options;
 
 #ifdef G_OS_WIN32
 #define ESC_CLREOL ""

@@ -54,7 +54,7 @@ int main(int ac, char* av[])
   GError *local_err = NULL;
   mega_session* s;
 
-  tool_init(&ac, &av, "- display mega.nz storage quotas/usage", entries);
+  tool_init(&ac, &av, "- display mega.nz storage quotas/usage", entries, TOOL_INIT_AUTH);
 
   if (opt_total || opt_free || opt_used)
   {
@@ -84,7 +84,7 @@ int main(int ac, char* av[])
     }
   }
 
-  s = tool_start_session();
+  s = tool_start_session(TOOL_SESSION_OPEN);
   if (!s)
     return 1;
 

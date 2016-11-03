@@ -98,7 +98,7 @@ int main(int ac, char* av[])
   gc_free gchar* signup_key = NULL;
   mega_session* s;
 
-  tool_init_bare(&ac, &av, "LINK - register a new mega.nz account", entries);
+  tool_init(&ac, &av, "LINK - register a new mega.nz account", entries, 0);
 
   if (opt_verify && opt_register)
   {

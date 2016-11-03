@@ -135,8 +135,10 @@ static int curl_progress(http* h, double dltotal, double dlnow, double ultotal, 
 
 void http_set_speed(http* h, gint max_ul, gint max_dl)
 {
-  curl_easy_setopt(h->curl, CURLOPT_MAX_SEND_SPEED_LARGE, (curl_off_t)max_ul * 1024);
-  curl_easy_setopt(h->curl, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t)max_dl * 1024);
+  if (max_ul >= 0)
+    curl_easy_setopt(h->curl, CURLOPT_MAX_SEND_SPEED_LARGE, (curl_off_t)max_ul * 1024);
+  if (max_dl >= 0)
+    curl_easy_setopt(h->curl, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t)max_dl * 1024);
 }
 
 void http_set_progress_callback(http* h, http_progress_fn cb, gpointer data)

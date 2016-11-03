@@ -22,12 +22,14 @@
 static gchar* opt_path = "/Root";
 static gboolean opt_noprogress = FALSE;
 static gboolean opt_abortonerror = FALSE;
+static gboolean opt_no_previews;
 
 static GOptionEntry entries[] =
 {
-  { "path",          '\0',   0, G_OPTION_ARG_STRING,  &opt_path,  "Remote path to save files to",  "PATH" },
-  { "no-progress",   '\0',   0, G_OPTION_ARG_NONE,    &opt_noprogress,  "Disable progress bar",   NULL},
-  { "abort-on-error",'\0',   0, G_OPTION_ARG_NONE,    &opt_abortonerror,"Abort on error (non zero exit code)",   NULL},
+  { "path",             '\0',   0, G_OPTION_ARG_STRING,  &opt_path,         "Remote path to save files to",          "PATH" },
+  { "no-progress",      '\0',   0, G_OPTION_ARG_NONE,    &opt_noprogress,   "Disable progress bar",                  NULL   },
+  { "disable-previews", '\0',   0, G_OPTION_ARG_NONE,    &opt_no_previews,  "Don't generate previews",               NULL   },
+  { "abort-on-error",   '\0',   0, G_OPTION_ARG_NONE,    &opt_abortonerror, "Abort on error (non zero exit code)",   NULL   },
   { NULL }
 };
 
@@ -51,7 +53,7 @@ int main(int ac, char* av[])
   gc_error_free GError *local_err = NULL;
   mega_session* s;
 
-  tool_init(&ac, &av, "- upload files to mega.nz", entries);
+  tool_init(&ac, &av, "- upload files to mega.nz", entries, TOOL_INIT_AUTH);
 
   if (ac < 2)
   {
@@ -60,9 +62,11 @@ int main(int ac, char* av[])
     return 1;
   }
 
-  s = tool_start_session();
+  s = tool_start_session(TOOL_SESSION_OPEN);
   if (!s)
     return 1;
+
+  mega_session_enable_previews(s, !opt_no_previews);
 
   mega_session_watch_status(s, status_callback, NULL);
 

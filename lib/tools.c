@@ -44,15 +44,14 @@ static gchar* opt_username;
 static gchar* opt_password;
 static gchar* opt_config;
 static gboolean opt_reload_files;
-static gint opt_cache_timout = 10 * 60;
 static gboolean opt_version;
 static gboolean opt_no_config;
 static gboolean opt_no_ask_password;
-static gboolean opt_disable_previews;
-gboolean tool_allow_unknown_options = FALSE;
-static gint opt_speed_limit = 0;
-static gint opt_max_ul = 0;
-static gint opt_max_dl = 0;
+static gint opt_speed_limit = -1; /* -1 means limit not set */
+
+static gint upload_speed_limit;
+static gint download_seed_limit;
+static gint cache_timout = 10 * 60;
 
 static gboolean opt_debug_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
 {
@@ -83,8 +82,10 @@ static gboolean opt_debug_callback(const gchar *option_name, const gchar *value,
 
 static GOptionEntry basic_options[] =
 {
-  { "debug",              '\0',  G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, opt_debug_callback, "Enable debugging output",  "OPTS"  },
-  { "version",            '\0',  0,                          G_OPTION_ARG_NONE,     &opt_version,       "Show version information", NULL    },
+  { "config",             '\0',  0,                          G_OPTION_ARG_FILENAME, &opt_config,        "Load configuration from a file",               "PATH"  },
+  { "ignore-config-file", '\0',  0,                          G_OPTION_ARG_NONE,     &opt_no_config,     "Disable loading " MEGA_RC_FILENAME,            NULL    },
+  { "debug",              '\0',  G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, opt_debug_callback, "Enable debugging output",                      "OPTS"  },
+  { "version",            '\0',  0,                          G_OPTION_ARG_NONE,     &opt_version,       "Show version information",                     NULL    },
   { NULL }
 };
 
@@ -92,17 +93,14 @@ static GOptionEntry auth_options[] =
 {
   { "username",            'u',  0, G_OPTION_ARG_STRING,    &opt_username,         "Account username (email)",                    "USERNAME" },
   { "password",            'p',  0, G_OPTION_ARG_STRING,    &opt_password,         "Account password",                            "PASSWORD" },
-  { "config",             '\0',  0, G_OPTION_ARG_FILENAME,  &opt_config,           "Load configuration from a file",              "PATH"     },
-  { "ignore-config-file", '\0',  0, G_OPTION_ARG_NONE,      &opt_no_config,        "Disable loading " MEGA_RC_FILENAME,           NULL       },
   { "no-ask-password",    '\0',  0, G_OPTION_ARG_NONE,      &opt_no_ask_password,  "Never ask interactively for a password",      NULL       },
-  { "disable-previews",   '\0',  0, G_OPTION_ARG_NONE,      &opt_disable_previews, "Never generate previews when uploading file", NULL       },
   { "reload",             '\0',  0, G_OPTION_ARG_NONE,      &opt_reload_files,     "Reload filesystem cache",                     NULL       },
   { NULL }
 };
 
 static GOptionEntry network_options[] =
 {
-  { "limit-speed",              's',  0, G_OPTION_ARG_INT, &opt_speed_limit, "Limit transfer speed (KB/s)",  "KBPS"  },
+  { "limit-speed",        '\0',  0, G_OPTION_ARG_INT,       &opt_speed_limit,      "Limit transfer speed (KiB/s)",    "SPEED"  },
   { NULL }
 };
 
@@ -354,43 +352,30 @@ gchar* tool_convert_filename(const gchar* path, gboolean local)
   return locale_path;
 }
 
-void tool_init_bare(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries)
+void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries, ToolInitFlags flags)
 {
   GError *local_err = NULL;
 
   init();
 
   opt_context = g_option_context_new(tool_name);
-  if (tool_allow_unknown_options)
-    g_option_context_set_ignore_unknown_options(opt_context, TRUE);
   if (tool_entries)
     g_option_context_add_main_entries(opt_context, tool_entries, NULL);
-  g_option_context_add_main_entries(opt_context, basic_options, NULL);
 
-  if (!g_option_context_parse(opt_context, ac, av, &local_err))
-  {
-    g_printerr("ERROR: Option parsing failed: %s\n", local_err->message);
-    g_clear_error(&local_err);
-    exit(1);
-  }
+	GOptionGroup* basic_group = g_option_group_new("basic", "Basic Options:", "Show basic options", NULL, NULL);
+	g_option_group_add_entries(basic_group, basic_options);
+  g_option_context_add_group(opt_context, basic_group);
 
-  print_version();
-}
+	GOptionGroup* network_group = g_option_group_new("network", "Network Options:", "Show network options", NULL, NULL);
+	g_option_group_add_entries(network_group, network_options);
+  g_option_context_add_group(opt_context, network_group);
 
-void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries)
-{
-  GError *local_err = NULL;
-
-  init();
-
-  opt_context = g_option_context_new(tool_name);
-  if (tool_allow_unknown_options)
-    g_option_context_set_ignore_unknown_options(opt_context, TRUE);
-  if (tool_entries)
-    g_option_context_add_main_entries(opt_context, tool_entries, NULL);
-  g_option_context_add_main_entries(opt_context, auth_options, NULL);
-  g_option_context_add_main_entries(opt_context, basic_options, NULL);
-  g_option_context_add_main_entries(opt_context, network_options, NULL);
+  if (flags & TOOL_INIT_AUTH)
+	{
+	  GOptionGroup* auth_group = g_option_group_new("auth", "Authentication Options:", "Show authentication options", NULL, NULL);
+	  g_option_group_add_entries(auth_group, auth_options);
+    g_option_context_add_group(opt_context, auth_group);
+	}
 
   if (!g_option_context_parse(opt_context, ac, av, &local_err))
   {
@@ -403,11 +388,18 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
 
   if (!opt_no_config || opt_config)
   {
-    gboolean status;
+    gboolean status = TRUE;
     gc_key_file_unref GKeyFile* kf = g_key_file_new();
 
     if (opt_config)
-      status = g_key_file_load_from_file(kf, opt_config, 0, NULL);
+    {
+      if (!g_key_file_load_from_file(kf, opt_config, 0, &local_err))
+      {
+        g_printerr("ERROR: Failed to open config file: %s: %s\n", opt_config, local_err->message);
+				g_clear_error(&local_err);
+        exit(1);
+      }
+    } 
     else
     {
       status = g_key_file_load_from_file(kf, MEGA_RC_FILENAME, 0, NULL);
@@ -423,38 +415,57 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
       // load username/password from ini file
       if (!opt_username)
         opt_username = g_key_file_get_string(kf, "Login", "Username", NULL);
-      if(!opt_password)
+
+      if (!opt_password)
         opt_password = g_key_file_get_string(kf, "Login", "Password", NULL);
+
       gint to = g_key_file_get_integer(kf, "Cache", "Timeout", &local_err);
       if (local_err == NULL)
-        opt_cache_timout = to;
+        cache_timout = to;
       else
         g_clear_error(&local_err);
-      
 
       // Load speed limits from settings file
-      if (opt_speed_limit == 0)
-      {
-        gint ul = g_key_file_get_integer(kf, "Network", "UploadSpeedLimit", &local_err);
-        if (local_err == NULL)
-          opt_max_ul = ul;
-        else
-        {
-          g_printerr("WARNING: Invalid upload speed limit set on config file: %s\n", local_err->message);
-          g_clear_error(&local_err);
-        }
+			if (g_key_file_has_key(kf, "Network", "SpeedLimit", NULL))
+			{
+				download_seed_limit = upload_speed_limit = g_key_file_get_integer(kf, "Network", "SpeedLimit", &local_err);
+				if (local_err)
+				{
+					g_printerr("WARNING: Invalid speed limit set in the config file: %s\n", local_err->message);
+					g_clear_error(&local_err);
+				}
+			}
 
-        gint dl = g_key_file_get_integer(kf, "Network", "DownloadSpeedLimit", &local_err);
-        if (local_err == NULL)
-          opt_max_dl = dl;
-        else
-        {
-          g_printerr("WARNING: Invalid download speed limit set on config file: %s\n", local_err->message);
-          g_clear_error(&local_err);
-        }
-      }
+			if (g_key_file_has_key(kf, "Network", "UploadSpeedLimit", NULL))
+			{
+				upload_speed_limit = g_key_file_get_integer(kf, "Network", "UploadSpeedLimit", &local_err);
+				if (local_err)
+				{
+					g_printerr("WARNING: Invalid upload speed limit set in the config file: %s\n", local_err->message);
+					g_clear_error(&local_err);
+				}
+			}
+
+			if (g_key_file_has_key(kf, "Network", "DownloadSpeedLimit", NULL))
+			{
+				download_seed_limit = g_key_file_get_integer(kf, "Network", "DownloadSpeedLimit", &local_err);
+				if (local_err)
+				{
+					g_printerr("WARNING: Invalid download speed limit set in the config file: %s\n", local_err->message);
+					g_clear_error(&local_err);
+				}
+			}
     }
   }
+
+  if (opt_speed_limit >= 0)
+  {
+    upload_speed_limit = opt_speed_limit;
+    download_seed_limit = opt_speed_limit;
+  }
+
+  if (!(flags & TOOL_INIT_AUTH))
+    return;
 
   if (!opt_username)
   {
@@ -468,34 +479,28 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
     exit(1);
   }
 
-  if (opt_speed_limit < 0)
-  {
-    g_printerr("ERROR: You must specify a valid speed limit\n");
-    exit(1);
-  }
-
   if (!opt_password)
     opt_password = input_password();
-
-  if (opt_max_ul == 0 && opt_max_dl == 0) {
-    // Default to whichever speed limit was specified over commandline
-    opt_max_ul = opt_speed_limit;
-    opt_max_dl = opt_speed_limit;
-  }
 }
 
-mega_session* tool_start_session(void)
+mega_session* tool_start_session(ToolSessionFlags flags)
 {
   GError *local_err = NULL;
   gchar* sid = NULL;
   gboolean loaded = FALSE;
 
   mega_session* s = mega_session_new();
-  mega_session_set_speed(s, opt_max_ul, opt_max_dl);
+
+  mega_session_set_speed(s, upload_speed_limit, download_seed_limit);
+
+  mega_session_enable_previews(s, TRUE);
+
+  if (!(flags & TOOL_SESSION_OPEN))
+    return s;
 
   // try to load cached session data (they are valid for 10 minutes since last
   // user_get or refresh)
-  if (!mega_session_load(s, opt_username, opt_password, opt_cache_timout, &sid, &local_err))
+  if (!mega_session_load(s, opt_username, opt_password, cache_timout, &sid, &local_err))
   {
     g_clear_error(&local_err);
 
@@ -526,8 +531,6 @@ mega_session* tool_start_session(void)
     mega_session_save(s, NULL);
   }
 
-  mega_session_enable_previews(s, !opt_disable_previews);
-
   g_free(sid);
   return s;
 
@@ -548,6 +551,8 @@ void tool_fini(mega_session* s)
   CRYPTO_cleanup_all_ex_data();
   ERR_free_strings();
 
+#if OPENSSL_VERSION_NUMBER < 0x10100004L
   CRYPTO_set_id_callback(NULL);
   CRYPTO_set_locking_callback(NULL);
+#endif
 }

@@ -105,7 +105,7 @@ struct _rsa_key {
 struct _mega_sesssion 
 {
   http* http;
-  // UL/DL speed settings
+
   gint max_ul;
   gint max_dl;
 
@@ -1950,6 +1950,9 @@ mega_session* mega_session_new(void)
 
   return s;
 }
+
+// }}}
+// {{{ mega_session_set_speed
 
 void mega_session_set_speed(mega_session* s, gint ul, gint dl)
 {

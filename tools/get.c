@@ -56,7 +56,7 @@ int main(int ac, char* av[])
   gc_error_free GError *local_err = NULL;
   mega_session* s;
 
-  tool_init(&ac, &av, "- download individual files from mega.nz", entries);
+  tool_init(&ac, &av, "- download individual files from mega.nz", entries, TOOL_INIT_AUTH);
 
   if (!strcmp(opt_path, "-"))
     opt_noprogress = opt_stream = TRUE;
@@ -75,7 +75,7 @@ int main(int ac, char* av[])
     return 1;
   }
 
-  s = tool_start_session();
+  s = tool_start_session(TOOL_SESSION_OPEN);
   if (!s)
   {
     tool_fini(NULL);

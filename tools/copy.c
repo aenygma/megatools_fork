@@ -24,15 +24,17 @@ static gchar* opt_local_path;
 static gboolean opt_download;
 static gboolean opt_noprogress;
 static gboolean opt_dryrun;
+static gboolean opt_no_previews;
 static mega_session* s;
 
 static GOptionEntry entries[] =
 {
-  { "remote",        'r',   0, G_OPTION_ARG_STRING,  &opt_remote_path,  "Remote directory",                 "PATH"  },
-  { "local",         'l',   0, G_OPTION_ARG_STRING,  &opt_local_path,   "Local directory",                  "PATH"  },
-  { "download",      'd',   0, G_OPTION_ARG_NONE,    &opt_download,     "Download files from mega",         NULL    },
-  { "no-progress",   '\0',  0, G_OPTION_ARG_NONE,    &opt_noprogress,   "Disable progress bar",             NULL    },
-  { "dryrun",        'n',   0, G_OPTION_ARG_NONE,    &opt_dryrun,       "Don't perform any actual changes", NULL    },
+  { "remote",            'r',   0, G_OPTION_ARG_STRING,  &opt_remote_path,  "Remote directory",                 "PATH"  },
+  { "local",             'l',   0, G_OPTION_ARG_STRING,  &opt_local_path,   "Local directory",                  "PATH"  },
+  { "download",          'd',   0, G_OPTION_ARG_NONE,    &opt_download,     "Download files from mega",         NULL    },
+  { "no-progress",       '\0',  0, G_OPTION_ARG_NONE,    &opt_noprogress,   "Disable progress bar",             NULL    },
+  { "dryrun",            'n',   0, G_OPTION_ARG_NONE,    &opt_dryrun,       "Don't perform any actual changes", NULL    },
+  { "disable-previews",  '\0',  0, G_OPTION_ARG_NONE,    &opt_no_previews,  "Don't generate previews",          NULL    },
   { NULL }
 };
 
@@ -237,7 +239,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
 int main(int ac, char* av[])
 {
-  tool_init(&ac, &av, "- synchronize local and remote mega.nz directories", entries);
+  tool_init(&ac, &av, "- synchronize local and remote mega.nz directories", entries, TOOL_INIT_AUTH);
 
   if (!opt_local_path || !opt_remote_path)
   {
@@ -245,12 +247,14 @@ int main(int ac, char* av[])
     return 1;
   }
 
-  s = tool_start_session();
+  s = tool_start_session(TOOL_SESSION_OPEN);
   if (!s)
   {
     tool_fini(NULL);
     return 1;
   }
+
+  mega_session_enable_previews(s, !opt_no_previews);
 
   mega_session_watch_status(s, status_callback, NULL);
 

@@ -56,9 +56,9 @@ int main(int ac, char* av[])
   GSList *l = NULL, *i;
   gint j;
 
-  tool_init(&ac, &av, "- list files stored at mega.nz", entries);
+  tool_init(&ac, &av, "- list files stored at mega.nz", entries, TOOL_INIT_AUTH);
 
-  s = tool_start_session();
+  s = tool_start_session(TOOL_SESSION_OPEN);
   if (!s)
     return 1;
 

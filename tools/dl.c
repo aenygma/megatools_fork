@@ -27,14 +27,12 @@ static gchar* opt_path = ".";
 static gboolean opt_stream = FALSE;
 static gboolean opt_noprogress = FALSE;
 static gboolean opt_print_names = FALSE;
-static gint opt_speed_limit = 0;
 
 static GOptionEntry entries[] =
 {
-  { "path",          '\0',   0, G_OPTION_ARG_FILENAME,  &opt_path,  "Local directory or file name, to save data to",  "PATH" },
-  { "no-progress",   '\0',   0, G_OPTION_ARG_NONE,    &opt_noprogress,  "Disable progress bar",   NULL},
-  { "print-names",   '\0',   0, G_OPTION_ARG_NONE,    &opt_print_names,  "Print names of downloaded files",   NULL},
-  { "limit-speed",        's',   0, G_OPTION_ARG_INT, &opt_speed_limit, "Limit download speed (KB/s)",  "KBPS"  },
+  { "path",          '\0',   0, G_OPTION_ARG_FILENAME,  &opt_path,        "Local directory or file name, to save data to",  "PATH" },
+  { "no-progress",   '\0',   0, G_OPTION_ARG_NONE,      &opt_noprogress,  "Disable progress bar",                           NULL  },
+  { "print-names",   '\0',   0, G_OPTION_ARG_NONE,      &opt_print_names, "Print names of downloaded files",                NULL  },
   { NULL }
 };
 
@@ -147,7 +145,7 @@ int main(int ac, char* av[])
   gint i;
   int status = 0;
 
-  tool_init_bare(&ac, &av, "- download exported files from mega.nz", entries);
+  tool_init(&ac, &av, "- download exported files from mega.nz", entries, 0);
 
   if (!strcmp(opt_path, "-"))
   {
@@ -173,12 +171,6 @@ int main(int ac, char* av[])
     return 1;
   }
 
-  if (opt_speed_limit < 0)
-  {
-    g_printerr("ERROR: You must specify a valid speed limit\n");
-    exit(1);
-  }
-
   // prepare link parsers
 
   file_regex = g_regex_new("^https?://mega(?:\\.co)?\\.nz/#!([a-z0-9_-]{8})!([a-z0-9_-]{43})$", G_REGEX_CASELESS, 0, NULL);
@@ -189,8 +181,7 @@ int main(int ac, char* av[])
 
   // create session
 
-  s = mega_session_new();
-  mega_session_set_speed(s, 0, opt_speed_limit);
+  s = tool_start_session(0);
 
   mega_session_watch_status(s, status_callback, NULL);
 
