@@ -93,20 +93,19 @@ To install megatools by hand you need to:
 3. Untar megatools, run `./configure`, `make` and `make install` as usual.
 
 
-Installation on Gentoo
-======================
+Installation on your favorite GNU/Linux distribution
+====================================================
 
-There is official ebuild available:
+Megatools may already be pre-packaged in the package repository
+of your distribution. It is already available at least in:
 
-  https://packages.gentoo.org/packages/net-misc/megatools
+- Debian - https://packages.debian.org/stretch/megatools
+- Ubuntu - https://launchpad.net/ubuntu/+source/megatools
+- Fedora - https://admin.fedoraproject.org/pkgdb/package/rpms/megatools/
+- Arch Linux (AUR) - https://aur.archlinux.org/packages/megatools/
+- Gentoo - https://packages.gentoo.org/packages/net-misc/megatools
 
-
-Installation on Debian
-======================
-
-Megatools is available in sid thanks to Alberto Garcia:
-
-  https://packages.debian.org/unstable/megatools
+Be sure to check your distribution's package repository first.
 
 
 Installation on FreeBSD
