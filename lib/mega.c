@@ -505,20 +505,21 @@ static gchar* b64_aes128_cbc_encrypt(const guchar* data, gsize len, const guchar
 
 static gchar* b64_aes128_cbc_encrypt_str(const gchar* str, const guchar* key)
 {
-  gsize len = 0;
+  gsize str_len, aligned_len;
   gc_free guchar* data = NULL;
   gchar* out;
 
   g_return_val_if_fail(str != NULL, NULL);
   g_return_val_if_fail(key != NULL, NULL);
 
-  len = strlen(str) + 1;
-  if (len % 16)
-    len += 16 - (len % 16);
+  str_len = strlen(str);
+  aligned_len = str_len + 1;
+  if (aligned_len % 16)
+    aligned_len += 16 - (aligned_len % 16);
 
-  data = g_malloc0(len);
-  memcpy(data, str, len - 1);
-  return b64_aes128_cbc_encrypt(data, len, key);
+  data = g_malloc0(aligned_len);
+  memcpy(data, str, str_len);
+  return b64_aes128_cbc_encrypt(data, aligned_len, key);
 }
 
 // }}}
