@@ -1,4 +1,4 @@
---speed-limit <speed>::
+--limit-speed <speed>::
 	Set maximum allowed upload and download speed in KiB/s.
 	This option overrides config file settings. 0 means no limit.
 
