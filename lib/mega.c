@@ -1526,6 +1526,66 @@ static void update_pathmap(mega_session* s)
   g_hash_table_unref(handle_map);
 }
 
+// {{{ update_pathmap_prune
+
+static void update_pathmap_prune(mega_session* s, const gchar* specific)
+{
+  update_pathmap(s);
+
+  if (!specific)
+    return;
+
+  // Remove nodes that are not decendents of nodes with their |handle| == |specific|
+  // -------------------------------------------------------------------------------
+  // Example with dir1 as the target, e.g. |handle| == |specific|:
+  //             root
+  //           /      \
+  //          /        \
+  //        dir1       dir2
+  //        /   \        \
+  //     file1  dir3    file2
+  //            /
+  //          file3
+  //
+  // This will remove 'root', 'dir2', and 'file2'; 'dir1' becomes the root node.
+  // -------------------------------------------------------------------------------
+
+  gc_array_unref GArray* remove_nodes = g_array_new(FALSE, FALSE, sizeof(mega_node*));
+  GSList *i;
+
+  // find nodes to remove
+  for (i = s->fs_nodes; i; i = i->next)
+  {
+    mega_node* n = i->data;
+    mega_node* p_node = n->parent;
+
+    if (g_str_equal(n->handle, specific))
+    {
+      // convert target into root node
+      n->type = MEGA_NODE_ROOT;
+      n->parent = NULL;
+      n->parent_handle = NULL;
+    }
+    else
+    {
+      while (p_node && !g_str_equal(p_node->handle, specific))
+        p_node = p_node->parent;
+
+      if (!p_node|| !g_str_equal(p_node->handle, specific))
+        g_array_append_val(remove_nodes, n);
+    }
+  }
+
+  // remove nodes from s->fs_nodes
+  gint idx;
+  for (idx = 0; idx < remove_nodes->len; idx++)
+  {
+    mega_node* r = g_array_index(remove_nodes, mega_node*, idx);
+    s->fs_nodes = g_slist_remove(s->fs_nodes, r);
+    mega_node_free(r);
+  }
+}
+
 // }}}
 // {{{ path manipulation utils
 
@@ -2020,7 +2080,8 @@ void mega_session_enable_previews(mega_session* s, gboolean enable)
 
 // {{{ mega_session_open_exp_folder
 
-gboolean mega_session_open_exp_folder(mega_session* s, const gchar* n, const gchar* key, GError** err)
+// |specific| is optional so it can be NULL
+gboolean mega_session_open_exp_folder(mega_session* s, const gchar* n, const gchar* key, const gchar* specific, GError** err)
 {
   GError* local_err = NULL;
   gsize len, i, l;
@@ -2083,7 +2144,7 @@ gboolean mega_session_open_exp_folder(mega_session* s, const gchar* n, const gch
   }
 
   s->fs_nodes = g_slist_reverse(list);
-  update_pathmap(s);
+  update_pathmap_prune(s, specific);
 
   return TRUE;
 }

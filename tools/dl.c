@@ -179,7 +179,7 @@ int main(int ac, char* av[])
   file_regex = g_regex_new("^https?://mega(?:\\.co)?\\.nz/#!([a-z0-9_-]{8})!([a-z0-9_-]{43})$", G_REGEX_CASELESS, 0, NULL);
   g_assert(file_regex != NULL);
 
-  folder_regex = g_regex_new("^https?://mega(?:\\.co)?\\.nz/#F!([a-z0-9_-]{8})!([a-z0-9_-]{22})$", G_REGEX_CASELESS, 0, NULL);
+  folder_regex = g_regex_new("^https?://mega(?:\\.co)?\\.nz/#F!([a-z0-9_-]{8})!([a-z0-9_-]{22})(![a-z0-9_-]{8})?$", G_REGEX_CASELESS, 0, NULL);
   g_assert(folder_regex != NULL);
 
   // create session
@@ -195,6 +195,7 @@ int main(int ac, char* av[])
     gc_match_info_unref GMatchInfo* m2 = NULL;
     gc_free gchar* key = NULL;
     gc_free gchar* handle = NULL;
+    gc_free gchar* specific = NULL;
     gc_free gchar* link = tool_convert_filename(av[i], FALSE);
 
     if (g_regex_match(file_regex, link, 0, &m1))
@@ -230,9 +231,14 @@ int main(int ac, char* av[])
 
       handle = g_match_info_fetch(m2, 1);
       key = g_match_info_fetch(m2, 2);
+      specific = g_match_info_fetch(m2, 3);
+
+      // remove first char of |specific| since it's an '!'
+      if (specific)
+        memmove(&specific[0], &specific[1], strlen(specific));
 
       // perform download
-      if (!mega_session_open_exp_folder(s, handle, key, &local_err))
+      if (!mega_session_open_exp_folder(s, handle, key, specific, &local_err))
       {
         g_printerr("ERROR: Can't open folder '%s': %s\n", link, local_err->message);
         g_clear_error(&local_err);
