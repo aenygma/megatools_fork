@@ -72,7 +72,7 @@ Installation on Mac OS X (Mountain Lion)
 
 Thanks to Carl Moden, megatools is available in Homebrew (http://brew.sh/).
 
-You can therefrore install megatools with:
+You can therefore install megatools with:
 
   brew install megatools
 
