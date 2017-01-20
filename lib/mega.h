@@ -173,7 +173,7 @@ mega_node*          mega_session_put                (mega_session* s, const gcha
 gchar*              mega_session_new_node_attribute (mega_session* s, const guchar* data, gsize len, const gchar* type, const guchar* key, GError** err);
 gboolean            mega_session_get                (mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err);
 
-gboolean            mega_session_open_exp_folder    (mega_session* s, const gchar* n, const gchar* key, GError** err);
+gboolean            mega_session_open_exp_folder    (mega_session* s, const gchar* n, const gchar* key, const gchar* specific, GError** err);
 gboolean            mega_session_dl                 (mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err);
 
 gboolean            mega_node_is_writable           (mega_session* s, mega_node* n);
