@@ -805,16 +805,17 @@ static gboolean rsa_key_gen(rsa_key* k)
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x101000000L && !defined(LIBRESSL_VERSION_NUMBER)
-  RSA_get0_key(key, &k->m, &k->e, &k->d);
-  RSA_get0_factors(key, &k->q, &k->p);
-  RSA_get0_crt_params(key, NULL, NULL, &k->u);
+  const BIGNUM *p, *q, *d, *u, *m, *_e;
+  RSA_get0_key(key, &m, &_e, &d);
+  RSA_get0_factors(key, &q, &p);
+  RSA_get0_crt_params(key, NULL, NULL, &u);
 
-  k->p = BN_dup(k->p);
-  k->q = BN_dup(k->q);
-  k->d = BN_dup(k->d);
-  k->u = BN_dup(k->u);
-  k->m = BN_dup(k->m);
-  k->e = BN_dup(k->e);
+  k->p = BN_dup(p);
+  k->q = BN_dup(q);
+  k->d = BN_dup(d);
+  k->u = BN_dup(u);
+  k->m = BN_dup(m);
+  k->e = BN_dup(_e);
 #else
   // private part
   k->p = BN_dup(key->q);
