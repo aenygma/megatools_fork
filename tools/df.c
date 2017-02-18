@@ -63,7 +63,7 @@ int main(int ac, char* av[])
     opts_used += opt_free ? 1 : 0;
     opts_used += opt_used ? 1 : 0;
 
-    if (opt_used > 1)
+    if (opts_used > 1)
     {
       g_printerr("ERROR: Options conflict, you should use either --total, --used, or --free.\n");
       return 1;
@@ -77,7 +77,7 @@ int main(int ac, char* av[])
     opts_used += opt_mb ? 1 : 0;
     opts_used += opt_gb ? 1 : 0;
 
-    if (opt_used > 1)
+    if (opts_used > 1)
     {
       g_printerr("ERROR: Options conflict, you should use either --human, --mb, or --gb.\n");
       return 1;
