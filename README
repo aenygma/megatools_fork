@@ -15,9 +15,11 @@ servers allow. Memory requirements and CPU utilization are kept at minimum.
 You can register account using a 'megareg' tool, with the benefit of having
 true control of your encryption keys.
 
-Mega website can be found at http://mega.nz.
+Mega website can be found at https://mega.nz.
 
-Megatools can be downloaded at http://megatools.megous.com
+Megatools can be downloaded at https://megatools.megous.com
+
+You can support megatools via Patreon: https://www.patreon.com/megous
 
 
 Tools
@@ -155,8 +157,9 @@ On Arch Linux:
 Author
 ======
 
-Megatools were written by Ondřej Jirman <megous@megous.com>, 2014
-Webiste: http://megatools.megous.com
+Megatools were written by Ondřej Jirman <megous@megous.com>, 2014-2017
+Webiste: https://megatools.megous.com
+Patreon: https://www.patreon.com/megous
 
 Contributors
 ============
