@@ -113,7 +113,7 @@ Be sure to check your distribution's package repository first.
 Installation on FreeBSD
 =======================
 
-Megatools is available in freshports thanks to Maxim V. Kostikov:
+Megatools is available in ports thanks to Maxim V. Kostikov:
 
   http://www.freshports.org/net/megatools/
 
