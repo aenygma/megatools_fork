@@ -160,7 +160,7 @@ int main(int ac, char* av[])
     return 1;
   }
 
-  s = mega_session_new();
+  s = tool_start_session(0);
 
   if (opt_register)
   {
