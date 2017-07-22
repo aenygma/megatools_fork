@@ -25,6 +25,7 @@ static gboolean opt_download;
 static gboolean opt_noprogress;
 static gboolean opt_dryrun;
 static gboolean opt_no_previews;
+static gboolean opt_nofollow;
 static mega_session* s;
 
 static GOptionEntry entries[] =
@@ -33,6 +34,7 @@ static GOptionEntry entries[] =
   { "local",             'l',   0, G_OPTION_ARG_STRING,  &opt_local_path,   "Local directory",                  "PATH"  },
   { "download",          'd',   0, G_OPTION_ARG_NONE,    &opt_download,     "Download files from mega",         NULL    },
   { "no-progress",       '\0',  0, G_OPTION_ARG_NONE,    &opt_noprogress,   "Disable progress bar",             NULL    },
+  { "no-follow",         '\0',  0, G_OPTION_ARG_NONE,    &opt_nofollow,     "Don't follow symbolic links",      NULL    },
   { "dryrun",            'n',   0, G_OPTION_ARG_NONE,    &opt_dryrun,       "Don't perform any actual changes", NULL    },
   { "disable-previews",  '\0',  0, G_OPTION_ARG_NONE,    &opt_no_previews,  "Don't generate previews",          NULL    },
   { NULL }
@@ -111,7 +113,7 @@ static gboolean up_sync_dir(GFile* root, GFile* file, const gchar* remote_path)
   }
 
   // sync children
-  GFileEnumerator* e = g_file_enumerate_children(file, "standard::*", G_FILE_QUERY_INFO_NONE, NULL, &local_err);
+  GFileEnumerator* e = g_file_enumerate_children(file, "standard::*", opt_nofollow ? G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS : G_FILE_QUERY_INFO_NONE, NULL, &local_err);
   if (!e)
   {
     g_printerr("ERROR: Can't read local directory %s: %s\n", g_file_get_relative_path(root, file), local_err->message);
