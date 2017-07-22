@@ -1536,7 +1536,7 @@ static void update_pathmap_prune(mega_session* s, const gchar* specific)
   if (!specific)
     return;
 
-  // Remove nodes that are not decendents of nodes with their |handle| == |specific|
+  /* Remove nodes that are not decendents of nodes with their |handle| == |specific|
   // -------------------------------------------------------------------------------
   // Example with dir1 as the target, e.g. |handle| == |specific|:
   //             root
@@ -1549,7 +1549,7 @@ static void update_pathmap_prune(mega_session* s, const gchar* specific)
   //          file3
   //
   // This will remove 'root', 'dir2', and 'file2'; 'dir1' becomes the root node.
-  // -------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------*/
 
   gc_array_unref GArray* remove_nodes = g_array_new(FALSE, FALSE, sizeof(mega_node*));
   GSList *i;
