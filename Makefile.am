@@ -90,9 +90,9 @@ EXTRA_DIST += $(MANS_ALL)
 endif
 
 # }}}
-# {{{ tests
+# {{{ more docs
 
-EXTRA_DIST += LICENSE HACKING
+EXTRA_DIST += LICENSE HACKING contrib/bash-completion/megatools
 
 doc_DATA = LICENSE NEWS TODO README INSTALL HACKING
 
