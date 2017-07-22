@@ -373,7 +373,7 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
   g_option_group_add_entries(network_group, network_options);
   g_option_context_add_group(opt_context, network_group);
 
-  if (flags & TOOL_INIT_AUTH)
+  if (flags & (TOOL_INIT_AUTH | TOOL_INIT_AUTH_OPTIONAL))
   {
     GOptionGroup* auth_group = g_option_group_new("auth", "Authentication Options:", "Show authentication options", NULL, NULL);
     g_option_group_add_entries(auth_group, auth_options);
@@ -514,6 +514,16 @@ mega_session* tool_start_session(ToolSessionFlags flags)
   if (!(flags & TOOL_SESSION_OPEN))
     return s;
 
+  // allow unatuhenticated session      
+  if (!opt_password || !opt_username)
+  {
+    if (flags & TOOL_SESSION_AUTH_OPTIONAL)
+      return s;      
+    
+    g_printerr("ERROR: Authentication is required\n");
+    goto err;
+  }
+
   // try to load cached session data (they are valid for 10 minutes since last
   // user_get or refresh)
   if (!mega_session_load(s, opt_username, opt_password, cache_timout, &sid, &local_err))
@@ -526,17 +536,21 @@ mega_session* tool_start_session(ToolSessionFlags flags)
       goto err;
     }
 
-    if (!mega_session_refresh(s, &local_err))
+    if (!(flags & TOOL_SESSION_AUTH_ONLY))
     {
-      g_printerr("ERROR: Can't read filesystem info from mega.nz: %s\n", local_err->message);
-      goto err;
+      if (!mega_session_refresh(s, &local_err))
+      {
+        g_printerr("ERROR: Can't read filesystem info from mega.nz: %s\n", local_err->message);
+        goto err;
+      }
+
+      loaded = TRUE;
     }
 
-    loaded = TRUE;
     mega_session_save(s, NULL);
   }
 
-  if (opt_reload_files && !loaded)
+  if (!(flags & TOOL_SESSION_AUTH_ONLY) && opt_reload_files && !loaded)
   {
     if (!mega_session_refresh(s, &local_err))
     {

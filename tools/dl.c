@@ -148,7 +148,7 @@ int main(int ac, char* av[])
   gint i;
   int status = 0;
 
-  tool_init(&ac, &av, "- download exported files from mega.nz", entries, 0);
+  tool_init(&ac, &av, "- download exported files from mega.nz", entries, TOOL_INIT_AUTH_OPTIONAL);
 
   if (!strcmp(opt_path, "-"))
   {
@@ -184,7 +184,7 @@ int main(int ac, char* av[])
 
   // create session
 
-  s = tool_start_session(0);
+  s = tool_start_session(TOOL_SESSION_OPEN | TOOL_SESSION_AUTH_ONLY | TOOL_SESSION_AUTH_OPTIONAL);
 
   mega_session_watch_status(s, status_callback, NULL);
 
