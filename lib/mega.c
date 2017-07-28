@@ -112,8 +112,8 @@ struct _mega_sesssion
 
   gint id;
   gchar* sid;
-  gchar* sid_param_name;
   gchar* rid;
+  GHashTable* api_url_params;
 
   guchar* password_key;
   guchar* master_key;
@@ -1236,12 +1236,21 @@ static gchar* api_request_unsafe(mega_session* s, const gchar* req_node, GError*
   if (mega_debug & MEGA_DEBUG_API)
     print_node(req_node, "-> ");
 
+  GString* additional_url_params = g_string_sized_new(64);
+  GHashTableIter iter;
+  g_hash_table_iter_init(&iter, s->api_url_params);
+  gchar *key, *val;
+  while (g_hash_table_iter_next(&iter, (gpointer*)&key, (gpointer*)&val))
+          g_string_append_printf(additional_url_params, "&%s=%s", key, val);
+
   // prepare URL
   s->id++;
   if (s->sid)
-    url = g_strdup_printf("https://eu.api.mega.co.nz/cs?id=%u&%s=%s", s->id, s->sid_param_name ? s->sid_param_name : "sid", s->sid);
+    url = g_strdup_printf("https://eu.api.mega.co.nz/cs?id=%u&sid=%s%s", s->id, s->sid, additional_url_params->str);
   else
-    url = g_strdup_printf("https://eu.api.mega.co.nz/cs?id=%u", s->id);
+    url = g_strdup_printf("https://eu.api.mega.co.nz/cs?id=%u%s", s->id, additional_url_params->str);
+
+  g_string_free(additional_url_params, TRUE);
 
   GString* res_str = http_post(s->http, url, req_node, strlen(req_node), &local_err);
 
@@ -2008,6 +2017,7 @@ mega_session* mega_session_new(void)
 
   s->id = time(NULL);
   s->rid = make_request_id();
+  s->api_url_params = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
   s->share_keys = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
@@ -2043,6 +2053,7 @@ void mega_session_free(mega_session* s)
     http_free(s->http);
     g_slist_free_full(s->fs_nodes, (GDestroyNotify)mega_node_free);
     g_hash_table_destroy(s->share_keys);
+    g_hash_table_destroy(s->api_url_params);
     g_free(s->sid);
     g_free(s->rid);
     g_free(s->password_key);
@@ -2093,11 +2104,9 @@ gboolean mega_session_open_exp_folder(mega_session* s, const gchar* n, const gch
   g_return_val_if_fail(key != NULL, FALSE);
   g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
-  mega_session_close(s);
+  g_hash_table_replace(s->api_url_params, g_strdup("n"), g_strdup(n));
 
-  s->sid_param_name = "n";
-  s->sid = g_strdup(n);
-
+  g_free(s->master_key);
   s->master_key = base64urldecode(key, &len);
   if (len != 16)
     return FALSE;
@@ -2144,6 +2153,7 @@ gboolean mega_session_open_exp_folder(mega_session* s, const gchar* n, const gch
     }
   }
 
+  g_slist_free_full(s->fs_nodes, (GDestroyNotify)mega_node_free);
   s->fs_nodes = g_slist_reverse(list);
   update_pathmap_prune(s, specific);
 
@@ -2260,6 +2270,7 @@ void mega_session_close(mega_session* s)
   g_slist_free_full(s->fs_nodes, (GDestroyNotify)mega_node_free);
 
   g_hash_table_remove_all(s->share_keys);
+  g_hash_table_remove_all(s->api_url_params);
 
   s->password_key = NULL;
   s->master_key = NULL;
