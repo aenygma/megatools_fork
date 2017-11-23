@@ -1536,6 +1536,7 @@ static void update_pathmap(mega_session* s)
   g_hash_table_unref(handle_map);
 }
 
+// }}}
 // {{{ update_pathmap_prune
 
 static void update_pathmap_prune(mega_session* s, const gchar* specific)
@@ -2905,6 +2906,9 @@ gchar* mega_session_new_node_attribute(mega_session* s, const guchar* data, gsiz
 }
 
 // }}}
+
+// Dwnload/upload:
+
 // {{{ create_preview
 
 static gint has_convert = -1;
@@ -3099,96 +3103,43 @@ static gsize put_process_data(gpointer buffer, gsize size, struct _put_data* dat
   return bytes_read;
 }
 
-mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gchar* local_path, GError** err)
+mega_node* mega_session_put(mega_session* s, mega_node* parent_node, GFile* file, GError** err)
 {
   struct _put_data data;
   GError* local_err = NULL;
-  mega_node *node, *parent_node;
   gc_free gchar* file_name = NULL;
+  gc_free gchar* file_path = NULL;
   gc_object_unref GFileInputStream* stream = NULL;
   gc_byte_array_unref GByteArray* buffer = NULL;
 
   g_return_val_if_fail(s != NULL, NULL);
-  g_return_val_if_fail(remote_path != NULL, NULL);
-  g_return_val_if_fail(local_path != NULL, NULL);
+  g_return_val_if_fail(parent_node != NULL, NULL);
+  g_return_val_if_fail(file != NULL, NULL);
   g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
   memset(&data, 0, sizeof(data));
 
-  // check remote filesystem, and get parent node
+  //XXX: check sanity of parent node, we can only upload to normal dirs
 
-  node = mega_session_stat(s, remote_path);
-  if (node)
+  file_path = g_file_get_path(file);
+  file_name = g_file_get_basename(file);
+  if (!file_name || !file_path)
   {
-    if (node->type == MEGA_NODE_FILE)
-    {
-      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File already exists: %s", remote_path);
-      return NULL;
-    }
-    else
-    {
-      // put into a dir
-      parent_node = node;
-
-      gc_free gchar* basename = g_path_get_basename(local_path);
-      gc_free gchar* tmp = g_strconcat(remote_path, "/", basename, NULL);
-      node = mega_session_stat(s, tmp);
-      if (node)
-      {
-        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File already exists: %s", tmp);
-        return NULL;
-      }
-
-      if (!mega_node_is_writable(s, parent_node) || parent_node->type == MEGA_NODE_NETWORK || parent_node->type == MEGA_NODE_CONTACT)
-      {
-        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Directory is not writable: %s", remote_path);
-        return NULL;
-      }
-
-      file_name = g_path_get_basename(local_path);
-    }
-  }
-  else
-  {
-    gc_free gchar* tmp = path_simplify(remote_path);
-    gc_free gchar* parent_path = g_path_get_dirname(tmp);
-
-    if (!strcmp(parent_path, "/"))
-    {
-      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't upload to toplevel dir: %s", remote_path);
-      return NULL;
-    }
-
-    parent_node = mega_session_stat(s, parent_path);
-    if (!parent_node || parent_node->type == MEGA_NODE_FILE)
-    {
-      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Parent directory doesn't exist: %s", parent_path);
-      return NULL;
-    }
-
-    if (!mega_node_is_writable(s, parent_node) || parent_node->type == MEGA_NODE_NETWORK || parent_node->type == MEGA_NODE_CONTACT)
-    {
-      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Directory is not writable: %s", parent_path);
-      return NULL;
-    }
-
-    file_name = g_path_get_basename(tmp);
+    g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Invalid file handle");
+    return NULL;
   }
 
-  // open local file for reading, and get file size
-
-  gc_object_unref GFile* file = g_file_new_for_path(local_path);
   data.stream = stream = g_file_read(file, NULL, &local_err);
   if (!stream)
   {
-    g_propagate_prefixed_error(err, local_err, "Can't read local file %s: ", local_path);
+    g_propagate_prefixed_error(err, local_err, "Can't read local file %s: ", file_path);
     return NULL;
   }   
 
   gc_object_unref GFileInfo* info = g_file_input_stream_query_info(stream, G_FILE_ATTRIBUTE_STANDARD_SIZE, NULL, &local_err);
   if (!info)
   {
-    g_propagate_prefixed_error(err, local_err, "Can't read local file %s: ", local_path);
+    g_propagate_prefixed_error(err, local_err, "Can't read local file %s: ", file_path);
     return NULL;
   }
 
@@ -3244,7 +3195,7 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
   // create preview
   gc_free gchar* fa = NULL;
   if (s->create_preview)
-    fa = create_preview(s, local_path, aes_key, NULL);
+    fa = create_preview(s, file_path, aes_key, NULL);
 
   gc_free gchar* attrs = encode_node_attrs(file_name);
   gc_free gchar* attrs_enc = b64_aes128_cbc_encrypt_str(attrs, aes_key);
@@ -3292,9 +3243,9 @@ mega_node* mega_session_put(mega_session* s, const gchar* remote_path, const gch
 }
 
 // }}}
-// {{{ mega_session_get
+// {{{ get_data
 
-struct _get_data
+struct get_data_state
 {
   mega_session* s;
   GFileOutputStream* stream;
@@ -3306,7 +3257,7 @@ struct _get_data
   GByteArray* buffer;
 };
 
-static gsize get_process_data(gpointer buffer, gsize size, struct _get_data* data)
+static gsize get_data_cb(gpointer buffer, gsize size, struct get_data_state* data)
 {
   gc_error_free GError* local_err = NULL;
 
@@ -3335,75 +3286,48 @@ static gsize get_process_data(gpointer buffer, gsize size, struct _get_data* dat
   return size;
 }
 
-gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err)
+gboolean mega_session_download_data(mega_session* s, mega_download_data_params* params, GFile* file, GError** err)
 {
-  struct _get_data data;
   GError* local_err = NULL;
-  gc_object_unref GFile* file = NULL;
   gc_object_unref GFile* dir = NULL;
   gc_object_unref GFile* tmp_file = NULL;
   gc_object_unref GFileOutputStream* stream = NULL;
-  gc_free gchar* get_node = NULL, *url = NULL;
+  gc_free gchar* url = NULL;
   gc_http_free http* h = NULL;
   gc_byte_array_unref GByteArray* buffer = NULL;
+  struct get_data_state state = {.s = s};
+  gc_free gchar* tmp_path = NULL, *file_path = NULL, *tmp_name = NULL;
+  gsize download_from = 0;
 
-  g_return_val_if_fail(s != NULL, FALSE);
-  g_return_val_if_fail(remote_path != NULL, FALSE);
   g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
-  memset(&data, 0, sizeof(data));
-  data.s = s;
-
-  mega_node* n = mega_session_stat(s, remote_path);
-  if (!n)
-  {
-    g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Remote file not found: %s", remote_path);
-    return FALSE;
-  }
-
   init_status(s, MEGA_STATUS_FILEINFO);
-  s->status_data.fileinfo.name = n->name;
-  s->status_data.fileinfo.size = n->size;
+  s->status_data.fileinfo.name = params->node_name;
+  s->status_data.fileinfo.size = params->node_size;
   if (send_status(s)) 
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Operation cancelled from status callback");
     return FALSE;
   }
 
-  if (local_path)
+  // initialize decrytpion key/state
+  guchar aes_key[16], meta_mac_xor[8];
+  unpack_node_key(params->node_key, aes_key, state.iv, meta_mac_xor);
+  AES_set_encrypt_key(aes_key, 128, &state.k);
+  chunked_cbc_mac_init8(&state.mac, aes_key, state.iv);
+
+  if (file)
   {
-    file = g_file_new_for_path(local_path);
-    if (g_file_query_exists(file, NULL))
-    {
-      if (g_file_query_file_type(file, 0, NULL) == G_FILE_TYPE_DIRECTORY)
-      {
-        gc_object_unref GFile* child = g_file_get_child(file, n->name);
-        if (g_file_query_exists(child, NULL))
-        {
-          g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Local file already exists: %s/%s", local_path, n->name);
-          return FALSE;
-        }
-        else
-        {
-          file = child;
-          child = NULL;
-        }
-      }
-      else
-      {
-        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Local file already exists: %s", local_path);
-        return FALSE;
-      }
-    }
+    file_path = g_file_get_path(file);
 
     dir = g_file_get_parent(file);
     if (!dir)
     {
-      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File %s does not have a parent directory: ", local_path);
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File %s does not have a parent directory", file_path);
       return FALSE;
     }
 
-    gc_free gchar* tmp_name = g_strdup_printf(".megatmp.%s", n->handle);
+    tmp_name = g_strdup_printf(".megatmp.%s", params->node_handle);
     tmp_file = g_file_get_child(dir, tmp_name);
     if (tmp_file == NULL)
     {
@@ -3411,89 +3335,94 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
       return FALSE;
     }
 
+    tmp_path = g_file_get_path(tmp_file);
+
+#if 0
+    GFileInputStream* tmp_stream = g_file_read(tmp_file, NULL, &local_err);
+    if (tmp_stream == NULL) {
+      g_propagate_prefixed_error(err, local_err, "Can't open previous temporary file for resume %s", tmp_path);
+      return FALSE;
+    }
+
+    gssize bytes_read;
+    guchar buf[1024 * 32];
+
+    while (TRUE) {
+      bytes_read = g_input_stream_read(G_INPUT_STREAM(tmp_stream), buf, sizeof buf, NULL, &local_err);
+      if (bytes_read == 0)
+        break;
+      if (bytes_read < 0)
+      {
+        g_propagate_prefixed_error(err, local_err, "Can't read previous temporary file for resume %s", tmp_path);
+        return FALSE;
+      }
+
+      // update cbc-mac
+      chunked_cbc_mac_update(&state.mac, buf, bytes_read);
+      download_from += bytes_read;
+    }
+
+    g_object_unref(tmp_stream);
+#else
+    // if temporary file exists, delete it
     if (g_file_query_exists(tmp_file, NULL) && !g_file_delete(tmp_file, NULL, &local_err))
     {
-      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't delete previous temporary file %s", tmp_name);
+      g_propagate_prefixed_error(err, local_err, "Can't delete previous temporary file %s", tmp_name);
       return FALSE;
     }
+#endif
 
     // open local file for writing
-    data.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
-    if (!data.stream)
+    state.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
+    if (!state.stream)
     {
-      gc_free gchar* tmp = g_file_get_path(tmp_file);
-
-      g_propagate_prefixed_error(err, local_err, "Can't open local file %s for writing: ", tmp);
+      g_propagate_prefixed_error(err, local_err, "Can't open local file %s for writing: ", tmp_path);
       return FALSE;
     }
   }
 
-  // initialize decrytpion key/state
-  guchar aes_key[16], meta_mac_xor[8];
-  unpack_node_key(n->key, aes_key, data.iv, meta_mac_xor);
-  AES_set_encrypt_key(aes_key, 128, &data.k);
-  chunked_cbc_mac_init8(&data.mac, aes_key, data.iv);
-
-  // prepare request
-  get_node = api_call(s, 'o', NULL, &local_err, "[{a:g, g:1, ssl:0, n:%s}]", n->handle);
-  if (!get_node)
-  {
-    g_propagate_error(err, local_err);
-    goto err;
-  }
-
-  gint64 file_size = s_json_get_member_int(get_node, "s", -1);
-  if (file_size < 0)
-  {
-    g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't determine file size");
-    goto err;
-  }
-
-  url = s_json_get_member_string(get_node, "g");
-  if (!url)
-  {
-    g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't determine download url");
-    goto err;
-  }
+  //XXX: make url so that download start from *download_from*
+  url = g_strdup(params->download_url);
 
   // setup buffer
-  data.buffer = buffer = g_byte_array_new();
+  state.buffer = buffer = g_byte_array_new();
 
   // perform download
   h = http_new();
   http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
   http_set_speed(h, s->max_ul, s->max_dl);
   http_set_proxy(h, s->proxy);
-  if (!http_post_stream_download(h, url, (http_data_fn)get_process_data, &data, &local_err))
+  if (!http_post_stream_download(h, url, (http_data_fn)get_data_cb, &state, &local_err))
   {
     g_propagate_prefixed_error(err, local_err, "Data download failed: ");
     goto err;
   }
 
-  if (data.stream)
-  {
-    if (!g_output_stream_close(G_OUTPUT_STREAM(data.stream), NULL, &local_err))
-    {
-      g_propagate_prefixed_error(err, local_err, "Can't close downloaded file: ");
-      goto err;
-    }
-  }
-
   // check mac of the downloaded file
   guchar meta_mac_xor_calc[8];
-  chunked_cbc_mac_finish8(&data.mac, meta_mac_xor_calc);
+  chunked_cbc_mac_finish8(&state.mac, meta_mac_xor_calc);
   if (memcmp(meta_mac_xor, meta_mac_xor_calc, 8) != 0) 
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "MAC mismatch");
     goto err;
   }
 
+  if (state.stream)
+  {
+    if (!g_output_stream_close(G_OUTPUT_STREAM(state.stream), NULL, &local_err))
+    {
+      g_propagate_prefixed_error(err, local_err, "Can't close downloaded file: ");
+      goto err;
+    }
+
+    g_object_unref(state.stream);
+    state.stream = stream = NULL;
+  }
+
   if (file && !g_file_move(tmp_file, file, G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE, NULL, NULL, NULL, &local_err))
   {
-    gc_free gchar* tmp_path = g_file_get_path(tmp_file);
-    gc_free gchar* target_path = g_file_get_path(file);
-    g_propagate_prefixed_error(err, local_err, "Can't rename donwloaded temporary file %s to %s (downloaded data are good!): ", tmp_path, target_path);
-    goto err_noremove;
+    g_propagate_prefixed_error(err, local_err, "Can't rename donwloaded temporary file %s to %s (downloaded data are good!): ", tmp_path, file_path);
+    return FALSE;
   }
 
   return TRUE;
@@ -3502,130 +3431,105 @@ err:
   if (tmp_file)
     g_file_delete(tmp_file, NULL, NULL);
 
-err_noremove:
   return FALSE;
 }
 
-// }}}
-// {{{ mega_session_dl
-
-struct _dl_data
+void mega_download_data_free(mega_download_data_params* params)
 {
-  mega_session* s;
-  GFileOutputStream* stream;
-  AES_KEY k;
-  guchar iv[AES_BLOCK_SIZE];
-  gint num;
-  guchar ecount[AES_BLOCK_SIZE];
-  chunked_cbc_mac mac;
-  GByteArray* buffer;
-};
-
-static gsize dl_process_data(gpointer buffer, gsize size, struct _dl_data* data)
-{
-  gc_error_free GError* local_err = NULL;
-
-  if (size > data->buffer->len)
-    g_byte_array_set_size(data->buffer, size);
-
-  AES_ctr128_encrypt(buffer, data->buffer->data, size, &data->k, data->iv, data->ecount, &data->num);
-
-  chunked_cbc_mac_update(&data->mac, data->buffer->data, size);
-
-  init_status(data->s, MEGA_STATUS_DATA);
-  data->s->status_data.data.size = size;
-  data->s->status_data.data.buf = data->buffer->data;
-  if (send_status(data->s)) 
-    return 0;
-
-  if (!data->stream)
-    return size;
-
-  if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), data->buffer->data, size, NULL, NULL, &local_err))
-  {
-    g_printerr("ERROR: Failed writing to stream: %s\n", local_err->message);
-    return 0;
-  }
-
-  return size;
+  g_clear_pointer(&params->download_url, g_free);
+  g_clear_pointer(&params->node_handle, g_free);
+  g_clear_pointer(&params->node_name, g_free);
 }
 
-gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err)
+// }}}
+// {{{ mega_session_get
+
+gboolean mega_session_get(mega_session* s, GFile* file, mega_node* node, GError** err)
 {
-  struct _dl_data data;
   GError* local_err = NULL;
-  gc_object_unref GFile *parent_dir = NULL, *file = NULL, *tmp_file = NULL;
+  gc_free gchar* get_node = NULL, *url = NULL;
+  mega_download_data_params p = {};
+
+  g_return_val_if_fail(s != NULL, FALSE);
+  g_return_val_if_fail(node != NULL, FALSE);
+  g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
+
+  // prepare request
+  get_node = api_call(s, 'o', NULL, &local_err, "[{a:g, g:1, ssl:0, n:%s}]", node->handle);
+  if (!get_node)
+  {
+    g_propagate_error(err, local_err);
+    return FALSE;
+  }
+
+  gint64 node_size = s_json_get_member_int(get_node, "s", -1);
+  if (node_size < 0)
+  {
+    g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't determine file size");
+    return FALSE;
+  }
+
+  url = s_json_get_member_string(get_node, "g");
+  if (!url)
+  {
+    g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't determine download url");
+    return FALSE;
+  }
+
+  // sanity, caller should never pass non-file node
+  g_assert(node->key_len == sizeof p.node_key);
+
+  memcpy(p.node_key, node->key, node->key_len);
+  p.download_url = url;
+  p.node_handle = node->handle;
+  p.node_name = node->name;
+  p.node_size = node_size;
+
+  return mega_session_download_data(s, &p, file, err);
+}
+
+// }}}
+// {{{ mega_session_dl_prepare
+
+gboolean mega_session_dl_prepare(mega_session* s, mega_download_data_params* params, const gchar* handle, const gchar* key, GError** err)
+{
+  GError* local_err = NULL;
   gc_free gchar *node_name = NULL, *dl_node = NULL, *url = NULL, *at = NULL;
   gc_free guchar* node_key = NULL;
-  gc_http_free http* h = NULL;
-  gc_object_unref GFileOutputStream* stream = NULL;
-  gc_byte_array_unref GByteArray* buffer = NULL;
 
   g_return_val_if_fail(s != NULL, FALSE);
   g_return_val_if_fail(handle != NULL, FALSE);
   g_return_val_if_fail(key != NULL, FALSE);
   g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
-  memset(&data, 0, sizeof(data));
-  data.s = s;
-
-  if (local_path)
-  {
-    // get dir and filename to download to
-    file = g_file_new_for_path(local_path);
-    if (g_file_query_exists(file, NULL))
-    {
-      if (g_file_query_file_type(file, 0, NULL) != G_FILE_TYPE_DIRECTORY)
-      {
-        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File already exists: %s", local_path);
-        return FALSE;
-      }
-      else
-      {
-        parent_dir = file;
-        file = NULL;
-      }
-    }
-    else
-    {
-      parent_dir = g_file_get_parent(file);
-
-      if (g_file_query_file_type(parent_dir, 0, NULL) != G_FILE_TYPE_DIRECTORY)
-      {
-        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't download file into: %s", g_file_get_path(parent_dir));
-        return FALSE;
-      }
-    }
-  }
-
   // prepare request
   dl_node = api_call(s, 'o', NULL, &local_err, "[{a:g, g:1, ssl:0, p:%s}]", handle);
   if (!dl_node)
   {
     g_propagate_error(err, local_err);
-    goto err;
+    return FALSE;
   }
 
   // get file size
-  gint64 file_size = s_json_get_member_int(dl_node, "s", -1);
-  if (file_size < 0)
+  gint64 node_size = s_json_get_member_int(dl_node, "s", -1);
+  if (node_size < 0)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't determine file size");
-    goto err;
+    return FALSE;
   }
 
   url = s_json_get_member_string(dl_node, "g");
   if (!url)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't determine download url");
-    goto err;
+    return FALSE;
   }
 
   at = s_json_get_member_string(dl_node, "at");
   if (!at)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't get file attributes");
-    goto err;
+    return FALSE;
   }
 
   // decode node_key
@@ -3634,33 +3538,24 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
   if (!node_key || node_key_len != 32)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't retrieve file key");
-    goto err;
+    return FALSE;
   }
 
   // initialize decrytpion key
-  guchar aes_key[16], meta_mac_xor[8];
-  unpack_node_key(node_key, aes_key, data.iv, meta_mac_xor);
+  guchar aes_key[16];
+  unpack_node_key(node_key, aes_key, NULL, NULL);
 
   // decrypt attributes with aes_key
   if (!decrypt_node_attrs(at, aes_key, &node_name))
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Invalid key");
-    goto err;
+    return FALSE;
   }
 
   if (!node_name)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't retrieve remote file name");
-    goto err;
-  }
-
-  init_status(s, MEGA_STATUS_FILEINFO);
-  s->status_data.fileinfo.name = node_name;
-  s->status_data.fileinfo.size = file_size;
-  if (send_status(s)) 
-  {
-    g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Operation cancelled from status callback");
-    goto err;
+    return FALSE;
   }
 
   // check for invalid characters in filename
@@ -3671,91 +3566,18 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
 #endif
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Remote file name is invalid: '%s'", node_name);
-    goto err;
+    return FALSE;
   }
 
-  if (local_path)
-  {
-    if (!file)
-      file = g_file_get_child(parent_dir, node_name);
+  memcpy(params->node_key, node_key, sizeof params->node_key);
+  params->download_url = url;
+  params->node_handle = g_strdup(handle);
+  params->node_name = node_name;
+  params->node_size = node_size;
 
-    gc_free gchar* tmp_name = g_strdup_printf(".megatmp.%s", handle);
-    tmp_file = g_file_get_child(parent_dir, tmp_name);
-    if (tmp_file == NULL)
-    {
-      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't get temporary file %s", tmp_name);
-      goto err;
-    }
-
-    if (g_file_query_exists(tmp_file, NULL) && !g_file_delete(tmp_file, NULL, &local_err))
-    {
-      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't delete previous temporary file %s", tmp_name);
-      return FALSE;
-    }
-
-    // open local file for writing
-    data.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
-    if (!data.stream)
-    {
-      gc_free gchar* tmp = g_file_get_path(tmp_file);
-
-      g_propagate_prefixed_error(err, local_err, "Can't open local file %s for writing: ", tmp);
-      goto err;
-    }
-  }
-
-  // initialize decryption and mac calculation
-  AES_set_encrypt_key(aes_key, 128, &data.k);
-  chunked_cbc_mac_init8(&data.mac, aes_key, data.iv);
-
-  // setup buffer
-  data.buffer = buffer = g_byte_array_new();
-
-  // perform download
-  h = http_new();
-  http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
-  http_set_speed(h, s->max_ul, s->max_dl);
-  http_set_proxy(h, s->proxy);
-  if (!http_post_stream_download(h, url, (http_data_fn)dl_process_data, &data, &local_err))
-  {
-    g_propagate_prefixed_error(err, local_err, "Data download failed: ");
-    goto err;
-  }
-
-  if (data.stream)
-  {
-    if (!g_output_stream_close(G_OUTPUT_STREAM(data.stream), NULL, &local_err))
-    {
-      g_propagate_prefixed_error(err, local_err, "Can't close downloaded file: ");
-      goto err;
-    }
-  }
-
-  // check mac of the downloaded file
-  guchar meta_mac_xor_calc[8];
-  chunked_cbc_mac_finish8(&data.mac, meta_mac_xor_calc);
-  if (memcmp(meta_mac_xor, meta_mac_xor_calc, 8) != 0) 
-  {
-    g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "MAC mismatch");
-    goto err;
-  }
-
-  if (file && !g_file_move(tmp_file, file, G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE, NULL, NULL, NULL, &local_err))
-  {
-    gc_free gchar* tmp_path = g_file_get_path(tmp_file);
-    gc_free gchar* target_path = g_file_get_path(file);
-    g_propagate_prefixed_error(err, local_err, "Can't rename donwloaded temporary file %s to %s (downloaded data are good!): ", tmp_path, target_path);
-    goto err_noremove;
-  }
+  url = node_name = NULL;
 
   return TRUE;
-
-err:
-  if (tmp_file)
-    g_file_delete(tmp_file, NULL, NULL);
-
-err_noremove:
-  return FALSE;
 }
 
 // }}}
@@ -4348,6 +4170,170 @@ gboolean mega_session_register_verify(mega_session* s, mega_reg_state* state, co
   //[{"a":"up","privk":"KSUujv7KB8QYL2At2sWeMPi2DQd_e09FwbR2RwileC9NxYw0MxFTKFj7Yxha__borDmBUacxaWXRCnMnAmMlsyWc8zw_ml9tysYHOsL4cQEzpBJtCCIrhnRjwnQk8JUVK--5fyQRS6G2RiOVdeFjkKQyifmXgBsiAlhHKhzSY0VD6ruR9htGfDsgImim_S-MzuWaHQN8TJkBkSZRAgXy6O2tUh0Bk4aEp8NaEV0GHdV7ec1S1jbR9FzwKB7cNkKxk2nd7wRS9rnl_QPz4MTv84dS6qHxahT0ebU5njC2_IkFLxuVlloyO2UTPRPHa9JHaPa3R2BrEmb-eWMmsZ5icNwJl8PLzuc9YlSI09-IR5rHZLm2uW-V05GI1IHIjw9LGzqli6WL7tzlMVhHrsq-xj70iXjVvOXJ3XhwbbW99S8O-3sQ2gG36fSHUcg0WMSD-8KiD-DhmhfqX8iqg-2YDfXrsYUNhq_VHJF83Zm0itPdRIkgUtBR9MFdASSPe_8uxlEBsCATTHNGIWbH0wiKRo2tEqbUTZCJjXhAyTyMhdjbSdS1ARKNr12YHkLKi12uhIJRO73VJGmjZD8De59cPduGihLGt3ipIKVIxsm-Xy6f9p29BtDHE1go_yacqbW1n8d1anN8WhmG8Q_1PwY1h-opagpd-Nf0geFti_3PI8dY75NPAuDyknv0kgn8OZ4ItzO10-4H3_GgLa5m8zb6usk-eeVCo4lkC4Z2YHHlY4YLRIL7rWC0m_kFcsyvVi1-PVNJ8GauLt9PYmW9hj20yJLwCYkEVSQyM4Yxgh55hSa3La3FnUt3Nls_ImOdcDWtYpB0UKJSKN_IYH4NlD60VwvFUifJndRB_JlJGvqzR4s","pubk":"B_9lGyG4ImN-3idVOARGr6dk-4Nn6VwVYxCTSk1nDvXztCNQ-eFwxIJoS3ykODSH_AjHhst_Loj_erSgX-AUOBAjkh5rQuriA4ciT76tIh_IarC5Yf2Zey8Ao_gLPgaqrLTIWPxDhSAmCLd3pa3X9weAuGK_7eiVxmXU4tK_5j7dyn949C4OMNhxp9vRgZqaOzcjouwKm8xH9nWqXTR7F2WKW2BcXxeBkRnFVJz6cd5IqmJENabhDH1-UDf9eCW7GeD2MHU8xnbJk2fXqnru35nxz9OG6VvVDMzrS6dtQU8mC7xnIut_N6eyMRWsHpm8N1bSxHgz1XWCodnOBHFIJSoJAAUR"}] -> ["-a1DHeWfguY"]
 
   return TRUE;
+}
+
+// }}}
+
+// {{{ Compatibility: old interfaces
+
+mega_node* mega_session_put_compat(mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err)
+{
+  gc_object_unref GFile* file = NULL;
+  mega_node* node, *parent_node;
+
+  node = mega_session_stat(s, remote_path);
+  if (node)
+  {
+    if (node->type == MEGA_NODE_FILE)
+    {
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File already exists: %s", remote_path);
+      return NULL;
+    }
+    else
+    {
+      // put into a dir
+      parent_node = node;
+
+      gc_free gchar* basename = g_path_get_basename(local_path);
+      gc_free gchar* tmp = g_strconcat(remote_path, "/", basename, NULL);
+      node = mega_session_stat(s, tmp);
+      if (node)
+      {
+        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File already exists: %s", tmp);
+        return NULL;
+      }
+
+      if (!mega_node_is_writable(s, parent_node) || parent_node->type == MEGA_NODE_NETWORK || parent_node->type == MEGA_NODE_CONTACT)
+      {
+        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Directory is not writable: %s", remote_path);
+        return NULL;
+      }
+
+    }
+  }
+  else
+  {
+    gc_free gchar* tmp = path_simplify(remote_path);
+    gc_free gchar* parent_path = g_path_get_dirname(tmp);
+
+    if (!strcmp(parent_path, "/"))
+    {
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't upload to toplevel dir: %s", remote_path);
+      return NULL;
+    }
+
+    parent_node = mega_session_stat(s, parent_path);
+    if (!parent_node || parent_node->type == MEGA_NODE_FILE)
+    {
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Parent directory doesn't exist: %s", parent_path);
+      return NULL;
+    }
+
+    if (!mega_node_is_writable(s, parent_node) || parent_node->type == MEGA_NODE_NETWORK || parent_node->type == MEGA_NODE_CONTACT)
+    {
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Directory is not writable: %s", parent_path);
+      return NULL;
+    }
+  }
+
+  file = g_file_new_for_path(local_path);
+
+  return mega_session_put(s, parent_node, file, err);
+}
+
+gboolean mega_session_get_compat(mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err)
+{
+  gc_object_unref GFile* file = NULL;
+
+  mega_node* node = mega_session_stat(s, remote_path);
+  if (!node)
+  {
+    g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Remote file not found: %s", remote_path);
+    return FALSE;
+  }
+
+  if (local_path)
+  {
+    file = g_file_new_for_path(local_path);
+    if (g_file_query_exists(file, NULL))
+    {
+      if (g_file_query_file_type(file, 0, NULL) == G_FILE_TYPE_DIRECTORY)
+      {
+        gc_object_unref GFile* child = g_file_get_child(file, node->name);
+        if (g_file_query_exists(child, NULL))
+        {
+          g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Local file already exists: %s/%s", local_path, node->name);
+          return FALSE;
+        }
+        else
+        {
+          file = child;
+          child = NULL;
+        }
+      }
+      else
+      {
+        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Local file already exists: %s", local_path);
+        return FALSE;
+      }
+    }
+  }
+
+  return mega_session_get(s, file, node, err);
+}
+
+gboolean mega_session_dl_compat(mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err)
+{
+  GError* local_err = NULL;
+  gc_object_unref GFile* file = NULL, *parent_dir = NULL;
+
+  if (local_path)
+  {
+    // get dir and filename to download to
+    file = g_file_new_for_path(local_path);
+    if (g_file_query_exists(file, NULL))
+    {
+      if (g_file_query_file_type(file, 0, NULL) != G_FILE_TYPE_DIRECTORY)
+      {
+        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File already exists: %s", local_path);
+        return FALSE;
+      }
+      else
+      {
+        parent_dir = file;
+        file = NULL;
+      }
+    }
+    else
+    {
+      parent_dir = g_file_get_parent(file);
+
+      if (g_file_query_file_type(parent_dir, 0, NULL) != G_FILE_TYPE_DIRECTORY)
+      {
+        g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't download file into: %s", g_file_get_path(parent_dir));
+        return FALSE;
+      }
+    }
+  }
+
+  mega_download_data_params params = {};
+  if (!mega_session_dl_prepare(s, &params, handle, key, &local_err))
+  {
+    g_propagate_error(err, local_err);
+    return FALSE;
+  }
+
+  if (local_path)
+  {
+    if (!file)
+      file = g_file_get_child(parent_dir, params.node_name);
+  }
+
+  gboolean status = mega_session_download_data(s, &params, file, err);
+
+  mega_download_data_free(&params);
+
+  return status;
 }
 
 // }}}

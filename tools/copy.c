@@ -65,7 +65,7 @@ static gboolean up_sync_file(GFile* root, GFile* file, const gchar* remote_path)
 
   if (!opt_dryrun)
   {
-    if (!mega_session_put(s, remote_path, g_file_get_path(file), &local_err))
+    if (!mega_session_put_compat(s, remote_path, g_file_get_path(file), &local_err))
     {
       if (!opt_noprogress)
         g_print("\r" ESC_CLREOL);
@@ -170,7 +170,7 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
 
   if (!opt_dryrun)
   {
-    if (!mega_session_get(s, g_file_get_path(file), remote_path, &local_err))
+    if (!mega_session_get_compat(s, g_file_get_path(file), remote_path, &local_err))
     {
       if (!opt_noprogress)
         g_print("\r" ESC_CLREOL);

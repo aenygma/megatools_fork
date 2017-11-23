@@ -79,7 +79,7 @@ int main(int ac, char* av[])
     cur_file = g_path_get_basename(path);
 
     // perform download
-    if (!mega_session_put(s, opt_path, path, &local_err))
+    if (!mega_session_put_compat(s, opt_path, path, &local_err))
     {
       if (!opt_noprogress)
         g_print("\r" ESC_CLREOL "\n");

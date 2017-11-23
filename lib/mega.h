@@ -21,6 +21,7 @@
 #define __OLD_MEGA_H
 
 #include <glib.h>
+#include <gio/gio.h>
 
 // API error domain
 
@@ -39,6 +40,7 @@ typedef struct _mega_share_key mega_share_key;
 typedef struct _mega_user_quota mega_user_quota;
 typedef struct _mega_status_data mega_status_data;
 typedef struct _mega_reg_state mega_reg_state;
+typedef struct _mega_download_data_params mega_download_data_params;
 
 // status callback
 
@@ -65,13 +67,13 @@ struct _mega_status_data
 
     struct
     {
-      gchar* name;
+      const gchar* name;
       guint64 size;
     } fileinfo;
 
     struct
     {
-      guchar* buf;
+      const guchar* buf;
       guint64 size;
     } data;
   };
@@ -131,6 +133,17 @@ struct _mega_reg_state
   guchar challenge[16];
 };
 
+struct _mega_download_data_params
+{
+  guchar node_key[32];
+
+  gchar* download_url;
+
+  gchar* node_handle;
+  gchar* node_name;
+  gsize node_size; 
+};
+
 #define MEGA_DEBUG_API    0x01
 #define MEGA_DEBUG_CACHE  0x02
 #define MEGA_DEBUG_FS     0x04
@@ -169,12 +182,15 @@ GSList*             mega_session_get_node_chilren   (mega_session* s, mega_node*
 mega_node*          mega_session_stat               (mega_session* s, const gchar* path);
 mega_node*          mega_session_mkdir              (mega_session* s, const gchar* path, GError** err);
 gboolean            mega_session_rm                 (mega_session* s, const gchar* path, GError** err);
-mega_node*          mega_session_put                (mega_session* s, const gchar* remote_path, const gchar* local_path, GError** err);
+mega_node*          mega_session_put                (mega_session* s, mega_node* parent_node, GFile* file, GError** err);
 gchar*              mega_session_new_node_attribute (mega_session* s, const guchar* data, gsize len, const gchar* type, const guchar* key, GError** err);
-gboolean            mega_session_get                (mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err);
+gboolean            mega_session_get                (mega_session* s, GFile* file, mega_node* node, GError** err);
 
 gboolean            mega_session_open_exp_folder    (mega_session* s, const gchar* n, const gchar* key, const gchar* specific, GError** err);
-gboolean            mega_session_dl                 (mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err);
+gboolean            mega_session_dl_prepare         (mega_session* s, mega_download_data_params* get_params, const gchar* handle, const gchar* key, GError** err);
+
+gboolean            mega_session_download_data      (mega_session* s, mega_download_data_params* params, GFile* file, GError** err);
+void                mega_download_data_free         (mega_download_data_params* params);
 
 gboolean            mega_node_is_writable           (mega_session* s, mega_node* n);
 
@@ -186,5 +202,12 @@ gchar*              mega_node_get_path_dup          (mega_node* n);
 
 gboolean            mega_session_register           (mega_session* s, const gchar* email, const gchar* password, const gchar* name, mega_reg_state** state, GError** err);
 gboolean            mega_session_register_verify    (mega_session* s, mega_reg_state* state, const gchar* signup_key, GError** err);
+
+// Compatibility / deprecated:
+
+mega_node*          mega_session_put_compat         (mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err);
+gboolean            mega_session_get_compat         (mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err);
+gboolean            mega_session_dl_compat          (mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err);
+
 
 #endif

@@ -55,6 +55,7 @@ int main(int ac, char* av[])
 {
   gc_error_free GError *local_err = NULL;
   mega_session* s;
+  gint i, status = 0;
 
   tool_init(&ac, &av, "- download individual files from mega.nz", entries, TOOL_INIT_AUTH);
 
@@ -82,15 +83,36 @@ int main(int ac, char* av[])
     return 1;
   }
 
+  // stream file
+  if (opt_stream)
+  {
+    mega_node* n = mega_session_stat(s, av[1]);
+    if (!n)
+    {
+      g_printerr("ERROR: Remote file not found: %s", av[1]);
+      return FALSE;
+    }
+
+    if (!mega_session_get(s, NULL, n, &local_err))
+    {
+      g_printerr("ERROR: Download failed for '%s': %s\n", av[1], local_err->message);
+      g_clear_error(&local_err);
+      status = 1;
+    }
+
+    tool_fini(s);
+    return status;
+  }
+
+  // download files
   mega_session_watch_status(s, status_callback, NULL);
 
-  gint i, status = 0;
   for (i = 1; i < ac; i++)
   {
     gc_free gchar* path = tool_convert_filename(av[i], FALSE);
 
     // perform download
-    if (!mega_session_get(s, opt_stream ? NULL : opt_path, path, &local_err))
+    if (!mega_session_get_compat(s, opt_path, path, &local_err))
     {
       if (!opt_noprogress)
         g_print("\r" ESC_CLREOL "\n");

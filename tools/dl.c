@@ -74,7 +74,7 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
   if (!opt_noprogress)
     g_print("F %s\n", local_path);
 
-  if (!mega_session_get(s, local_path, remote_path, &local_err))
+  if (!mega_session_get_compat(s, local_path, remote_path, &local_err))
   {
     if (!opt_noprogress)
       g_print("\r" ESC_CLREOL);
@@ -204,7 +204,7 @@ int main(int ac, char* av[])
       key = g_match_info_fetch(m1, 2);
 
       // perform download
-      if (!mega_session_dl(s, handle, key, opt_stream ? NULL : opt_path, &local_err))
+      if (!mega_session_dl_compat(s, handle, key, opt_stream ? NULL : opt_path, &local_err))
       {
         if (!opt_noprogress)
           g_print("\r" ESC_CLREOL "\n");
