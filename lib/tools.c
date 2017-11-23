@@ -94,13 +94,19 @@ static GOptionEntry basic_options[] =
   { NULL }
 };
 
+static GOptionEntry upload_options[] =
+{
+  { "enable-previews",    '\0',  0, G_OPTION_ARG_NONE,      &opt_enable_previews,  "Generate previews when uploading file",       NULL       },
+  { "disable-previews",   '\0',  G_OPTION_FLAG_REVERSE,
+	                            G_OPTION_ARG_NONE,      &opt_enable_previews,  "Never generate previews when uploading file", NULL       },
+  { NULL }
+};
+
 static GOptionEntry auth_options[] =
 {
   { "username",            'u',  0, G_OPTION_ARG_STRING,    &opt_username,         "Account username (email)",                    "USERNAME" },
   { "password",            'p',  0, G_OPTION_ARG_STRING,    &opt_password,         "Account password",                            "PASSWORD" },
   { "no-ask-password",    '\0',  0, G_OPTION_ARG_NONE,      &opt_no_ask_password,  "Never ask interactively for a password",      NULL       },
-  { "enable-previews",    '\0',  0, G_OPTION_ARG_NONE,      &opt_enable_previews,  "Generate previews when uploading file (default)", NULL       },
-  { "disable-previews",   '\0',  G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE,      &opt_enable_previews,  "Never generate previews when uploading file", NULL       },
   { "reload",             '\0',  0, G_OPTION_ARG_NONE,      &opt_reload_files,     "Reload filesystem cache",                     NULL       },
   { NULL }
 };
@@ -383,6 +389,13 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
     GOptionGroup* auth_group = g_option_group_new("auth", "Authentication Options:", "Show authentication options", NULL, NULL);
     g_option_group_add_entries(auth_group, auth_options);
     g_option_context_add_group(opt_context, auth_group);
+  }
+
+  if (flags & TOOL_INIT_UPLOAD_OPTS)
+  {
+    GOptionGroup* upload_group = g_option_group_new("upload", "Upload Options:", "Show upload options", NULL, NULL);
+    g_option_group_add_entries(upload_group, upload_options);
+    g_option_context_add_group(opt_context, upload_group);
   }
 
   if (!g_option_context_parse(opt_context, ac, av, &local_err))
