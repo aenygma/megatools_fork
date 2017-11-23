@@ -86,6 +86,12 @@ Proxy::
 	* `socks5://localhost:9050` : Local SOCKSv5 proxy server
 	* `socks5h://localhost:9050` : Local SOCKSv5 proxy server with DNS handled by the proxy
 
+[Upload] Section
+~~~~~~~~~~~~~~~
+
+CreatePreviews::
+	Create Previews (see --enable-previews option).
+
 
 EXAMPLE
 -------

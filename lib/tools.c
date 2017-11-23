@@ -39,6 +39,8 @@
 #define MEGA_RC_FILENAME ".megarc"
 #endif
 
+#define BOOLEAN_UNSET_BUT_TRUE 2
+
 static GOptionContext* opt_context;
 static gchar* opt_username;
 static gchar* opt_password;
@@ -54,6 +56,7 @@ static gchar* proxy;
 static gint upload_speed_limit;
 static gint download_seed_limit;
 static gint cache_timout = 10 * 60;
+static gboolean opt_enable_previews = BOOLEAN_UNSET_BUT_TRUE;
 
 static gboolean opt_debug_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
 {
@@ -96,6 +99,8 @@ static GOptionEntry auth_options[] =
   { "username",            'u',  0, G_OPTION_ARG_STRING,    &opt_username,         "Account username (email)",                    "USERNAME" },
   { "password",            'p',  0, G_OPTION_ARG_STRING,    &opt_password,         "Account password",                            "PASSWORD" },
   { "no-ask-password",    '\0',  0, G_OPTION_ARG_NONE,      &opt_no_ask_password,  "Never ask interactively for a password",      NULL       },
+  { "enable-previews",    '\0',  0, G_OPTION_ARG_NONE,      &opt_enable_previews,  "Generate previews when uploading file (default)", NULL       },
+  { "disable-previews",   '\0',  G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE,      &opt_enable_previews,  "Never generate previews when uploading file", NULL       },
   { "reload",             '\0',  0, G_OPTION_ARG_NONE,      &opt_reload_files,     "Reload filesystem cache",                     NULL       },
   { NULL }
 };
@@ -460,6 +465,15 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
       }
 
       proxy = g_key_file_get_string(kf, "Network", "Proxy", NULL);
+      
+      if (opt_enable_previews == BOOLEAN_UNSET_BUT_TRUE)
+      {
+        gboolean enable = g_key_file_get_boolean(kf, "Upload", "CreatePreviews", &local_err);
+        if (local_err == NULL)
+          opt_enable_previews = enable;
+        else
+          g_clear_error(&local_err);
+      }
     }
   }
 
@@ -560,6 +574,8 @@ mega_session* tool_start_session(ToolSessionFlags flags)
 
     mega_session_save(s, NULL);
   }
+
+  mega_session_enable_previews(s, !!opt_enable_previews);
 
   g_free(sid);
   return s;

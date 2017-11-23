@@ -33,7 +33,7 @@ static GOptionEntry entries[] =
   { "recursive",     'R',   0, G_OPTION_ARG_NONE,    &opt_recursive,    "List files in subdirectories",                NULL },
   { "long",          'l',   0, G_OPTION_ARG_NONE,    &opt_long,         "Use a long listing format",                   NULL },
   { "header",       '\0',   0, G_OPTION_ARG_NONE,    &opt_header,       "Show columns header in long listing",         NULL },
-  { "human",         'h',   0, G_OPTION_ARG_NONE,    &opt_human,        "Use a long listing format",                   NULL },
+  { "human",         'h',   0, G_OPTION_ARG_NONE,    &opt_human,        "Human readable sizes",                   NULL },
   //{ "color",         'c',   0, G_OPTION_ARG_NONE,    &opt_color,        "Use color highlighting of node types",        NULL },
   { "export",        'e',   0, G_OPTION_ARG_NONE,    &opt_export,       "Show mega.nz download links (export)",     NULL },
   { NULL }
