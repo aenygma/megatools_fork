@@ -136,6 +136,7 @@ struct _mega_sesssion
   gint64 last_progress;
   guint64 last_progress_bytes;
   gboolean create_preview;
+  gboolean resume_enabled;
 };
 
 // }}}
@@ -2021,6 +2022,7 @@ mega_session* mega_session_new(void)
   s->api_url_params = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
   s->share_keys = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  s->resume_enabled = TRUE;
 
   return s;
 }
@@ -2030,6 +2032,8 @@ mega_session* mega_session_new(void)
 
 void mega_session_set_speed(mega_session* s, gint ul, gint dl)
 {
+  g_return_if_fail(s != NULL);
+
   s->max_ul = ul;
   s->max_dl = dl;
 }
@@ -2039,9 +2043,21 @@ void mega_session_set_speed(mega_session* s, gint ul, gint dl)
 
 void mega_session_set_proxy(mega_session* s, const gchar* proxy)
 {
+  g_return_if_fail(s != NULL);
+
   g_free(s->proxy);
   s->proxy = g_strdup(proxy);
   http_set_proxy(s->http, s->proxy);
+}
+
+// }}}
+// {{{ mega_session_set_resume
+
+void mega_session_set_resume(mega_session* s, gboolean enabled)
+{
+  g_return_if_fail(s != NULL);
+
+  s->resume_enabled = enabled;
 }
 
 // }}}
@@ -3243,7 +3259,7 @@ mega_node* mega_session_put(mega_session* s, mega_node* parent_node, GFile* file
 }
 
 // }}}
-// {{{ get_data
+// {{{ mega_session_download_data
 
 struct get_data_state
 {
@@ -3286,6 +3302,8 @@ static gsize get_data_cb(gpointer buffer, gsize size, struct get_data_state* dat
   return size;
 }
 
+#define RESUME_BUF_SIZE (1024 * 1024)
+
 gboolean mega_session_download_data(mega_session* s, mega_download_data_params* params, GFile* file, GError** err)
 {
   GError* local_err = NULL;
@@ -3298,6 +3316,8 @@ gboolean mega_session_download_data(mega_session* s, mega_download_data_params* 
   struct get_data_state state = {.s = s};
   gc_free gchar* tmp_path = NULL, *file_path = NULL, *tmp_name = NULL;
   gsize download_from = 0;
+  gssize bytes_read;
+  gc_free guchar* buf = NULL;
 
   g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
@@ -3337,52 +3357,91 @@ gboolean mega_session_download_data(mega_session* s, mega_download_data_params* 
 
     tmp_path = g_file_get_path(tmp_file);
 
-#if 0
-    GFileInputStream* tmp_stream = g_file_read(tmp_file, NULL, &local_err);
-    if (tmp_stream == NULL) {
-      g_propagate_prefixed_error(err, local_err, "Can't open previous temporary file for resume %s", tmp_path);
-      return FALSE;
-    }
-
-    gssize bytes_read;
-    guchar buf[1024 * 32];
-
-    while (TRUE) {
-      bytes_read = g_input_stream_read(G_INPUT_STREAM(tmp_stream), buf, sizeof buf, NULL, &local_err);
-      if (bytes_read == 0)
-        break;
-      if (bytes_read < 0)
+    if (s->resume_enabled)
+    {
+      if (g_file_query_exists(tmp_file, NULL))
       {
-        g_propagate_prefixed_error(err, local_err, "Can't read previous temporary file for resume %s", tmp_path);
+        GFileInputStream* tmp_stream = g_file_read(tmp_file, NULL, &local_err);
+        if (tmp_stream == NULL) {
+          g_propagate_prefixed_error(err, local_err, "Can't open previous temporary file for resume %s", tmp_path);
+          return FALSE;
+        }
+
+        buf = g_malloc(RESUME_BUF_SIZE);
+
+        while (TRUE)
+        {
+          bytes_read = g_input_stream_read(G_INPUT_STREAM(tmp_stream), buf, RESUME_BUF_SIZE, NULL, &local_err);
+          if (bytes_read == 0)
+            break;
+          if (bytes_read < 0)
+          {
+            g_object_unref(tmp_stream);
+            g_propagate_prefixed_error(err, local_err, "Can't read previous temporary file for resume %s", tmp_path);
+            return FALSE;
+          }
+
+          // update cbc-mac
+          chunked_cbc_mac_update(&state.mac, buf, bytes_read);
+          download_from += bytes_read;
+        }
+
+        // initialize CTR counter to the download_from position
+        guint64 block_ctr = download_from / 16;
+        // num is a position within a block we are at
+        state.num = download_from % 16;
+        // lower 8 bytes of iv are the CTR block counter in big-endian
+        *(guint64*)(state.iv + 8) = GUINT64_TO_BE(block_ctr);
+        // prepare encrypted counter for the current block
+        AES_encrypt(state.iv, state.ecount, &state.k);
+        // if num > 0, AES_ctr128_encrypt expects next block counter in iv
+        if (state.num > 0)
+          *(guint64*)(state.iv + 8) = GUINT64_TO_BE(block_ctr + 1);
+
+        g_object_unref(tmp_stream);
+
+        // append to temporary file
+        state.stream = stream = g_file_append_to(tmp_file, 0, NULL, &local_err);
+        if (!state.stream)
+        {
+          g_propagate_prefixed_error(err, local_err, "Can't open local file %s for appending: ", tmp_path);
+          return FALSE;
+        }
+      }
+      else
+      {
+        // create temporary file
+        state.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
+        if (!state.stream)
+        {
+          g_propagate_prefixed_error(err, local_err, "Can't open local file %s for writing: ", tmp_path);
+          return FALSE;
+        }
+      }
+    }
+    else // !resume_enabled
+    {
+      // if temporary file exists, delete it
+      if (g_file_query_exists(tmp_file, NULL) && !g_file_delete(tmp_file, NULL, &local_err))
+      {
+        g_propagate_prefixed_error(err, local_err, "Can't delete previous temporary file %s", tmp_name);
         return FALSE;
       }
 
-      // update cbc-mac
-      chunked_cbc_mac_update(&state.mac, buf, bytes_read);
-      download_from += bytes_read;
-    }
-
-    g_object_unref(tmp_stream);
-#else
-    // if temporary file exists, delete it
-    if (g_file_query_exists(tmp_file, NULL) && !g_file_delete(tmp_file, NULL, &local_err))
-    {
-      g_propagate_prefixed_error(err, local_err, "Can't delete previous temporary file %s", tmp_name);
-      return FALSE;
-    }
-#endif
-
-    // open local file for writing
-    state.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
-    if (!state.stream)
-    {
-      g_propagate_prefixed_error(err, local_err, "Can't open local file %s for writing: ", tmp_path);
-      return FALSE;
+      // create temporary file
+      state.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
+      if (!state.stream)
+      {
+        g_propagate_prefixed_error(err, local_err, "Can't open local file %s for writing: ", tmp_path);
+        return FALSE;
+      }
     }
   }
 
-  //XXX: make url so that download start from *download_from*
-  url = g_strdup(params->download_url);
+  if (download_from > 0)
+    url = g_strdup_printf("%s/%" PRIu64 "-%" PRIu64, params->download_url, download_from, params->node_size - 1);
+  else
+    url = g_strdup(params->download_url);
 
   // setup buffer
   state.buffer = buffer = g_byte_array_new();
@@ -3679,7 +3738,7 @@ gboolean mega_node_get_path(mega_node* n, gchar* buf, gsize len)
 }
 
 // }}}
-// {{{
+// {{{ mega_node_is_container
 
 gboolean mega_node_is_container(mega_node* n)
 {
