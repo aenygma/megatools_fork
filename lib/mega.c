@@ -3454,7 +3454,7 @@ gboolean mega_session_download_data(mega_session* s, mega_download_data_params* 
   if (!http_post_stream_download(h, url, (http_data_fn)get_data_cb, &state, &local_err))
   {
     g_propagate_prefixed_error(err, local_err, "Data download failed: ");
-    goto err;
+    goto err_noremove;
   }
 
   // check mac of the downloaded file
@@ -3471,7 +3471,7 @@ gboolean mega_session_download_data(mega_session* s, mega_download_data_params* 
     if (!g_output_stream_close(G_OUTPUT_STREAM(state.stream), NULL, &local_err))
     {
       g_propagate_prefixed_error(err, local_err, "Can't close downloaded file: ");
-      goto err;
+      goto err_noremove;
     }
 
     g_object_unref(state.stream);
@@ -3490,6 +3490,7 @@ err:
   if (tmp_file)
     g_file_delete(tmp_file, NULL, NULL);
 
+err_noremove:
   return FALSE;
 }
 
