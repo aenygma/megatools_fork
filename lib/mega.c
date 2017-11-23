@@ -3340,8 +3340,9 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
   struct _get_data data;
   GError* local_err = NULL;
   gc_object_unref GFile* file = NULL;
+  gc_object_unref GFile* dir = NULL;
+  gc_object_unref GFile* tmp_file = NULL;
   gc_object_unref GFileOutputStream* stream = NULL;
-  gboolean remove_file = FALSE;
   gc_free gchar* get_node = NULL, *url = NULL;
   gc_http_free http* h = NULL;
   gc_byte_array_unref GByteArray* buffer = NULL;
@@ -3395,15 +3396,37 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
       }
     }
 
-    data.stream = stream = g_file_create(file, 0, NULL, &local_err);
+    dir = g_file_get_parent(file);
+    if (!dir)
+    {
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File %s does not have a parent directory: ", local_path);
+      return FALSE;
+    }
+
+    gc_free gchar* tmp_name = g_strdup_printf(".megatmp.%s", n->handle);
+    tmp_file = g_file_get_child(dir, tmp_name);
+    if (tmp_file == NULL)
+    {
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't get temporary file %s", tmp_name);
+      return FALSE;
+    }
+
+    if (g_file_query_exists(tmp_file, NULL) && !g_file_delete(tmp_file, NULL, &local_err))
+    {
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't delete previous temporary file %s", tmp_name);
+      return FALSE;
+    }
+
+    // open local file for writing
+    data.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
     if (!data.stream)
     {
-      g_propagate_prefixed_error(err, local_err, "Can't open local file %s for writing: ", local_path);
+      gc_free gchar* tmp = g_file_get_path(tmp_file);
+
+      g_propagate_prefixed_error(err, local_err, "Can't open local file %s for writing: ", tmp);
       return FALSE;
     }
   }
-
-  remove_file = TRUE;
 
   // initialize decrytpion key/state
   guchar aes_key[16], meta_mac_xor[8];
@@ -3447,7 +3470,7 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
     goto err;
   }
 
-  if (file)
+  if (data.stream)
   {
     if (!g_output_stream_close(G_OUTPUT_STREAM(data.stream), NULL, &local_err))
     {
@@ -3465,12 +3488,21 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
     goto err;
   }
 
+  if (!g_file_move(tmp_file, file, G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE, NULL, NULL, NULL, &local_err))
+  {
+    gc_free gchar* tmp_path = g_file_get_path(tmp_file);
+    gc_free gchar* target_path = g_file_get_path(file);
+    g_propagate_prefixed_error(err, local_err, "Can't rename donwloaded temporary file %s to %s (downloaded data are good!): ", tmp_path, target_path);
+    goto err_noremove;
+  }
+
   return TRUE;
 
 err:
-  if (file && remove_file)
-    g_file_delete(file, NULL, NULL);
+  if (tmp_file)
+    g_file_delete(tmp_file, NULL, NULL);
 
+err_noremove:
   return FALSE;
 }
 
@@ -3522,8 +3554,7 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
 {
   struct _dl_data data;
   GError* local_err = NULL;
-  gc_object_unref GFile *parent_dir = NULL, *file = NULL;
-  gboolean remove_file = FALSE;
+  gc_object_unref GFile *parent_dir = NULL, *file = NULL, *tmp_file = NULL;
   gc_free gchar *node_name = NULL, *dl_node = NULL, *url = NULL, *at = NULL;
   gc_free guchar* node_key = NULL;
   gc_http_free http* h = NULL;
@@ -3647,22 +3678,31 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
   {
     if (!file)
       file = g_file_get_child(parent_dir, node_name);
-  }
 
-  if (local_path)
-  {
+    gc_free gchar* tmp_name = g_strdup_printf(".megatmp.%s", handle);
+    tmp_file = g_file_get_child(parent_dir, tmp_name);
+    if (tmp_file == NULL)
+    {
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't get temporary file %s", tmp_name);
+      goto err;
+    }
+
+    if (g_file_query_exists(tmp_file, NULL) && !g_file_delete(tmp_file, NULL, &local_err))
+    {
+      g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't delete previous temporary file %s", tmp_name);
+      return FALSE;
+    }
+
     // open local file for writing
-    data.stream = stream = g_file_create(file, 0, NULL, &local_err);
+    data.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
     if (!data.stream)
     {
-      gc_free gchar* tmp = g_file_get_path(file);
+      gc_free gchar* tmp = g_file_get_path(tmp_file);
 
       g_propagate_prefixed_error(err, local_err, "Can't open local file %s for writing: ", tmp);
       goto err;
     }
   }
-
-  remove_file = TRUE;
 
   // initialize decryption and mac calculation
   AES_set_encrypt_key(aes_key, 128, &data.k);
@@ -3700,12 +3740,21 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
     goto err;
   }
 
+  if (!g_file_move(tmp_file, file, G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE, NULL, NULL, NULL, &local_err))
+  {
+    gc_free gchar* tmp_path = g_file_get_path(tmp_file);
+    gc_free gchar* target_path = g_file_get_path(file);
+    g_propagate_prefixed_error(err, local_err, "Can't rename donwloaded temporary file %s to %s (downloaded data are good!): ", tmp_path, target_path);
+    goto err_noremove;
+  }
+
   return TRUE;
 
 err:
-  if (file && remove_file)
-      g_file_delete(file, NULL, NULL);
+  if (tmp_file)
+    g_file_delete(tmp_file, NULL, NULL);
 
+err_noremove:
   return FALSE;
 }
 
