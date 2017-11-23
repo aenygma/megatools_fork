@@ -4236,7 +4236,7 @@ gboolean mega_session_register_verify(mega_session* s, mega_reg_state* state, co
 
 // {{{ Compatibility: old interfaces
 
-mega_node* mega_session_put_compat(mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err)
+mega_node* mega_session_put_compat(mega_session* s, const gchar* remote_path, const gchar* local_path, GError** err)
 {
   gc_object_unref GFile* file = NULL;
   mega_node* node, *parent_node;

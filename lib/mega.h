@@ -206,7 +206,7 @@ gboolean            mega_session_register_verify    (mega_session* s, mega_reg_s
 
 // Compatibility / deprecated:
 
-mega_node*          mega_session_put_compat         (mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err);
+mega_node*          mega_session_put_compat         (mega_session* s, const gchar* remote_path, const gchar* local_path, GError** err);
 gboolean            mega_session_get_compat         (mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err);
 gboolean            mega_session_dl_compat          (mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err);
 
