@@ -3488,7 +3488,7 @@ gboolean mega_session_get(mega_session* s, const gchar* local_path, const gchar*
     goto err;
   }
 
-  if (!g_file_move(tmp_file, file, G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE, NULL, NULL, NULL, &local_err))
+  if (file && !g_file_move(tmp_file, file, G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE, NULL, NULL, NULL, &local_err))
   {
     gc_free gchar* tmp_path = g_file_get_path(tmp_file);
     gc_free gchar* target_path = g_file_get_path(file);
@@ -3740,7 +3740,7 @@ gboolean mega_session_dl(mega_session* s, const gchar* handle, const gchar* key,
     goto err;
   }
 
-  if (!g_file_move(tmp_file, file, G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE, NULL, NULL, NULL, &local_err))
+  if (file && !g_file_move(tmp_file, file, G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE, NULL, NULL, NULL, &local_err))
   {
     gc_free gchar* tmp_path = g_file_get_path(tmp_file);
     gc_free gchar* target_path = g_file_get_path(file);
