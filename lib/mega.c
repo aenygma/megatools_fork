@@ -3439,7 +3439,7 @@ gboolean mega_session_download_data(mega_session* s, mega_download_data_params* 
   }
 
   if (download_from > 0)
-    url = g_strdup_printf("%s/%" PRIu64 "-%" PRIu64, params->download_url, download_from, params->node_size - 1);
+    url = g_strdup_printf("%s/%" G_GUINT64_FORMAT "-%" G_GUINT64_FORMAT, params->download_url, download_from, params->node_size - 1);
   else
     url = g_strdup(params->download_url);
 
