@@ -187,6 +187,16 @@ Support and bug reports
 If you think you've found bug in megatools, send a report including enough
 information for recreating the issue to: megous@megous.com
 
+IMPORTANT: I use personal e-mail server for my e-mail communication. I respond
+to most e-mails, so if you are not getting a response within a few days, and
+you're a user of a more aggressive e-mail provider (Outlook, iCloud, ...) it may
+be because your provider rejected my e-mail as SPAM and did not deliver it at
+all (not even to your SPAM folder), despite it being response to your e-mail and
+my server using industry's best practices. You can either contact your e-mail
+provider so that they fix their issue with rejecting legitimate responses to
+your mail, or use different e-mail provider or contact channel to contact me.
+(github issues) 
+
 
 License
 =======
