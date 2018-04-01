@@ -73,9 +73,13 @@ static gboolean opt_debug_callback(const gchar *option_name, const gchar *value,
         mega_debug |= MEGA_DEBUG_FS;
       else if (g_ascii_strcasecmp(*opt, "cache") == 0)
         mega_debug |= MEGA_DEBUG_CACHE;
+      else if (g_ascii_strcasecmp(*opt, "http") == 0)
+        mega_debug |= MEGA_DEBUG_HTTP;
 
       opt++;
     }
+
+    g_strfreev(opts);
   }
   else
   {

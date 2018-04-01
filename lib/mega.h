@@ -147,6 +147,7 @@ struct _mega_download_data_params
 #define MEGA_DEBUG_API    0x01
 #define MEGA_DEBUG_CACHE  0x02
 #define MEGA_DEBUG_FS     0x04
+#define MEGA_DEBUG_HTTP   0x08
 
 extern gint mega_debug;
 

@@ -34,6 +34,7 @@
 +
 Available options are:
 
+	* `http`: Dump HTTP request/response details (can be used to debug connection/proxy issues)
 	* `api`: Dump Mega.nz API calls
 	* `fs`: Dump Mega.nz filesystem (may require `--reload` to actually print something)
 	* `cache`: Dump cache contents

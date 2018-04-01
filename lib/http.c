@@ -18,6 +18,7 @@
  */
 
 #include "http.h"
+#include "mega.h"
 #include "config.h"
 #include <curl/curl.h>
 #include <string.h>
@@ -60,9 +61,8 @@ http* http_new(void)
 #endif
   curl_easy_setopt(h->curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 
-#if DEBUG_CURL == 1
-  curl_easy_setopt(h->curl, CURLOPT_VERBOSE, 1L);
-#endif
+  if (mega_debug & MEGA_DEBUG_HTTP)
+    curl_easy_setopt(h->curl, CURLOPT_VERBOSE, 1L);
 
   //XXX: don't use alarm signal to time out dns queries
   //curl_easy_setopt(h->curl, CURLOPT_NOSIGNAL, 1L);
