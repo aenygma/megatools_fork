@@ -112,7 +112,7 @@ You will need to install dependnencies first, to be able to do the build from
 the official source code tarball, which is available only at
 http://megatools.megous.com.
 
-You can also check that the code was released by me, using GPG signatures
+You can also check that the code was released by me, using PGP signatures
 provided alongside the code.
 
 Please don't report build issues against code that you downloaded from github.
@@ -146,6 +146,9 @@ Author
 
 Megatools were written by Ondřej Jirman <megous@megous.com>, 2014-2017
 Webiste: https://megatools.megous.com
+My PGP key can be found at: https://megous.com/pgp
+  (Fingerprint is: 9AB138B20691621CD4CF92026E6426C677CFEFF1)
+
 
 If you'd like to donate, you can use:
 
