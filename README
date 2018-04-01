@@ -34,8 +34,6 @@ Tools
   megaget      Download individual files
   megadl       Download file from a "public" Mega link
                (doesn't require login)
-  megastream   Streaming download of a file
-               (can be used to preview videos or music)
   megacopy     Upload or download a directory tree
 
 
