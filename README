@@ -54,8 +54,20 @@ See man pages for how to use individual tools and how to configure them:
   man megatools
 
 Man pages are also available online at:
-  
+
   https://megatools.megous.com/man/megatools.html
+
+
+Installation on Windows
+=======================
+
+Megatools is available on Windows via Chocolatey thanks to ERap320. See:
+
+  https://chocolatey.org/packages/megatools/
+
+You can contact the package maintainer here:
+
+  https://github.com/megous/megatools/issues/347
 
 
 Windows Quirks
