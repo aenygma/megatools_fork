@@ -153,6 +153,19 @@ On Arch Linux:
   pacman -Sy --noconfirm --needed pkg-config gcc make glib2 curl gmp nettle
 
 
+Third party tools/scripts
+=========================
+
+Megatools are meant as a low-level tools that can be used as a base to create
+more complicated tools for working with mega.nz. Other people have created
+a third party scripts on top of megatools. If you're one of them and want to
+have your project listed here, let me know.
+
+Some third party tools can be found at:
+
+  https://amourspirit.github.io/mega_scripts/
+
+
 Author
 ======
 
