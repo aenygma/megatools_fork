@@ -41,6 +41,7 @@ typedef gboolean (*http_progress_fn)(goffset total, goffset now, gpointer user_d
 
 http* http_new(void);
 
+void http_expect_short_running(http* h);
 void http_set_referer(http* h, const gchar* referer);
 void http_set_user_agent(http* h, const gchar* ua);
 void http_set_content_type(http* h, const gchar* type);

@@ -3225,6 +3225,7 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 
   // perform upload POST
   h = http_new();
+  http_expect_short_running(h);
   http_set_content_type(h, "application/octet-stream");
   http_set_progress_callback(h, (http_progress_fn)tman_transfer_progress, c);
   http_set_speed(h, t->max_ul, t->max_dl);

@@ -31,8 +31,6 @@
   (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
 #endif
 
-#define DEBUG_CURL 0
-
 struct _http
 {
   CURL* curl;
@@ -64,9 +62,6 @@ http* http_new(void)
   if (mega_debug & MEGA_DEBUG_HTTP)
     curl_easy_setopt(h->curl, CURLOPT_VERBOSE, 1L);
 
-  //XXX: don't use alarm signal to time out dns queries
-  //curl_easy_setopt(h->curl, CURLOPT_NOSIGNAL, 1L);
-
   curl_easy_setopt(h->curl, CURLOPT_FOLLOWLOCATION, 1L);
   curl_easy_setopt(h->curl, CURLOPT_TCP_KEEPALIVE, 1L);
   curl_easy_setopt(h->curl, CURLOPT_TCP_KEEPIDLE, 120L);
@@ -80,6 +75,17 @@ http* http_new(void)
   http_set_user_agent(h, "Mozilla/5.0 (X11; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0");
 
   return h;
+}
+
+void http_expect_short_running(http* h)
+{
+  g_return_if_fail(h != NULL);
+
+  // don't use alarm signal to time out dns queries
+  curl_easy_setopt(h->curl, CURLOPT_NOSIGNAL, 1L);
+  curl_easy_setopt(h->curl, CURLOPT_TIMEOUT, 180L); // 180s max per connection
+  curl_easy_setopt(h->curl, CURLOPT_LOW_SPEED_TIME, 30L); // 30s max of very low speed
+  curl_easy_setopt(h->curl, CURLOPT_LOW_SPEED_LIMIT, 60L);
 }
 
 void http_set_header(http* h, const gchar* name, const gchar* value)
