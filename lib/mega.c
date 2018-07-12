@@ -50,6 +50,26 @@ DEFINE_CLEANUP_FUNCTION_NULL(BIGNUM*, BN_free)
 
 gint mega_debug = 0;
 
+// Compat:
+
+// {{{ AES_ctr128_encrypt
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+void AES_ctr128_encrypt(
+  const unsigned char *in, 
+  unsigned char *out,
+  size_t length, 
+  const AES_KEY *key,
+  unsigned char ivec[AES_BLOCK_SIZE],
+  unsigned char ecount_buf[AES_BLOCK_SIZE],
+  unsigned int *num) 
+{
+  CRYPTO_ctr128_encrypt(in, out, length, key, ivec, ecount_buf, num, (block128_f)AES_encrypt);
+}
+#endif
+
+// }}}
+
 // Data structures and enums
 
 // {{{ SRV_E*
@@ -3081,20 +3101,6 @@ struct _put_data
   chunked_cbc_mac mac;
   GByteArray* buffer;
 };
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-void AES_ctr128_encrypt(
-  const unsigned char *in, 
-  unsigned char *out,
-  size_t length, 
-  const AES_KEY *key,
-  unsigned char ivec[AES_BLOCK_SIZE],
-  unsigned char ecount_buf[AES_BLOCK_SIZE],
-  unsigned int *num) 
-{
-  CRYPTO_ctr128_encrypt(in, out, length, key, ivec, ecount_buf, num, (block128_f)AES_encrypt);
-}
-#endif
 
 static gsize put_process_data(gpointer buffer, gsize size, struct _put_data* data)
 {
