@@ -227,31 +227,21 @@ GString* http_post(http* h, const gchar* url, const gchar* body, gssize body_len
     if (curl_easy_getinfo(h->curl, CURLINFO_RESPONSE_CODE, &http_status) == CURLE_OK)
     {
       if (http_status == 200 || http_status == 201)
-      {
         goto out;
-      }
       else if (http_status == 500)
-      {
         g_set_error(err, HTTP_ERROR, HTTP_ERROR_SERVER_BUSY, "Server returned %ld (probably busy)", http_status);
-      }
       else
-      {
         g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Server returned %ld", http_status);
-      }
     }
     else
-    {
       g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Can't get http status code");
-    }
   }
+  else if (res == CURLE_OPERATION_TIMEDOUT)
+    g_set_error(err, HTTP_ERROR, HTTP_ERROR_TIMEOUT, "CURL timeout: %s", curl_easy_strerror(res));
   else if (res == CURLE_GOT_NOTHING)
-  {
     g_set_error(err, HTTP_ERROR, HTTP_ERROR_NO_RESPONSE, "CURL error: %s", curl_easy_strerror(res));
-  }
   else
-  {
     g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "CURL error: %s", curl_easy_strerror(res));
-  }
 
   g_string_free(response, TRUE);
   response = NULL;
@@ -324,23 +314,17 @@ GString* http_post_stream_upload(http* h, const gchar* url, goffset len, http_da
         goto out;
       }
       else
-      {
         g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Server returned %ld", http_status);
-      }
     }
     else
-    {
       g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Can't get http status code");
-    }
   }
+  else if (res == CURLE_OPERATION_TIMEDOUT)
+    g_set_error(err, HTTP_ERROR, HTTP_ERROR_TIMEOUT, "CURL timeout: %s", curl_easy_strerror(res));
   else if (res == CURLE_GOT_NOTHING)
-  {
     g_set_error(err, HTTP_ERROR, HTTP_ERROR_NO_RESPONSE, "CURL error: %s", curl_easy_strerror(res));
-  }
   else
-  {
     g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "CURL error: %s", curl_easy_strerror(res));
-  }
 
   g_string_free(response, TRUE);
   response = NULL;
@@ -423,19 +407,15 @@ gboolean http_post_stream_download(http* h, const gchar* url, http_data_fn write
         goto out;
       }
       else
-      {
         g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Server returned %ld", http_status);
-      }
     }
     else
-    {
       g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Can't get http status code");
-    }
   }
+  else if (res == CURLE_OPERATION_TIMEDOUT)
+    g_set_error(err, HTTP_ERROR, HTTP_ERROR_TIMEOUT, "CURL timeout: %s", curl_easy_strerror(res));
   else
-  {
     g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "CURL error: %s", curl_easy_strerror(res));
-  }
 
 out:
   curl_easy_setopt(h->curl, CURLOPT_HTTPHEADER, NULL);
