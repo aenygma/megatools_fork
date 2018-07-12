@@ -121,14 +121,9 @@ void http_set_user_agent(http* h, const gchar* ua)
 static int curl_progress(http* h, double dltotal, double dlnow, double ultotal, double ulnow)
 {
   if (h->progress_cb 
-#ifdef G_OS_WIN32
-    && (!h->last_progress || h->last_progress + 1 < time(NULL))
-#endif
-  )
+    && (!h->last_progress || h->last_progress + 1 < time(NULL)))
   {
-#ifdef G_OS_WIN32
     h->last_progress = time(NULL);
-#endif
 
     if (!h->progress_cb(dltotal + ultotal, dlnow + ulnow, h->progress_data))
       return 1; // cancel
