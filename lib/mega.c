@@ -961,25 +961,15 @@ static guchar* make_request_id(void)
 }
 
 // }}}
-// {{{ chunked CBC-MAC
+// {{{ chunk locations
 
-static guint64 get_chunk_size(gsize idx)
+static guint get_chunk_size(gsize idx)
 {
   return (idx < 8 ? idx + 1 : 8) * 1024 * 128;
 }
 
-/*
-static gsize get_chunk_off(gint idx)
-{
-  gsize p = 0;
-  gint i = 0;
-
-  for (i = 0; i < idx; i++)
-    p += get_chunk_size(i);
-
-  return p;
-}
-*/
+// }}}
+// {{{ chunked CBC-MAC
 
 typedef struct 
 {
