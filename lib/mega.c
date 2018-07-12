@@ -1089,6 +1089,69 @@ static void chunked_cbc_mac_finish8(chunked_cbc_mac* mac, guchar mac_out[8])
 }
 
 // }}}
+// {{{ chunked CBC-MAC (out of order interface)
+
+static void chunk_mac_calculate(guchar iv[8], AES_KEY* k, const guchar* data, gsize len, guchar mac[16])
+{
+  guint position = 0;
+  gint i;
+
+  g_return_if_fail(iv != NULL);
+  g_return_if_fail(k != NULL);
+  g_return_if_fail(data != NULL);
+  g_return_if_fail(len > 0);
+  g_return_if_fail(mac != NULL);
+
+  memcpy(mac, iv, 8);
+  memcpy(mac + 8, iv, 8);
+
+  for (i = 0; i < len; i++)
+  {
+    mac[position++ % 16] ^= data[i];
+
+    if (G_UNLIKELY((position % 16) == 0))
+      AES_encrypt(mac, mac, k);
+  }
+
+  if (position % 16)
+    AES_encrypt(mac, mac, k);
+}
+
+// meta-mac is xor of all chunk macs encrypted along the way
+// chunks is an ordered list of 16 byte chunk mac buffers
+static void meta_mac_calculate(GSList* chunks, AES_KEY* k, guchar meta_mac[16])
+{
+  GSList* ci;
+
+  g_return_if_fail(chunks != NULL);
+  g_return_if_fail(k != NULL);
+  g_return_if_fail(meta_mac != NULL);
+
+  memset(meta_mac, 0, 16);
+
+  for (ci = chunks; ci; ci = ci->next)
+  {
+    guchar* mac = ci->data;
+    gint i;
+
+    for (i = 0; i < 16; i++)
+      meta_mac[i] ^= mac[i];
+
+    AES_encrypt(meta_mac, meta_mac, k);
+  }
+}
+
+static void meta_mac_pack(guchar meta_mac[16], guchar packed[8])
+{
+  gint i;
+
+  for (i = 0; i < 4; i++)
+    packed[i] = meta_mac[i] ^ meta_mac[i + 4];
+  for (i = 0; i < 4; i++)
+    packed[i + 4] = meta_mac[i + 8] ^ meta_mac[i + 12];
+}
+
+// }}}
 // {{{ unpack_node_key
 
 static void unpack_node_key(guchar node_key[32], guchar aes_key[16], guchar nonce[8], guchar meta_mac_xor[8])
