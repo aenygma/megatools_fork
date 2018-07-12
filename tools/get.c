@@ -42,6 +42,7 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
   if (data->type == MEGA_STATUS_FILEINFO)
   {
+    g_free(cur_file);
     cur_file = g_strdup(data->fileinfo.name);
   }
 
