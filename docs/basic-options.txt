@@ -38,6 +38,7 @@ Available options are:
 	* `api`: Dump Mega.nz API calls
 	* `fs`: Dump Mega.nz filesystem (may require `--reload` to actually print something)
 	* `cache`: Dump cache contents
+	* `tman`: Dump transfer manager events
 
 --version::
 	Show version information
