@@ -76,7 +76,8 @@ http* http_new(void)
 
   // set default headers
   http_set_referer(h, "https://mega.nz/");
-  http_set_user_agent(h, "Megatools (" VERSION ")");
+//  http_set_user_agent(h, "Megatools (" VERSION ")");
+  http_set_user_agent(h, "Mozilla/5.0 (X11; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0");
 
   return h;
 }
