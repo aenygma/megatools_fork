@@ -30,6 +30,30 @@
   (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
 #endif
 
+#define ENABLE_CONN_SHARING
+
+#if CURL_AT_LEAST_VERSION(7,57,0) && defined ENABLE_CONN_SHARING
+static CURLSH *http_share;
+static GRWLock http_locks[CURL_LOCK_DATA_LAST];
+
+static void http_lock_cb(CURL *handle, curl_lock_data data, curl_lock_access access, void *userptr)
+{
+  if (access == CURL_LOCK_ACCESS_SHARED)
+    g_rw_lock_reader_lock(&http_locks[data]);
+  else
+    g_rw_lock_writer_lock(&http_locks[data]);
+}
+
+static void http_unlock_cb(CURL *handle, curl_lock_data data, void *userptr)
+{
+  // the implementation is the same for reader/writer unlock (so we just use
+  // writer_unlock)
+  g_rw_lock_writer_unlock(&http_locks[data]);
+}
+
+G_LOCK_DEFINE_STATIC(http_init);
+#endif
+
 struct _http
 {
   CURL* curl;
@@ -49,6 +73,30 @@ http* http_new(void)
     g_free(h);
     return NULL;
   }
+
+#if CURL_AT_LEAST_VERSION(7,57,0) && defined ENABLE_CONN_SHARING
+  G_LOCK(http_init);
+
+  if (!http_share)
+  {
+    http_share = curl_share_init();
+
+    curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+    curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+    curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_SSL_SESSION);
+    curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+
+    for (int i = 0; i < G_N_ELEMENTS(http_locks); i++)
+      g_rw_lock_init(&http_locks[i]);
+
+    curl_share_setopt(http_share, CURLSHOPT_LOCKFUNC, http_lock_cb);
+    curl_share_setopt(http_share, CURLSHOPT_UNLOCKFUNC, http_unlock_cb);
+  }
+
+  G_UNLOCK(http_init);
+
+  curl_easy_setopt(h->curl, CURLOPT_SHARE, http_share);
+#endif
 
 #if CURL_AT_LEAST_VERSION(7,21,6)
   curl_easy_setopt(h->curl, CURLOPT_ACCEPT_ENCODING, "");
