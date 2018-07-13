@@ -22,7 +22,6 @@
 #include "config.h"
 #include <curl/curl.h>
 #include <string.h>
-#include <time.h>
 
 // curlver.h: this macro was added in May 14, 2015
 #ifndef CURL_AT_LEAST_VERSION
@@ -38,7 +37,6 @@ struct _http
 
   http_progress_fn progress_cb;
   gpointer progress_data;
-  time_t last_progress;
 };
 
 http* http_new(void)
@@ -126,11 +124,8 @@ void http_set_user_agent(http* h, const gchar* ua)
 
 static int curl_progress(http* h, double dltotal, double dlnow, double ultotal, double ulnow)
 {
-  if (h->progress_cb 
-    && (!h->last_progress || h->last_progress + 1 < time(NULL)))
+  if (h->progress_cb)
   {
-    h->last_progress = time(NULL);
-
     if (!h->progress_cb(dltotal, dlnow, ultotal, ulnow, h->progress_data))
       return 1; // cancel
   }
