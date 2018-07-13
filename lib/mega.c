@@ -3127,6 +3127,7 @@ struct transfer_manager_msg
   gint type;
   struct transfer* transfer;
   struct transfer_chunk* chunk;
+  goffset transfered_size; // how many bytes of a chunk have been transfered
   gchar* upload_handle; // can be sent with the last chunk update
 };
 
@@ -3143,10 +3144,10 @@ struct transfer_manager
 };
 
 static struct transfer_manager tman;
-G_LOCK_DEFINE_STATIC(progress);
 
-static gboolean tman_transfer_progress(goffset total, goffset now, struct transfer_chunk* c)
+static gboolean tman_transfer_progress(goffset dltotal, goffset dlnow, goffset ultotal, goffset ulnow, gpointer user_data)
 {
+  struct transfer_chunk* c = user_data;
   struct transfer_manager_msg* msg;
 
   //tman_debug("W: progress for chunk %d (status=%d)\n", c->index, c->status);
@@ -3154,11 +3155,7 @@ static gboolean tman_transfer_progress(goffset total, goffset now, struct transf
   msg = g_new0(struct transfer_manager_msg, 1);
   msg->type = TRANSFER_MANAGER_MSG_CHUNK_PROGRESS;
   msg->chunk = c;
-  G_LOCK(progress);
-  c->transfer->transfered_size += now - c->transfered_size;
-  G_UNLOCK(progress);
-  c->transfered_size = now;
-
+  msg->transfered_size = MIN(ulnow, c->size);
   g_async_queue_push(tman.manager_mailbox, msg);
 
   return TRUE;
@@ -3227,7 +3224,7 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
   h = http_new();
   http_expect_short_running(h);
   http_set_content_type(h, "application/octet-stream");
-  http_set_progress_callback(h, (http_progress_fn)tman_transfer_progress, c);
+  http_set_progress_callback(h, tman_transfer_progress, c);
   http_set_speed(h, t->max_ul, t->max_dl);
   http_set_proxy(h, t->proxy);
   response = http_post(h, url, buf, c->size, &local_err);
@@ -3266,16 +3263,19 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 
   tman_debug("W: success for chunk %d\n", c->index);
 
+  // final progress update for 100%
+  msg = g_new0(struct transfer_manager_msg, 1);
+  msg->type = TRANSFER_MANAGER_MSG_CHUNK_PROGRESS;
+  msg->chunk = c;
+  msg->transfered_size = c->size;
+  g_async_queue_push(tman.manager_mailbox, msg);
+
   // send success to the manager
   msg = g_new0(struct transfer_manager_msg, 1);
   msg->type = TRANSFER_MANAGER_MSG_CHUNK_COMPLETE;
   msg->chunk = c;
   msg->upload_handle = upload_handle;
   c->status = CHUNK_STATE_DONE;
-  G_LOCK(progress);
-  t->transfered_size -= c->size - c->transfered_size;
-  G_UNLOCK(progress);
-  c->transfered_size = c->size;
   g_clear_error(&c->error);
   g_async_queue_push(tman.manager_mailbox, msg);
   return;
@@ -3283,9 +3283,12 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 err:
   tman_debug("W: error for chunk %d: %s\n", c->index, err->message);
 
-  G_LOCK(progress);
-  t->transfered_size -= c->transfered_size;
-  G_UNLOCK(progress);
+  // final progress update for 0% (because we failed to transfer the chunk)
+  msg = g_new0(struct transfer_manager_msg, 1);
+  msg->type = TRANSFER_MANAGER_MSG_CHUNK_PROGRESS;
+  msg->chunk = c;
+  msg->transfered_size = 0;
+  g_async_queue_push(tman.manager_mailbox, msg);
 
   // send error to the manager
   msg = g_new0(struct transfer_manager_msg, 1);
@@ -3454,10 +3457,13 @@ static gpointer tman_manager_thread_fn(gpointer data)
           //tman_debug("M: chunk progress for %d\n", c->index);
           tmsg = g_new0(struct transfer_msg, 1);
           tmsg->type = TRANSFER_MSG_PROGRESS;
+
+          // update overall progress
+          t->transfered_size += msg->transfered_size - c->transfered_size;
+          c->transfered_size = msg->transfered_size;
+
           tmsg->total_size = t->total_size;
-          G_LOCK(progress);
           tmsg->transfered_size = t->transfered_size;
-          G_UNLOCK(progress);
           g_async_queue_push(t->submitter_mailbox, tmsg);
           break;
         }
@@ -3896,20 +3902,21 @@ mega_node* mega_session_put(mega_session* s, mega_node* parent_node, GFile* file
 // }}}
 // {{{ mega_session_download_data
 
-static gboolean progress_generic(goffset total, goffset now, mega_session* s)
+static gboolean progress_generic(goffset dltotal, goffset dlnow, goffset ultotal, goffset ulnow, gpointer user_data)
 {
+  mega_session* s = user_data;
   const gint64 timenow = g_get_monotonic_time();
   if (s->last_progress && s->last_progress + PROGRESS_FREQUENCY > timenow)
     return TRUE;
 
   init_status(s, MEGA_STATUS_PROGRESS);
-  s->status_data.progress.total = total;
-  s->status_data.progress.done = now;
+  s->status_data.progress.total = dltotal;
+  s->status_data.progress.done = dlnow;
   s->status_data.progress.last = s->last_progress_bytes;
   s->status_data.progress.span = timenow - s->last_progress;
 
   s->last_progress = timenow;
-  s->last_progress_bytes = now;
+  s->last_progress_bytes = dlnow;
 
   if (send_status(s))
       return FALSE;
@@ -4104,7 +4111,7 @@ gboolean mega_session_download_data(mega_session* s, mega_download_data_params* 
 
   // perform download
   h = http_new();
-  http_set_progress_callback(h, (http_progress_fn)progress_generic, s);
+  http_set_progress_callback(h, progress_generic, s);
   http_set_speed(h, s->max_ul, s->max_dl);
   http_set_proxy(h, s->proxy);
   if (!http_post_stream_download(h, url, (http_data_fn)get_data_cb, &state, &local_err))

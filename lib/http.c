@@ -131,7 +131,7 @@ static int curl_progress(http* h, double dltotal, double dlnow, double ultotal, 
   {
     h->last_progress = time(NULL);
 
-    if (!h->progress_cb(dltotal + ultotal, dlnow + ulnow, h->progress_data))
+    if (!h->progress_cb(dltotal, dlnow, ultotal, ulnow, h->progress_data))
       return 1; // cancel
   }
 

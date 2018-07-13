@@ -35,7 +35,7 @@ enum
 typedef struct _http http;
 
 typedef gsize (*http_data_fn)(gpointer buf, gsize len, gpointer user_data);
-typedef gboolean (*http_progress_fn)(goffset total, goffset now, gpointer user_data);
+typedef gboolean (*http_progress_fn)(goffset dltotal, goffset dlnow, goffset ultotal, goffset ulnow, gpointer user_data);
 
 // functions
 
