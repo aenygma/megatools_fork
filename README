@@ -149,6 +149,11 @@ On Arch Linux:
 
   pacman -Sy --noconfirm --needed pkg-config gcc make glib2 curl gmp nettle
 
+On Alpine Linux:
+
+  apk add --update build-base libcurl curl-dev asciidoc openssl-dev glib-dev \
+    glib libtool automake autoconf
+
 
 Third party tools/scripts
 =========================
