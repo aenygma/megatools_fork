@@ -61,6 +61,7 @@ http* http_new(void)
     curl_easy_setopt(h->curl, CURLOPT_VERBOSE, 1L);
 
   curl_easy_setopt(h->curl, CURLOPT_FOLLOWLOCATION, 1L);
+
   curl_easy_setopt(h->curl, CURLOPT_TCP_KEEPALIVE, 1L);
   curl_easy_setopt(h->curl, CURLOPT_TCP_KEEPIDLE, 120L);
   curl_easy_setopt(h->curl, CURLOPT_TCP_KEEPINTVL, 60L);
@@ -68,9 +69,10 @@ http* http_new(void)
   h->headers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
   // set default headers
-  http_set_referer(h, "https://mega.nz/");
-//  http_set_user_agent(h, "Megatools (" VERSION ")");
-  http_set_user_agent(h, "Mozilla/5.0 (X11; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0");
+  http_set_header(h, "Referer", "https://mega.nz/");
+  //http_set_header(h, "User-Agent", "Megatools (" VERSION ")");
+  http_set_header(h, "User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0");
+
   // Disable 100-continue (because it causes needless roundtrips)
   http_set_header(h, "Expect", "");
 
@@ -107,16 +109,6 @@ void http_set_content_length(http* h, goffset len)
   gchar* tmp = g_strdup_printf("%" G_GOFFSET_FORMAT, len);
   http_set_header(h, "Content-Length", tmp);
   g_free(tmp);
-}
-
-void http_set_referer(http* h, const gchar* referer)
-{
-  http_set_header(h, "Referer", referer);
-}
-
-void http_set_user_agent(http* h, const gchar* ua)
-{
-  http_set_header(h, "User-Agent", ua);
 }
 
 static int curl_progress(http* h, double dltotal, double dlnow, double ultotal, double ulnow)
