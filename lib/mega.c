@@ -3833,7 +3833,7 @@ mega_node* mega_session_put(mega_session* s, mega_node* parent_node, GFile* file
 
   // ask for upload url - [{"a":"u","ssl":0,"ms":0,"s":<SIZE>,"r":0,"e":0}]
   gc_free gchar* up_node = api_call(s, 'o', NULL, &local_err,
-    "[{a:u, e:0, ms:0, r:0, s:%i, ssl:2, v:2}]", (gint64)file_size);
+    "[{a:u, e:0, ms:0, r:0, s:%i, ssl:0, v:2}]", (gint64)file_size);
   if (!up_node)
   {
     g_propagate_error(err, local_err);
