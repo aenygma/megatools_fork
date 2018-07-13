@@ -129,6 +129,7 @@ struct _mega_sesssion
   gint max_ul;
   gint max_dl;
   gchar* proxy;
+  gint max_workers;
 
   gint id;
   gchar* sid;
@@ -2112,6 +2113,16 @@ void mega_session_set_speed(mega_session* s, gint ul, gint dl)
 }
 
 // }}}
+// {{{ mega_session_set_workers
+
+void mega_session_set_workers(mega_session* s, gint workers)
+{
+  g_return_if_fail(s != NULL);
+
+  s->max_workers = workers;
+}
+
+// }}}
 // {{{ mega_session_set_proxy
 
 void mega_session_set_proxy(mega_session* s, const gchar* proxy)
@@ -3836,7 +3847,7 @@ mega_node* mega_session_put(mega_session* s, mega_node* parent_node, GFile* file
   gc_free guchar* nonce = make_random_key();
   guchar meta_mac[16];
 
-  tman_init(8);
+  tman_init(s->max_workers);
 
   gboolean transfer_ok = tman_run_upload_transfer(
     /* in: */ s, aes_key, nonce, p_url, stream, file_size,

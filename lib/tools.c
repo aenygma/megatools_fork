@@ -55,6 +55,7 @@ static gchar* opt_proxy;
 static gchar* proxy;
 static gint upload_speed_limit;
 static gint download_seed_limit;
+static gint transfer_worker_count = 8;
 static gint cache_timout = 10 * 60;
 static gboolean opt_enable_previews = BOOLEAN_UNSET_BUT_TRUE;
 
@@ -483,6 +484,22 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
         }
       }
 
+      if (g_key_file_has_key(kf, "Network", "ParallelTransfers", NULL))
+      {
+        transfer_worker_count = g_key_file_get_integer(kf, "Network", "ParallelTransfers", &local_err);
+        if (local_err)
+        {
+          g_printerr("WARNING: Invalid number of parallel transfers set in the config file: %s\n", local_err->message);
+          g_clear_error(&local_err);
+        }
+
+        if (transfer_worker_count < 1 || transfer_worker_count > 16)
+        {
+          transfer_worker_count = CLAMP(transfer_worker_count, 1, 16);
+          g_printerr("WARNING: Invalid number of parallel transfers set in the config file, limited to %d\n", transfer_worker_count);
+        }
+      }
+
       proxy = g_key_file_get_string(kf, "Network", "Proxy", NULL);
       
       if (opt_enable_previews == BOOLEAN_UNSET_BUT_TRUE)
@@ -538,6 +555,7 @@ mega_session* tool_start_session(ToolSessionFlags flags)
   mega_session* s = mega_session_new();
 
   mega_session_set_speed(s, upload_speed_limit, download_seed_limit);
+  mega_session_set_workers(s, transfer_worker_count);
 
   if (proxy)
     mega_session_set_proxy(s, proxy);

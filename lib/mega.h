@@ -159,6 +159,7 @@ mega_session*       mega_session_new                (void);
 void                mega_session_free               (mega_session* s);
 
 void                mega_session_set_speed          (mega_session* s, gint ul, gint dl);
+void                mega_session_set_workers        (mega_session* s, gint workers);
 void                mega_session_set_proxy          (mega_session* s, const gchar* proxy);
 void                mega_session_set_resume         (mega_session* s, gboolean enabled);
 
