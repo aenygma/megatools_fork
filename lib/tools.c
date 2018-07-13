@@ -55,7 +55,7 @@ static gchar* opt_proxy;
 static gchar* proxy;
 static gint upload_speed_limit;
 static gint download_seed_limit;
-static gint transfer_worker_count = 8;
+static gint transfer_worker_count = 5;
 static gint cache_timout = 10 * 60;
 static gboolean opt_enable_previews = BOOLEAN_UNSET_BUT_TRUE;
 

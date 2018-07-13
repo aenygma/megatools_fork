@@ -82,7 +82,9 @@ ParallelTransfers::
 	Set maximum allowed number of parallel connections when upload or downloading a file.
 	The file is split into chunks of a size between 128 kiB and 1 MiB, and these chunks
 	are uploaded in parallel.
-	The number must be between 1 and 16. Default is 8.
+	The number must be between 1 and 16. Default is 5.
+	More is not always better! Libcurl will not cache more than 5 connections, so
+	number above 5 will cause frequent reconnects during upload.
 
 Proxy::
 	Use proxy server to connect to mega.nz.
@@ -114,7 +116,7 @@ Password = yourpassword
 SpeedLimit = 1024
 # Use over TOR
 Proxy = socks5://127.0.0.1:9050
-ParallelTransfers = 4
+ParallelTransfers = 2
 ------------
 
 Run man:megadf[1] to check that megatools are able to login to your account.
