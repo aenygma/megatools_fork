@@ -46,7 +46,6 @@ void http_set_referer(http* h, const gchar* referer);
 void http_set_user_agent(http* h, const gchar* ua);
 void http_set_content_type(http* h, const gchar* type);
 void http_set_content_length(http* h, goffset len);
-void http_no_expect(http* h);
 void http_set_header(http* h, const gchar* name, const gchar* value);
 void http_set_progress_callback(http* h, http_progress_fn cb, gpointer data);
 void http_set_speed(http* h, gint max_ul, gint max_dl);

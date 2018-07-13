@@ -71,6 +71,8 @@ http* http_new(void)
   http_set_referer(h, "https://mega.nz/");
 //  http_set_user_agent(h, "Megatools (" VERSION ")");
   http_set_user_agent(h, "Mozilla/5.0 (X11; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0");
+  // Disable 100-continue (because it causes needless roundtrips)
+  http_set_header(h, "Expect", "");
 
   return h;
 }
@@ -105,11 +107,6 @@ void http_set_content_length(http* h, goffset len)
   gchar* tmp = g_strdup_printf("%" G_GOFFSET_FORMAT, len);
   http_set_header(h, "Content-Length", tmp);
   g_free(tmp);
-}
-
-void http_no_expect(http* h)
-{
-  http_set_header(h, "Expect", "");
 }
 
 void http_set_referer(http* h, const gchar* referer)
@@ -274,8 +271,6 @@ GString* http_post_stream_upload(http* h, const gchar* url, goffset len, http_da
   g_return_val_if_fail(url != NULL, NULL);
   g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
-  http_no_expect(h);
-
   // setup post headers and url
   curl_easy_setopt(h->curl, CURLOPT_POST, 1L);
   curl_easy_setopt(h->curl, CURLOPT_URL, url);
@@ -371,8 +366,6 @@ gboolean http_post_stream_download(http* h, const gchar* url, http_data_fn write
   g_return_val_if_fail(h != NULL, FALSE);
   g_return_val_if_fail(url != NULL, FALSE);
   g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
-
-  http_no_expect(h);
 
   // setup post headers and url
   curl_easy_setopt(h->curl, CURLOPT_POST, 1L);
