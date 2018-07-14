@@ -19,47 +19,40 @@
 
 #include "tools.h"
 
-static GOptionEntry entries[] =
+static GOptionEntry entries[] = { { NULL } };
+
+int main(int ac, char *av[])
 {
-  { NULL }
-};
+	gc_error_free GError *local_err = NULL;
+	static struct mega_session *s;
 
-int main(int ac, char* av[])
-{
-  gc_error_free GError *local_err = NULL;
-  static struct mega_session* s;
+	tool_init(&ac, &av, "- remove files from mega.nz", entries, TOOL_INIT_AUTH);
 
-  tool_init(&ac, &av, "- remove files from mega.nz", entries, TOOL_INIT_AUTH);
+	if (ac < 2) {
+		g_printerr("ERROR: No files specified for removal!\n");
+		tool_fini(NULL);
+		return 1;
+	}
 
-  if (ac < 2)
-  {
-    g_printerr("ERROR: No files specified for removal!\n");
-    tool_fini(NULL);
-    return 1;
-  }
+	s = tool_start_session(TOOL_SESSION_OPEN);
+	if (!s) {
+		tool_fini(NULL);
+		return 1;
+	}
 
-  s = tool_start_session(TOOL_SESSION_OPEN);
-  if (!s)
-  {
-    tool_fini(NULL);
-    return 1;
-  }
+	gint i, status = 0;
+	for (i = 1; i < ac; i++) {
+		gc_free gchar *path = tool_convert_filename(av[i], FALSE);
 
-  gint i, status = 0;
-  for (i = 1; i < ac; i++)
-  {
-    gc_free gchar* path = tool_convert_filename(av[i], FALSE);
+		if (!mega_session_rm(s, path, &local_err)) {
+			g_printerr("ERROR: Can't remove %s: %s\n", path, local_err->message);
+			g_clear_error(&local_err);
+			status = 1;
+		}
+	}
 
-    if (!mega_session_rm(s, path, &local_err))
-    {
-      g_printerr("ERROR: Can't remove %s: %s\n", path, local_err->message);
-      g_clear_error(&local_err);
-      status = 1;
-    }
-  }
+	mega_session_save(s, NULL);
 
-  mega_session_save(s, NULL);
-
-  tool_fini(s);
-  return status;
+	tool_fini(s);
+	return status;
 }

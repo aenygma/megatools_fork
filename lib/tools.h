@@ -29,24 +29,24 @@
 #include "alloc.h"
 
 typedef enum {
-  TOOL_SESSION_OPEN = 1,
-  TOOL_SESSION_AUTH_ONLY = 2,
-  TOOL_SESSION_AUTH_OPTIONAL = 4,
+	TOOL_SESSION_OPEN = 1,
+	TOOL_SESSION_AUTH_ONLY = 2,
+	TOOL_SESSION_AUTH_OPTIONAL = 4,
 } ToolSessionFlags;
 
 typedef enum {
-  TOOL_INIT_AUTH = 1,           // accept auth options, require them
-  TOOL_INIT_AUTH_OPTIONAL = 2,  // accept auth options, optionally
-  TOOL_INIT_UPLOAD_OPTS = 4,    // accept upload options
+	TOOL_INIT_AUTH = 1, // accept auth options, require them
+	TOOL_INIT_AUTH_OPTIONAL = 2, // accept auth options, optionally
+	TOOL_INIT_UPLOAD_OPTS = 4, // accept upload options
 } ToolInitFlags;
 
-void            tool_init             (gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries, ToolInitFlags flags);
-struct mega_session*   tool_start_session    (ToolSessionFlags flags);
-void            tool_fini             (struct mega_session* s);
+void tool_init(gint *ac, gchar ***av, const gchar *tool_name, GOptionEntry *tool_entries, ToolInitFlags flags);
+struct mega_session *tool_start_session(ToolSessionFlags flags);
+void tool_fini(struct mega_session *s);
 
-void            tool_show_progress    (const gchar* file, const struct mega_status_data *data);
-gchar*          tool_convert_filename (const gchar* path, gboolean local);
-gboolean        tool_is_stdout_tty    (void);
+void tool_show_progress(const gchar *file, const struct mega_status_data *data);
+gchar *tool_convert_filename(const gchar *path, gboolean local);
+gboolean tool_is_stdout_tty(void);
 
 #define ESC_CLREOL "\x1b[0K"
 #define ESC_WHITE "\x1b[37;1m"

@@ -19,85 +19,77 @@
 
 #include "tools.h"
 
-static gchar* opt_path = "/Root";
+static gchar *opt_path = "/Root";
 static gboolean opt_noprogress = FALSE;
 
-static GOptionEntry entries[] =
-{
-  { "path",             '\0',   0, G_OPTION_ARG_STRING,  &opt_path,         "Remote path to save files to",          "PATH" },
-  { "no-progress",      '\0',   0, G_OPTION_ARG_NONE,    &opt_noprogress,   "Disable progress bar",                  NULL   },
-  { NULL }
+static GOptionEntry entries[] = {
+	{ "path", '\0', 0, G_OPTION_ARG_STRING, &opt_path, "Remote path to save files to", "PATH" },
+	{ "no-progress", '\0', 0, G_OPTION_ARG_NONE, &opt_noprogress, "Disable progress bar", NULL },
+	{ NULL }
 };
 
-static gchar* cur_file = NULL;
+static gchar *cur_file = NULL;
 
-static gboolean status_callback(struct mega_status_data* data, gpointer userdata)
+static gboolean status_callback(struct mega_status_data *data, gpointer userdata)
 {
-  if (data->type == MEGA_STATUS_FILEINFO)
-  {
-    g_free(cur_file);
-    cur_file = g_strdup(data->fileinfo.name);
-  }
+	if (data->type == MEGA_STATUS_FILEINFO) {
+		g_free(cur_file);
+		cur_file = g_strdup(data->fileinfo.name);
+	}
 
-  if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
-    tool_show_progress(cur_file, data);
+	if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
+		tool_show_progress(cur_file, data);
 
-  return FALSE;
+	return FALSE;
 }
 
-int main(int ac, char* av[])
+int main(int ac, char *av[])
 {
-  gc_error_free GError *local_err = NULL;
-  struct mega_session* s;
+	gc_error_free GError *local_err = NULL;
+	struct mega_session *s;
 
-  tool_init(&ac, &av, "- upload files to mega.nz", entries, TOOL_INIT_AUTH | TOOL_INIT_UPLOAD_OPTS);
+	tool_init(&ac, &av, "- upload files to mega.nz", entries, TOOL_INIT_AUTH | TOOL_INIT_UPLOAD_OPTS);
 
-  if (ac < 2)
-  {
-    g_printerr("ERROR: No files specified for upload!\n");
-    tool_fini(NULL);
-    return 1;
-  }
+	if (ac < 2) {
+		g_printerr("ERROR: No files specified for upload!\n");
+		tool_fini(NULL);
+		return 1;
+	}
 
-  s = tool_start_session(TOOL_SESSION_OPEN);
-  if (!s)
-    return 1;
+	s = tool_start_session(TOOL_SESSION_OPEN);
+	if (!s)
+		return 1;
 
-  mega_session_watch_status(s, status_callback, NULL);
+	mega_session_watch_status(s, status_callback, NULL);
 
-  gint status = 0;
-  gint i;
-  for (i = 1; i < ac; i++)
-  {
-    gc_free gchar* path = tool_convert_filename(av[i], TRUE);
+	gint status = 0;
+	gint i;
+	for (i = 1; i < ac; i++) {
+		gc_free gchar *path = tool_convert_filename(av[i], TRUE);
 
-    g_free(cur_file);
-    cur_file = g_path_get_basename(path);
+		g_free(cur_file);
+		cur_file = g_path_get_basename(path);
 
-    // perform download
-    if (!mega_session_put_compat(s, opt_path, path, &local_err))
-    {
-      if (!opt_noprogress && tool_is_stdout_tty())
-        g_print("\r" ESC_CLREOL "\n");
+		// perform download
+		if (!mega_session_put_compat(s, opt_path, path, &local_err)) {
+			if (!opt_noprogress && tool_is_stdout_tty())
+				g_print("\r" ESC_CLREOL "\n");
 
-      g_printerr("ERROR: Upload failed for '%s': %s\n", path, local_err->message);
-      g_clear_error(&local_err);
+			g_printerr("ERROR: Upload failed for '%s': %s\n", path, local_err->message);
+			g_clear_error(&local_err);
 
-      status = 1;
-    }
-    else
-    {
-      if (!opt_noprogress)
-      {
-        if (tool_is_stdout_tty())
-          g_print("\r" ESC_CLREOL);
-        g_print("Uploaded %s\n", cur_file);
-      }
-    }
-  }
+			status = 1;
+		} else {
+			if (!opt_noprogress) {
+				if (tool_is_stdout_tty())
+					g_print("\r" ESC_CLREOL);
+				g_print("Uploaded %s\n", cur_file);
+			}
+		}
+	}
 
-  mega_session_save(s, NULL);
+	mega_session_save(s, NULL);
 
-  tool_fini(s);
-  return status;
+	tool_fini(s);
+	return status;
 }
