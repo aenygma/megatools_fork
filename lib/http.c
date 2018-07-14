@@ -54,7 +54,7 @@ static void http_unlock_cb(CURL *handle, curl_lock_data data, void *userptr)
 G_LOCK_DEFINE_STATIC(http_init);
 #endif
 
-struct _http
+struct http
 {
   CURL* curl;
   GHashTable* headers;
@@ -63,9 +63,9 @@ struct _http
   gpointer progress_data;
 };
 
-http* http_new(void)
+struct http* http_new(void)
 {
-  http* h = g_new0(http, 1);
+  struct http* h = g_new0(struct http, 1);
 
   h->curl = curl_easy_init();
   if (!h->curl)
@@ -127,7 +127,7 @@ http* http_new(void)
   return h;
 }
 
-void http_expect_short_running(http* h)
+void http_expect_short_running(struct http* h)
 {
   g_return_if_fail(h != NULL);
 
@@ -138,7 +138,7 @@ void http_expect_short_running(http* h)
   curl_easy_setopt(h->curl, CURLOPT_LOW_SPEED_LIMIT, 60L);
 }
 
-void http_set_header(http* h, const gchar* name, const gchar* value)
+void http_set_header(struct http* h, const gchar* name, const gchar* value)
 {
   g_return_if_fail(h != NULL);
   g_return_if_fail(name != NULL);
@@ -147,19 +147,19 @@ void http_set_header(http* h, const gchar* name, const gchar* value)
   g_hash_table_insert(h->headers, g_strdup(name), g_strdup(value));
 }
 
-void http_set_content_type(http* h, const gchar* type)
+void http_set_content_type(struct http* h, const gchar* type)
 {
   http_set_header(h, "Content-Type", type);
 }
 
-void http_set_content_length(http* h, goffset len)
+void http_set_content_length(struct http* h, goffset len)
 {
   gchar* tmp = g_strdup_printf("%" G_GOFFSET_FORMAT, len);
   http_set_header(h, "Content-Length", tmp);
   g_free(tmp);
 }
 
-static int curl_progress(http* h, double dltotal, double dlnow, double ultotal, double ulnow)
+static int curl_progress(struct http* h, double dltotal, double dlnow, double ultotal, double ulnow)
 {
   if (h->progress_cb)
   {
@@ -170,7 +170,7 @@ static int curl_progress(http* h, double dltotal, double dlnow, double ultotal, 
   return 0;
 }
 
-void http_set_speed(http* h, gint max_ul, gint max_dl)
+void http_set_speed(struct http* h, gint max_ul, gint max_dl)
 {
   if (max_ul >= 0)
     curl_easy_setopt(h->curl, CURLOPT_MAX_SEND_SPEED_LARGE, (curl_off_t)max_ul * 1024);
@@ -178,12 +178,12 @@ void http_set_speed(http* h, gint max_ul, gint max_dl)
     curl_easy_setopt(h->curl, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t)max_dl * 1024);
 }
 
-void http_set_proxy(http* h, const gchar* proxy)
+void http_set_proxy(struct http* h, const gchar* proxy)
 {
   curl_easy_setopt(h->curl, CURLOPT_PROXY, proxy);
 }
 
-void http_set_progress_callback(http* h, http_progress_fn cb, gpointer data)
+void http_set_progress_callback(struct http* h, http_progress_fn cb, gpointer data)
 {
   if (cb)
   {
@@ -215,7 +215,7 @@ static size_t append_gstring(void *buffer, size_t size, size_t nmemb, GString *s
   return nmemb;
 }
 
-GString* http_post(http* h, const gchar* url, const gchar* body, gssize body_len, GError** err)
+GString* http_post(struct http* h, const gchar* url, const gchar* body, gssize body_len, GError** err)
 {
   struct curl_slist* headers = NULL;
   glong http_status = 0;
@@ -288,24 +288,24 @@ out:
   return NULL;
 }
 
-struct _stream_data
+struct stream_data
 {
   http_data_fn cb;
   gpointer user_data;
 };
 
-static size_t curl_read(void *buffer, size_t size, size_t nmemb, struct _stream_data* data)
+static size_t curl_read(void *buffer, size_t size, size_t nmemb, struct stream_data* data)
 {
   return data->cb(buffer, size * nmemb, data->user_data);
 }
 
-GString* http_post_stream_upload(http* h, const gchar* url, goffset len, http_data_fn read_cb, gpointer user_data, GError** err)
+GString* http_post_stream_upload(struct http* h, const gchar* url, goffset len, http_data_fn read_cb, gpointer user_data, GError** err)
 {
   struct curl_slist* headers = NULL;
   glong http_status = 0;
   GString* response;
   CURLcode res;
-  struct _stream_data data;
+  struct stream_data data;
 
   g_return_val_if_fail(h != NULL, NULL);
   g_return_val_if_fail(url != NULL, NULL);
@@ -369,7 +369,7 @@ out:
   return NULL;
 }
 
-static size_t curl_write(void *buffer, size_t size, size_t nmemb, struct _stream_data* data)
+static size_t curl_write(void *buffer, size_t size, size_t nmemb, struct stream_data* data)
 {
   return data->cb(buffer, size * nmemb, data->user_data);
 }
@@ -395,12 +395,12 @@ again:
   return res;
 }
 
-gboolean http_post_stream_download(http* h, const gchar* url, http_data_fn write_cb, gpointer user_data, GError** err)
+gboolean http_post_stream_download(struct http* h, const gchar* url, http_data_fn write_cb, gpointer user_data, GError** err)
 {
   struct curl_slist* headers = NULL;
   glong http_status = 0;
   CURLcode res;
-  struct _stream_data data;
+  struct stream_data data;
   gboolean status = FALSE;
 
   g_return_val_if_fail(h != NULL, FALSE);
@@ -453,7 +453,7 @@ out:
 }
 
 
-void http_free(http* h)
+void http_free(struct http* h)
 {
   if (!h)
     return;
@@ -461,7 +461,7 @@ void http_free(http* h)
   g_hash_table_destroy(h->headers);
   curl_easy_cleanup(h->curl);
 
-  memset(h, 0, sizeof(http));
+  memset(h, 0, sizeof(struct http));
   g_free(h);
 }
 

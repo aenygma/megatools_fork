@@ -41,10 +41,10 @@ typedef enum {
 } ToolInitFlags;
 
 void            tool_init             (gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool_entries, ToolInitFlags flags);
-mega_session*   tool_start_session    (ToolSessionFlags flags);
-void            tool_fini             (mega_session* s);
+struct mega_session*   tool_start_session    (ToolSessionFlags flags);
+void            tool_fini             (struct mega_session* s);
 
-void            tool_show_progress    (const gchar* file, const mega_status_data *data);
+void            tool_show_progress    (const gchar* file, const struct mega_status_data *data);
 gchar*          tool_convert_filename (const gchar* path, gboolean local);
 gboolean        tool_is_stdout_tty    (void);
 

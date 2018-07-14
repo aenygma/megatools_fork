@@ -19,7 +19,7 @@
 
 #include "tools.h"
 
-static mega_session* s;
+static struct mega_session* s;
 
 static GOptionEntry entries[] =
 {

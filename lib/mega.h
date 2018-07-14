@@ -32,16 +32,6 @@ enum
   MEGA_ERROR_OTHER
 };
 
-// forward typedefs
-
-typedef struct _mega_sesssion mega_session;
-typedef struct _mega_node mega_node;
-typedef struct _mega_share_key mega_share_key;
-typedef struct _mega_user_quota mega_user_quota;
-typedef struct _mega_status_data mega_status_data;
-typedef struct _mega_reg_state mega_reg_state;
-typedef struct _mega_download_data_params mega_download_data_params;
-
 // status callback
 
 enum
@@ -51,7 +41,7 @@ enum
   MEGA_STATUS_DATA
 };
 
-struct _mega_status_data
+struct mega_status_data
 {
   gint type;
 
@@ -79,7 +69,7 @@ struct _mega_status_data
   };
 };
 
-typedef gboolean (*mega_status_callback)(mega_status_data* data, gpointer userdata);
+typedef gboolean (*mega_status_callback)(struct mega_status_data* data, gpointer userdata);
 
 // session data types
 
@@ -94,13 +84,13 @@ enum
   MEGA_NODE_CONTACT = 8
 };
 
-struct _mega_share_key
+struct mega_share_key
 {
   gchar* node_handle;
   guchar* key;
 };
 
-struct _mega_node 
+struct mega_node 
 {
   gchar* name;
   gchar* handle;
@@ -116,24 +106,24 @@ struct _mega_node
   // call addlinks after refresh to get links populated
   gchar* link;
 
-  mega_session* s;
-  mega_node* parent;
+  struct mega_session* s;
+  struct mega_node* parent;
 };
 
-struct _mega_user_quota 
+struct mega_user_quota 
 {
   guint64 total;
   guint64 used;
 };
 
-struct _mega_reg_state
+struct mega_reg_state
 {
   gchar* user_handle;
   guchar password_key[16];
   guchar challenge[16];
 };
 
-struct _mega_download_data_params
+struct mega_download_data_params
 {
   guchar node_key[32];
 
@@ -155,63 +145,63 @@ extern gint mega_debug;
 
 GQuark              mega_error_quark                (void);
 
-mega_session*       mega_session_new                (void);
-void                mega_session_free               (mega_session* s);
+struct mega_session*       mega_session_new                (void);
+void                mega_session_free               (struct mega_session* s);
 
-void                mega_session_set_speed          (mega_session* s, gint ul, gint dl);
-void                mega_session_set_workers        (mega_session* s, gint workers);
-void                mega_session_set_proxy          (mega_session* s, const gchar* proxy);
-void                mega_session_set_resume         (mega_session* s, gboolean enabled);
+void                mega_session_set_speed          (struct mega_session* s, gint ul, gint dl);
+void                mega_session_set_workers        (struct mega_session* s, gint workers);
+void                mega_session_set_proxy          (struct mega_session* s, const gchar* proxy);
+void                mega_session_set_resume         (struct mega_session* s, gboolean enabled);
 
-void                mega_session_watch_status       (mega_session* s, mega_status_callback cb, gpointer userdata);
-void                mega_session_enable_previews    (mega_session* s, gboolean enable);
+void                mega_session_watch_status       (struct mega_session* s, mega_status_callback cb, gpointer userdata);
+void                mega_session_enable_previews    (struct mega_session* s, gboolean enable);
 
 // this has side effect of the current session being closed
-gboolean            mega_session_open               (mega_session* s, const gchar* un, const gchar* pw, const gchar* sid, GError** err);
-void                mega_session_close              (mega_session* s);
-const gchar*        mega_session_get_sid            (mega_session* s);
+gboolean            mega_session_open               (struct mega_session* s, const gchar* un, const gchar* pw, const gchar* sid, GError** err);
+void                mega_session_close              (struct mega_session* s);
+const gchar*        mega_session_get_sid            (struct mega_session* s);
 
-gboolean            mega_session_save               (mega_session* s, GError** err);
+gboolean            mega_session_save               (struct mega_session* s, GError** err);
 // this has side effect of the current session being closed
-gboolean            mega_session_load               (mega_session* s, const gchar* un, const gchar* pw, gint max_age, gchar** last_sid, GError** err);
+gboolean            mega_session_load               (struct mega_session* s, const gchar* un, const gchar* pw, gint max_age, gchar** last_sid, GError** err);
 
-gboolean            mega_session_get_user           (mega_session* s, GError** err);
-gboolean            mega_session_refresh            (mega_session* s, GError** err);
-gboolean            mega_session_addlinks           (mega_session* s, GSList* nodes, GError** err);
-mega_user_quota*    mega_session_user_quota         (mega_session* s, GError** err);
+gboolean            mega_session_get_user           (struct mega_session* s, GError** err);
+gboolean            mega_session_refresh            (struct mega_session* s, GError** err);
+gboolean            mega_session_addlinks           (struct mega_session* s, GSList* nodes, GError** err);
+struct mega_user_quota*    mega_session_user_quota         (struct mega_session* s, GError** err);
 
-GSList*             mega_session_ls_all             (mega_session* s);
-GSList*             mega_session_ls                 (mega_session* s, const gchar* path, gboolean recursive);
-GSList*             mega_session_get_node_chilren   (mega_session* s, mega_node* node);
-mega_node*          mega_session_stat               (mega_session* s, const gchar* path);
-mega_node*          mega_session_mkdir              (mega_session* s, const gchar* path, GError** err);
-gboolean            mega_session_rm                 (mega_session* s, const gchar* path, GError** err);
-mega_node*          mega_session_put                (mega_session* s, mega_node* parent_node, GFile* file, GError** err);
-gchar*              mega_session_new_node_attribute (mega_session* s, const guchar* data, gsize len, const gchar* type, const guchar* key, GError** err);
-gboolean            mega_session_get                (mega_session* s, GFile* file, mega_node* node, GError** err);
+GSList*             mega_session_ls_all             (struct mega_session* s);
+GSList*             mega_session_ls                 (struct mega_session* s, const gchar* path, gboolean recursive);
+GSList*             mega_session_get_node_chilren   (struct mega_session* s, struct mega_node* node);
+struct mega_node*          mega_session_stat               (struct mega_session* s, const gchar* path);
+struct mega_node*          mega_session_mkdir              (struct mega_session* s, const gchar* path, GError** err);
+gboolean            mega_session_rm                 (struct mega_session* s, const gchar* path, GError** err);
+struct mega_node*          mega_session_put                (struct mega_session* s, struct mega_node* parent_node, GFile* file, GError** err);
+gchar*              mega_session_new_node_attribute (struct mega_session* s, const guchar* data, gsize len, const gchar* type, const guchar* key, GError** err);
+gboolean            mega_session_get                (struct mega_session* s, GFile* file, struct mega_node* node, GError** err);
 
-gboolean            mega_session_open_exp_folder    (mega_session* s, const gchar* n, const gchar* key, const gchar* specific, GError** err);
-gboolean            mega_session_dl_prepare         (mega_session* s, mega_download_data_params* get_params, const gchar* handle, const gchar* key, GError** err);
+gboolean            mega_session_open_exp_folder    (struct mega_session* s, const gchar* n, const gchar* key, const gchar* specific, GError** err);
+gboolean            mega_session_dl_prepare         (struct mega_session* s, struct mega_download_data_params* get_params, const gchar* handle, const gchar* key, GError** err);
 
-gboolean            mega_session_download_data      (mega_session* s, mega_download_data_params* params, GFile* file, GError** err);
-void                mega_download_data_free         (mega_download_data_params* params);
+gboolean            mega_session_download_data      (struct mega_session* s, struct mega_download_data_params* params, GFile* file, GError** err);
+void                mega_download_data_free         (struct mega_download_data_params* params);
 
-gboolean            mega_node_is_writable           (mega_session* s, mega_node* n);
+gboolean            mega_node_is_writable           (struct mega_session* s, struct mega_node* n);
 
-gboolean            mega_node_is_container          (mega_node* n);
-gchar*              mega_node_get_link              (mega_node* n, gboolean include_key);
-gchar*              mega_node_get_key               (mega_node* n);
-gboolean            mega_node_get_path              (mega_node* n, gchar* buf, gsize len);
-gchar*              mega_node_get_path_dup          (mega_node* n);
+gboolean            mega_node_is_container          (struct mega_node* n);
+gchar*              mega_node_get_link              (struct mega_node* n, gboolean include_key);
+gchar*              mega_node_get_key               (struct mega_node* n);
+gboolean            mega_node_get_path              (struct mega_node* n, gchar* buf, gsize len);
+gchar*              mega_node_get_path_dup          (struct mega_node* n);
 
-gboolean            mega_session_register           (mega_session* s, const gchar* email, const gchar* password, const gchar* name, mega_reg_state** state, GError** err);
-gboolean            mega_session_register_verify    (mega_session* s, mega_reg_state* state, const gchar* signup_key, GError** err);
+gboolean            mega_session_register           (struct mega_session* s, const gchar* email, const gchar* password, const gchar* name, struct mega_reg_state** state, GError** err);
+gboolean            mega_session_register_verify    (struct mega_session* s, struct mega_reg_state* state, const gchar* signup_key, GError** err);
 
 // Compatibility / deprecated:
 
-mega_node*          mega_session_put_compat         (mega_session* s, const gchar* remote_path, const gchar* local_path, GError** err);
-gboolean            mega_session_get_compat         (mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err);
-gboolean            mega_session_dl_compat          (mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err);
+struct mega_node*          mega_session_put_compat         (struct mega_session* s, const gchar* remote_path, const gchar* local_path, GError** err);
+gboolean            mega_session_get_compat         (struct mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err);
+gboolean            mega_session_dl_compat          (struct mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err);
 
 
 #endif

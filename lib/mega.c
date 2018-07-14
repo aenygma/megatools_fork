@@ -36,7 +36,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-DEFINE_CLEANUP_FUNCTION(http*, http_free)
+DEFINE_CLEANUP_FUNCTION(struct http*, http_free)
 #define gc_http_free CLEANUP(http_free)
 
 DEFINE_CLEANUP_FUNCTION_NULL(BN_CTX*, BN_CTX_free)
@@ -87,9 +87,7 @@ enum
 // }}}
 // {{{ rsa_key
 
-typedef struct _rsa_key rsa_key;
-
-struct _rsa_key {
+struct rsa_key {
   // priv
   BIGNUM* p;
   BIGNUM* q;
@@ -101,11 +99,11 @@ struct _rsa_key {
 };
 
 // }}}
-// {{{ mega_session
+// {{{ struct mega_session
 
-struct _mega_sesssion 
+struct mega_session 
 {
-  http* http;
+  struct http* http;
 
   gint max_ul;
   gint max_dl;
@@ -119,7 +117,7 @@ struct _mega_sesssion
 
   guchar* password_key;
   guchar* master_key;
-  rsa_key rsa_key;
+  struct rsa_key rsa_key;
 
   gchar* user_handle;
   gchar* user_name;
@@ -131,7 +129,7 @@ struct _mega_sesssion
 
   // progress reporting
   mega_status_callback status_callback;
-  mega_status_data status_data;
+  struct mega_status_data status_data;
   gpointer status_userdata;
 
   gint64 last_refresh;
@@ -208,7 +206,7 @@ static BIGNUM* s_json_get_member_bn(const gchar* node, const gchar* name)
   return NULL;
 }
 
-void s_json_get_member_rsa_key(const gchar* node, const gchar* name, rsa_key* key)
+void s_json_get_member_rsa_key(const gchar* node, const gchar* name, struct rsa_key* key)
 {
   g_return_if_fail(node != NULL);
   g_return_if_fail(name != NULL);
@@ -257,7 +255,7 @@ static void s_json_gen_member_bn(SJsonGen* gen, const gchar* name, BIGNUM* n)
   OPENSSL_free(tmp);
 }
 
-static void s_json_gen_member_rsa_key(SJsonGen* gen, const gchar* name, rsa_key* key)
+static void s_json_gen_member_rsa_key(SJsonGen* gen, const gchar* name, struct rsa_key* key)
 {
   s_json_gen_member_object(gen, name);
 
@@ -528,7 +526,7 @@ static gchar* b64_aes128_cbc_encrypt_str(const gchar* str, const guchar* key)
 // }}}
 // {{{ b64_aes128_decrypt_privk
 
-static gboolean b64_aes128_decrypt_privk(const gchar* str, const guchar* key, rsa_key* rsa)
+static gboolean b64_aes128_decrypt_privk(const gchar* str, const guchar* key, struct rsa_key* rsa)
 {
   gsize data_len = 0;
   gc_free guchar *data = NULL;
@@ -571,7 +569,7 @@ static gboolean b64_aes128_decrypt_privk(const gchar* str, const guchar* key, rs
 // }}}
 // {{{ b64_decode_pubk
 
-static gboolean b64_decode_pubk(const gchar* str, rsa_key* rsa)
+static gboolean b64_decode_pubk(const gchar* str, struct rsa_key* rsa)
 {
   gsize data_len = 0;
   gc_free guchar *data = NULL;
@@ -618,7 +616,7 @@ static void append_mpi_from_bn(GString* buf, BIGNUM* n)
   BN_bn2bin(n, buf->str + off + MPI_HDRSIZE);
 }
 
-static gchar* b64_aes128_encrypt_privk(const guchar* key, rsa_key* rsa)
+static gchar* b64_aes128_encrypt_privk(const guchar* key, struct rsa_key* rsa)
 {
   g_return_val_if_fail(key != NULL, FALSE);
   g_return_val_if_fail(rsa != NULL, FALSE);
@@ -645,7 +643,7 @@ static gchar* b64_aes128_encrypt_privk(const guchar* key, rsa_key* rsa)
 // }}}
 // {{{ b64_encode_pubk
 
-static gchar* b64_encode_pubk(rsa_key* rsa)
+static gchar* b64_encode_pubk(struct rsa_key* rsa)
 {
   g_return_val_if_fail(rsa != NULL, FALSE);
 
@@ -741,7 +739,7 @@ static BIGNUM* rsa_encrypt(BIGNUM* s, BIGNUM* e, BIGNUM* m)
 // }}}
 // {{{ b64_rsa_decrypt
 
-static guchar* b64_rsa_decrypt(const gchar* str, rsa_key* key, gsize* outlen)
+static guchar* b64_rsa_decrypt(const gchar* str, struct rsa_key* key, gsize* outlen)
 {
   gsize cipherlen = 0;
   gc_free guchar* cipher = NULL;
@@ -777,7 +775,7 @@ static guchar* b64_rsa_decrypt(const gchar* str, rsa_key* key, gsize* outlen)
 // }}}
 // {{{ rsa_key_gen
 
-static gboolean rsa_key_gen(rsa_key* k)
+static gboolean rsa_key_gen(struct rsa_key* k)
 {
   RSA* key;
 
@@ -840,7 +838,7 @@ static gboolean rsa_key_gen(rsa_key* k)
 // }}}
 // {{{ rsa_key_free
 
-static void rsa_key_free(rsa_key* k)
+static void rsa_key_free(struct rsa_key* k)
 {
   if (!k)
     return;
@@ -852,7 +850,7 @@ static void rsa_key_free(rsa_key* k)
   if (k->m) BN_free(k->m);
   if (k->e) BN_free(k->e);
 
-  memset(k, 0, sizeof(rsa_key));
+  memset(k, 0, sizeof(struct rsa_key));
 }
 
 // }}}
@@ -953,7 +951,7 @@ static guint get_chunk_size(gsize idx)
 // }}}
 // {{{ chunked CBC-MAC
 
-typedef struct 
+struct chunked_cbc_mac
 {
   AES_KEY k;
   gsize chunk_idx;
@@ -962,9 +960,9 @@ typedef struct
   guchar chunk_mac_iv[16];
   guchar chunk_mac[16];
   guchar meta_mac[16];
-} chunked_cbc_mac;
+};
 
-static void chunked_cbc_mac_init(chunked_cbc_mac* mac, guchar key[16], guchar iv[16])
+static void chunked_cbc_mac_init(struct chunked_cbc_mac* mac, guchar key[16], guchar iv[16])
 {
   g_return_if_fail(mac != NULL);
   g_return_if_fail(key != NULL);
@@ -976,7 +974,7 @@ static void chunked_cbc_mac_init(chunked_cbc_mac* mac, guchar key[16], guchar iv
   mac->next_boundary = get_chunk_size(mac->chunk_idx);
 }
 
-static void chunked_cbc_mac_init8(chunked_cbc_mac* mac, guchar key[16], guchar iv[8])
+static void chunked_cbc_mac_init8(struct chunked_cbc_mac* mac, guchar key[16], guchar iv[8])
 {
   g_return_if_fail(iv != NULL);
 
@@ -987,7 +985,7 @@ static void chunked_cbc_mac_init8(chunked_cbc_mac* mac, guchar key[16], guchar i
   chunked_cbc_mac_init(mac, key, mac_iv);
 }
 
-static void chunked_cbc_mac_close_chunk(chunked_cbc_mac* mac)
+static void chunked_cbc_mac_close_chunk(struct chunked_cbc_mac* mac)
 {
   gint i;
   guchar tmp[16];
@@ -1002,7 +1000,7 @@ static void chunked_cbc_mac_close_chunk(chunked_cbc_mac* mac)
   mac->next_boundary += get_chunk_size(++mac->chunk_idx);
 }
 
-static void chunked_cbc_mac_update(chunked_cbc_mac* mac, const guchar* data, gsize len)
+static void chunked_cbc_mac_update(struct chunked_cbc_mac* mac, const guchar* data, gsize len)
 {
   gsize i;
 
@@ -1027,7 +1025,7 @@ static void chunked_cbc_mac_update(chunked_cbc_mac* mac, const guchar* data, gsi
   }
 }
 
-static void chunked_cbc_mac_finish(chunked_cbc_mac* mac, guchar mac_out[16])
+static void chunked_cbc_mac_finish(struct chunked_cbc_mac* mac, guchar mac_out[16])
 {
   g_return_if_fail(mac != NULL);
 
@@ -1055,7 +1053,7 @@ static void chunked_cbc_mac_finish(chunked_cbc_mac* mac, guchar mac_out[16])
   memset(mac, 0, sizeof(*mac));
 }
 
-static void chunked_cbc_mac_finish8(chunked_cbc_mac* mac, guchar mac_out[8])
+static void chunked_cbc_mac_finish8(struct chunked_cbc_mac* mac, guchar mac_out[8])
 {
   guchar buf[16];
   gint i;
@@ -1384,7 +1382,7 @@ static const gchar* srv_error_to_string(gint code)
 
 // {{{ api_request_unsafe
 
-static gchar* api_request_unsafe(mega_session* s, const gchar* req_node, GError** err)
+static gchar* api_request_unsafe(struct mega_session* s, const gchar* req_node, GError** err)
 {
   GError* local_err = NULL;
   gc_free gchar* url = NULL;
@@ -1448,7 +1446,7 @@ static gchar* api_request_unsafe(mega_session* s, const gchar* req_node, GError*
 // }}}
 // {{{ api_request
 
-static gchar* api_request(mega_session* s, const gchar* req_node, GError** err)
+static gchar* api_request(struct mega_session* s, const gchar* req_node, GError** err)
 {
   GError* local_err = NULL;
   gchar* response;
@@ -1587,7 +1585,7 @@ static const gchar* api_response_check(const gchar* response, gchar expects, gin
 // }}}
 // {{{ api_call
 
-static gchar* api_call(mega_session* s, gchar expects, gint* error_code, GError** err, const gchar* format, ...)
+static gchar* api_call(struct mega_session* s, gchar expects, gint* error_code, GError** err, const gchar* format, ...)
 {
   const gchar* node;
   va_list args;
@@ -1633,9 +1631,9 @@ static gchar* api_call(mega_session* s, gchar expects, gint* error_code, GError*
 
 // {{{ update_pathmap
 
-static void mega_node_free(mega_node* n);
+static void mega_node_free(struct mega_node* n);
 
-static void update_pathmap(mega_session* s)
+static void update_pathmap(struct mega_session* s)
 {
   GSList *i, *next;
   g_return_if_fail(s != NULL);
@@ -1644,7 +1642,7 @@ static void update_pathmap(mega_session* s)
   GHashTable* handle_map = g_hash_table_new(g_str_hash, g_str_equal);
   for (i = s->fs_nodes; i; i = i->next)
   {
-    mega_node* n = i->data;
+    struct mega_node* n = i->data;
 
 #if GLIB_CHECK_VERSION(2, 40, 0)
     if (!g_hash_table_insert(handle_map, n->handle, n))
@@ -1659,7 +1657,7 @@ static void update_pathmap(mega_session* s)
   
   for (i = s->fs_nodes; i;)
   {
-    mega_node* n = i->data;
+    struct mega_node* n = i->data;
     next = i->next;
 
     if (n->type == MEGA_NODE_CONTACT) 
@@ -1699,7 +1697,7 @@ static void update_pathmap(mega_session* s)
 // }}}
 // {{{ update_pathmap_prune
 
-static void update_pathmap_prune(mega_session* s, const gchar* specific)
+static void update_pathmap_prune(struct mega_session* s, const gchar* specific)
 {
   update_pathmap(s);
 
@@ -1721,14 +1719,14 @@ static void update_pathmap_prune(mega_session* s, const gchar* specific)
   // This will remove 'root', 'dir2', and 'file2'; 'dir1' becomes the root node.
   // -----------------------------------------------------------------------------*/
 
-  gc_array_unref GArray* remove_nodes = g_array_new(FALSE, FALSE, sizeof(mega_node*));
+  gc_array_unref GArray* remove_nodes = g_array_new(FALSE, FALSE, sizeof(struct mega_node*));
   GSList *i;
 
   // find nodes to remove
   for (i = s->fs_nodes; i; i = i->next)
   {
-    mega_node* n = i->data;
-    mega_node* p_node = n->parent;
+    struct mega_node* n = i->data;
+    struct mega_node* p_node = n->parent;
 
     if (g_str_equal(n->handle, specific))
     {
@@ -1751,7 +1749,7 @@ static void update_pathmap_prune(mega_session* s, const gchar* specific)
   gint idx;
   for (idx = 0; idx < remove_nodes->len; idx++)
   {
-    mega_node* r = g_array_index(remove_nodes, mega_node*, idx);
+    struct mega_node* r = g_array_index(remove_nodes, struct mega_node*, idx);
     s->fs_nodes = g_slist_remove(s->fs_nodes, r);
     mega_node_free(r);
   }
@@ -1856,14 +1854,14 @@ static gchar* path_simplify(const gchar* path)
 
 // {{{ send_status
 
-static void init_status(mega_session* s, gint type)
+static void init_status(struct mega_session* s, gint type)
 {
   memset(&s->status_data, 0, sizeof(s->status_data));
   s->status_data.type = type;
 }
 
 // true to interrupt
-static gboolean send_status(mega_session* s)
+static gboolean send_status(struct mega_session* s)
 {
   if (s->status_callback) 
     return s->status_callback(&s->status_data, s->status_userdata);
@@ -1874,7 +1872,7 @@ static gboolean send_status(mega_session* s)
 // }}}
 // {{{ add_share_key
 
-void add_share_key(mega_session* s, const gchar* handle, const guchar* key)
+void add_share_key(struct mega_session* s, const gchar* handle, const guchar* key)
 {
   g_return_if_fail(s != NULL);
   g_return_if_fail(handle != NULL);
@@ -1886,7 +1884,7 @@ void add_share_key(mega_session* s, const gchar* handle, const guchar* key)
 // }}}
 // {{{ mega_node_parse
 
-static mega_node* mega_node_parse(mega_session* s, const gchar* node)
+static struct mega_node* mega_node_parse(struct mega_session* s, const gchar* node)
 {
   gchar* tmp;
   gc_free gchar* node_h = s_json_get_member_string(node, "h");
@@ -1910,7 +1908,7 @@ static mega_node* mega_node_parse(mega_session* s, const gchar* node)
   // return special nodes
   if (node_t == MEGA_NODE_ROOT)
   {
-    mega_node* n = g_new0(mega_node, 1);
+    struct mega_node* n = g_new0(struct mega_node, 1);
     n->name = g_strdup("Root");
     n->handle = g_strdup(node_h);
     n->timestamp = node_ts;
@@ -1919,7 +1917,7 @@ static mega_node* mega_node_parse(mega_session* s, const gchar* node)
   }
   else if (node_t == MEGA_NODE_INBOX)
   {
-    mega_node* n = g_new0(mega_node, 1);
+    struct mega_node* n = g_new0(struct mega_node, 1);
     n->name = g_strdup("Inbox");
     n->handle = g_strdup(node_h);
     n->timestamp = node_ts;
@@ -1928,7 +1926,7 @@ static mega_node* mega_node_parse(mega_session* s, const gchar* node)
   }
   else if (node_t == MEGA_NODE_TRASH)
   {
-    mega_node* n = g_new0(mega_node, 1);
+    struct mega_node* n = g_new0(struct mega_node, 1);
     n->name = g_strdup("Trash");
     n->handle = g_strdup(node_h);
     n->timestamp = node_ts;
@@ -2074,7 +2072,7 @@ static mega_node* mega_node_parse(mega_session* s, const gchar* node)
 
 #define TAKE(n) (tmp = n, n = NULL, tmp)
 
-  mega_node* n = g_new0(mega_node, 1);
+  struct mega_node* n = g_new0(struct mega_node, 1);
 
   n->s = s;
   n->name = TAKE(node_name);
@@ -2094,7 +2092,7 @@ static mega_node* mega_node_parse(mega_session* s, const gchar* node)
 // }}}
 // {{{ mega_node_parse_user
 
-static mega_node* mega_node_parse_user(mega_session* s, const gchar* node)
+static struct mega_node* mega_node_parse_user(struct mega_session* s, const gchar* node)
 {
   gc_free gchar* node_u = s_json_get_member_string(node, "u");
   gc_free gchar* node_m = s_json_get_member_string(node, "m");
@@ -2107,7 +2105,7 @@ static mega_node* mega_node_parse_user(mega_session* s, const gchar* node)
   if (!node_m || strlen(node_m) == 0)
     return NULL;
 
-  mega_node* n = g_new0(mega_node, 1);
+  struct mega_node* n = g_new0(struct mega_node, 1);
   n->s = s;
   n->name = node_m;
   n->handle = node_u;
@@ -2124,7 +2122,7 @@ static mega_node* mega_node_parse_user(mega_session* s, const gchar* node)
 // }}}
 // {{{ mega_node_is_writable
 
-gboolean mega_node_is_writable(mega_session* s, mega_node* n)
+gboolean mega_node_is_writable(struct mega_session* s, struct mega_node* n)
 {
   g_return_val_if_fail(n != NULL, FALSE);
 
@@ -2138,7 +2136,7 @@ gboolean mega_node_is_writable(mega_session* s, mega_node* n)
 // }}}
 // {{{ mega_node_free
 
-static void mega_node_free(mega_node* n)
+static void mega_node_free(struct mega_node* n)
 {
   if (n)
   {
@@ -2149,7 +2147,7 @@ static void mega_node_free(mega_node* n)
     g_free(n->su_handle);
     g_free(n->key);
     g_free(n->link);
-    memset(n, 0, sizeof(mega_node));
+    memset(n, 0, sizeof(struct mega_node));
     g_free(n);
   }
 }
@@ -2169,9 +2167,9 @@ GQuark mega_error_quark(void)
 
 // {{{ mega_session_new
 
-mega_session* mega_session_new(void)
+struct mega_session* mega_session_new(void)
 {
-  mega_session* s = g_new0(mega_session, 1);
+  struct mega_session* s = g_new0(struct mega_session, 1);
 
   s->http = http_new();
   http_set_content_type(s->http, "application/json");
@@ -2189,7 +2187,7 @@ mega_session* mega_session_new(void)
 // }}}
 // {{{ mega_session_set_speed
 
-void mega_session_set_speed(mega_session* s, gint ul, gint dl)
+void mega_session_set_speed(struct mega_session* s, gint ul, gint dl)
 {
   g_return_if_fail(s != NULL);
 
@@ -2200,7 +2198,7 @@ void mega_session_set_speed(mega_session* s, gint ul, gint dl)
 // }}}
 // {{{ mega_session_set_workers
 
-void mega_session_set_workers(mega_session* s, gint workers)
+void mega_session_set_workers(struct mega_session* s, gint workers)
 {
   g_return_if_fail(s != NULL);
 
@@ -2210,7 +2208,7 @@ void mega_session_set_workers(mega_session* s, gint workers)
 // }}}
 // {{{ mega_session_set_proxy
 
-void mega_session_set_proxy(mega_session* s, const gchar* proxy)
+void mega_session_set_proxy(struct mega_session* s, const gchar* proxy)
 {
   g_return_if_fail(s != NULL);
 
@@ -2222,7 +2220,7 @@ void mega_session_set_proxy(mega_session* s, const gchar* proxy)
 // }}}
 // {{{ mega_session_set_resume
 
-void mega_session_set_resume(mega_session* s, gboolean enabled)
+void mega_session_set_resume(struct mega_session* s, gboolean enabled)
 {
   g_return_if_fail(s != NULL);
 
@@ -2232,7 +2230,7 @@ void mega_session_set_resume(mega_session* s, gboolean enabled)
 // }}}
 // {{{ mega_session_free
 
-void mega_session_free(mega_session* s)
+void mega_session_free(struct mega_session* s)
 {
   if (s)
   {
@@ -2248,7 +2246,7 @@ void mega_session_free(mega_session* s)
     g_free(s->user_handle);
     g_free(s->user_name);
     g_free(s->user_email);
-    memset(s, 0, sizeof(mega_session));
+    memset(s, 0, sizeof(struct mega_session));
     g_free(s);
   }
 }
@@ -2256,7 +2254,7 @@ void mega_session_free(mega_session* s)
 // }}}
 // {{{ mega_session_watch_status
 
-void mega_session_watch_status(mega_session* s, mega_status_callback cb, gpointer userdata)
+void mega_session_watch_status(struct mega_session* s, mega_status_callback cb, gpointer userdata)
 {
   g_return_if_fail(s != NULL);
 
@@ -2267,7 +2265,7 @@ void mega_session_watch_status(mega_session* s, mega_status_callback cb, gpointe
 // }}}
 // {{{ mega_session_enable_previews
 
-void mega_session_enable_previews(mega_session* s, gboolean enable)
+void mega_session_enable_previews(struct mega_session* s, gboolean enable)
 {
   g_return_if_fail(s != NULL);
 
@@ -2279,7 +2277,7 @@ void mega_session_enable_previews(mega_session* s, gboolean enable)
 // {{{ mega_session_open_exp_folder
 
 // |specific| is optional so it can be NULL
-gboolean mega_session_open_exp_folder(mega_session* s, const gchar* n, const gchar* key, const gchar* specific, GError** err)
+gboolean mega_session_open_exp_folder(struct mega_session* s, const gchar* n, const gchar* key, const gchar* specific, GError** err)
 {
   GError* local_err = NULL;
   gsize len, i, l;
@@ -2324,7 +2322,7 @@ gboolean mega_session_open_exp_folder(mega_session* s, const gchar* n, const gch
         }
 
         // import nodes into the fs
-        mega_node* n = mega_node_parse(s, node);
+        struct mega_node* n = mega_node_parse(s, node);
         if (n)
         {
           if (i == 1)
@@ -2349,7 +2347,7 @@ gboolean mega_session_open_exp_folder(mega_session* s, const gchar* n, const gch
 // }}}
 // {{{ mega_session_open
 
-gboolean mega_session_open(mega_session* s, const gchar* un, const gchar* pw, const gchar* sid, GError** err)
+gboolean mega_session_open(struct mega_session* s, const gchar* un, const gchar* pw, const gchar* sid, GError** err)
 {
   GError* local_err = NULL;
   gboolean is_loggedin = FALSE;
@@ -2406,7 +2404,7 @@ gboolean mega_session_open(mega_session* s, const gchar* un, const gchar* pw, co
     }
 
     // decrypt private key with master key
-    rsa_key privk;
+    struct rsa_key privk;
     memset(&privk, 0, sizeof(privk));
     if (!b64_aes128_decrypt_privk(login_privk, master_key, &privk))
     {
@@ -2441,7 +2439,7 @@ gboolean mega_session_open(mega_session* s, const gchar* un, const gchar* pw, co
 // }}}
 // {{{ mega_session_close
 
-void mega_session_close(mega_session* s)
+void mega_session_close(struct mega_session* s)
 {
   g_return_if_fail(s != NULL);
 
@@ -2473,7 +2471,7 @@ void mega_session_close(mega_session* s)
 // }}}
 // {{{ mega_session_get_sid
 
-const gchar* mega_session_get_sid(mega_session* s)
+const gchar* mega_session_get_sid(struct mega_session* s)
 {
   g_return_val_if_fail(s != NULL, NULL);
 
@@ -2483,7 +2481,7 @@ const gchar* mega_session_get_sid(mega_session* s)
 // }}}
 // {{{ mega_session_get_user
 
-gboolean mega_session_get_user(mega_session* s, GError** err)
+gboolean mega_session_get_user(struct mega_session* s, GError** err)
 {
   GError* local_err = NULL;
 
@@ -2551,7 +2549,7 @@ gboolean mega_session_get_user(mega_session* s, GError** err)
 // }}}
 // {{{ mega_session_refresh
 
-gboolean mega_session_refresh(mega_session* s, GError** err)
+gboolean mega_session_refresh(struct mega_session* s, GError** err)
 {
   GError* local_err = NULL;
   GSList* list = NULL;
@@ -2622,13 +2620,13 @@ gboolean mega_session_refresh(mega_session* s, GError** err)
     if (s_json_get_type(f) != S_JSON_TYPE_OBJECT)
       continue;
 
-    mega_node* n = mega_node_parse(s, f);
+    struct mega_node* n = mega_node_parse(s, f);
     if (n)
       list = g_slist_prepend(list, n);
   }
 
   // import special root node for contacts
-  mega_node* n = g_new0(mega_node, 1);
+  struct mega_node* n = g_new0(struct mega_node, 1);
   n->s = s;
   n->name = g_strdup("Contacts");
   n->handle = g_strdup("NETWORK");
@@ -2652,7 +2650,7 @@ gboolean mega_session_refresh(mega_session* s, GError** err)
       if (u_c != 1)
         continue;
 
-      mega_node* n = mega_node_parse_user(s, u);
+      struct mega_node* n = mega_node_parse_user(s, u);
       if (n) 
         list = g_slist_prepend(list, n);
     }
@@ -2672,7 +2670,7 @@ gboolean mega_session_refresh(mega_session* s, GError** err)
 // }}}
 // {{{ mega_session_addlinks
 
-gboolean mega_session_addlinks(mega_session* s, GSList* nodes, GError** err)
+gboolean mega_session_addlinks(struct mega_session* s, GSList* nodes, GError** err)
 {
   GError* local_err = NULL;
   GSList* i;
@@ -2691,7 +2689,7 @@ gboolean mega_session_addlinks(mega_session* s, GSList* nodes, GError** err)
   s_json_gen_start_array(gen);
   for (i = nodes; i; i = i->next)
   {
-    mega_node* n = i->data;
+    struct mega_node* n = i->data;
 
     if (n->type == MEGA_NODE_FILE)
     {
@@ -2731,7 +2729,7 @@ gboolean mega_session_addlinks(mega_session* s, GSList* nodes, GError** err)
     {
       gchar* link = s_json_get_string(nodes_arr[i]);
 
-      mega_node* n = g_ptr_array_index(rnodes, i);
+      struct mega_node* n = g_ptr_array_index(rnodes, i);
 
       g_free(n->link);
       n->link = link;
@@ -2744,7 +2742,7 @@ gboolean mega_session_addlinks(mega_session* s, GSList* nodes, GError** err)
 // }}}
 // {{{ mega_session_user_quota
 
-mega_user_quota* mega_session_user_quota(mega_session* s, GError** err)
+struct mega_user_quota* mega_session_user_quota(struct mega_session* s, GError** err)
 {
   GError* local_err = NULL;
 
@@ -2759,7 +2757,7 @@ mega_user_quota* mega_session_user_quota(mega_session* s, GError** err)
     return NULL;
   }
 
-  mega_user_quota* q = g_new0(mega_user_quota, 1);
+  struct mega_user_quota* q = g_new0(struct mega_user_quota, 1);
 
   q->total = s_json_get_member_int(quota_node, "mstrg", 0);
   q->used = s_json_get_member_int(quota_node, "cstrg", 0);
@@ -2772,7 +2770,7 @@ mega_user_quota* mega_session_user_quota(mega_session* s, GError** err)
 // {{{ mega_session_ls_all
 
 // free gslist, not the data
-GSList* mega_session_ls_all(mega_session* s)
+GSList* mega_session_ls_all(struct mega_session* s)
 {
   GSList* list = NULL;
 
@@ -2784,14 +2782,14 @@ GSList* mega_session_ls_all(mega_session* s)
 // }}}
 // {{{ mega_session_ls
 
-struct _ls_data
+struct ls_data
 {
   GSList* list;
   gchar* path;
   gboolean recursive;
 };
 
-static void _ls(mega_node* n, struct _ls_data* data)
+static void _ls(struct mega_node* n, struct ls_data* data)
 {
   gchar path[4096];
   if (mega_node_get_path(n, path, sizeof(path)))
@@ -2802,9 +2800,9 @@ static void _ls(mega_node* n, struct _ls_data* data)
 }
 
 // free gslist, not the data
-GSList* mega_session_ls(mega_session* s, const gchar* path, gboolean recursive)
+GSList* mega_session_ls(struct mega_session* s, const gchar* path, gboolean recursive)
 {
-  struct _ls_data data;
+  struct ls_data data;
 
   g_return_val_if_fail(s != NULL, NULL);
   g_return_val_if_fail(path != NULL, NULL);
@@ -2827,7 +2825,7 @@ GSList* mega_session_ls(mega_session* s, const gchar* path, gboolean recursive)
 // }}}
 // {{{ mega_session_stat
 
-mega_node* mega_session_stat(mega_session* s, const gchar* path)
+struct mega_node* mega_session_stat(struct mega_session* s, const gchar* path)
 {
   g_return_val_if_fail(s != NULL, NULL);
   g_return_val_if_fail(path != NULL, NULL);
@@ -2838,7 +2836,7 @@ mega_node* mega_session_stat(mega_session* s, const gchar* path)
   gchar n_path[4096];
   for (iter = s->fs_nodes; iter; iter = iter->next)
   {
-    mega_node* n = iter->data;
+    struct mega_node* n = iter->data;
 
     if (mega_node_get_path(n, n_path, sizeof(n_path)))
     {
@@ -2853,7 +2851,7 @@ mega_node* mega_session_stat(mega_session* s, const gchar* path)
 // }}}
 // {{{ mega_session_get_node_chilren
 
-GSList* mega_session_get_node_chilren(mega_session* s, mega_node* node)
+GSList* mega_session_get_node_chilren(struct mega_session* s, struct mega_node* node)
 {
   GSList *list = NULL, *i;
 
@@ -2863,7 +2861,7 @@ GSList* mega_session_get_node_chilren(mega_session* s, mega_node* node)
 
   for (i = s->fs_nodes; i; i = i->next)
   {
-    mega_node* child = i->data;
+    struct mega_node* child = i->data;
 
     if (child->parent_handle && !strcmp(child->parent_handle, node->handle))
       list = g_slist_prepend(list, child);
@@ -2875,16 +2873,16 @@ GSList* mega_session_get_node_chilren(mega_session* s, mega_node* node)
 // }}}
 // {{{ mega_session_mkdir
 
-mega_node* mega_session_mkdir(mega_session* s, const gchar* path, GError** err)
+struct mega_node* mega_session_mkdir(struct mega_session* s, const gchar* path, GError** err)
 {
   GError* local_err = NULL;
-  mega_node* n = NULL;
+  struct mega_node* n = NULL;
 
   g_return_val_if_fail(s != NULL, NULL);
   g_return_val_if_fail(path != NULL, NULL);
   g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
-  mega_node* d = mega_session_stat(s, path);
+  struct mega_node* d = mega_session_stat(s, path);
   if (d)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Directory already exists: %s", path);
@@ -2900,7 +2898,7 @@ mega_node* mega_session_mkdir(mega_session* s, const gchar* path, GError** err)
     return NULL;
   }
 
-  mega_node* p = mega_session_stat(s, parent_path);
+  struct mega_node* p = mega_session_stat(s, parent_path);
   if (!p || p->type == MEGA_NODE_FILE || p->type == MEGA_NODE_INBOX)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Parent directory doesn't exist: %s", parent_path);
@@ -2979,7 +2977,7 @@ mega_node* mega_session_mkdir(mega_session* s, const gchar* path, GError** err)
 // }}}
 // {{{ mega_session_rm
 
-gboolean mega_session_rm(mega_session* s, const gchar* path, GError** err)
+gboolean mega_session_rm(struct mega_session* s, const gchar* path, GError** err)
 {
   GError* local_err = NULL;
 
@@ -2987,7 +2985,7 @@ gboolean mega_session_rm(mega_session* s, const gchar* path, GError** err)
   g_return_val_if_fail(path != NULL, FALSE);
   g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
-  mega_node* mn = mega_session_stat(s, path);
+  struct mega_node* mn = mega_session_stat(s, path);
   if (!mn)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File not found: %s", path);
@@ -3036,7 +3034,7 @@ gboolean mega_session_rm(mega_session* s, const gchar* path, GError** err)
 // }}}
 // {{{ mega_session_new_node_attribute
 
-gchar* mega_session_new_node_attribute(mega_session* s, const guchar* data, gsize len, const gchar* type, const guchar* key, GError** err)
+gchar* mega_session_new_node_attribute(struct mega_session* s, const guchar* data, gsize len, const gchar* type, const guchar* key, GError** err)
 {
   GError* local_err = NULL;
   AES_KEY k;
@@ -3068,7 +3066,7 @@ gchar* mega_session_new_node_attribute(mega_session* s, const guchar* data, gsiz
   AES_cbc_encrypt(plain, cipher, len + pad, &k, iv, 1);
 
   // upload
-  gc_http_free http* h = http_new();
+  gc_http_free struct http* h = http_new();
   http_set_proxy(h, s->proxy);
   http_set_content_type(h, "application/octet-stream");
   gc_string_free GString* handle = http_post(h, p_url, cipher, len + pad, &local_err);
@@ -3267,7 +3265,7 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
   gsize bytes_read;
   GError* err = NULL;
   GError* local_err = NULL;
-  gc_http_free http* h = NULL;
+  gc_http_free struct http* h = NULL;
   gc_free gchar* url = NULL;
   gc_string_free GString* response = NULL;
 
@@ -3658,7 +3656,7 @@ static void tman_init(int max_workers)
 
 static gboolean tman_run_upload_transfer(
   // in:
-  mega_session* s,
+  struct mega_session* s,
   guchar file_key[16],
   guchar nonce[8],
   const gchar* upload_url,
@@ -3766,7 +3764,7 @@ out:
 static gint has_convert = -1;
 static gint has_ffmpegthumbnailer = -1;
 
-static gchar* create_preview(mega_session* s, const gchar* local_path, const guchar* key, GError** err)
+static gchar* create_preview(struct mega_session* s, const gchar* local_path, const guchar* key, GError** err)
 {
   gchar* handle = NULL;
 #ifndef G_OS_WIN32
@@ -3886,7 +3884,7 @@ static gchar* create_preview(mega_session* s, const gchar* local_path, const guc
 // }}}
 // {{{ mega_session_put
 
-mega_node* mega_session_put(mega_session* s, mega_node* parent_node, GFile* file, GError** err)
+struct mega_node* mega_session_put(struct mega_session* s, struct mega_node* parent_node, GFile* file, GError** err)
 {
   GError* local_err = NULL;
   gc_free gchar* file_name = NULL;
@@ -3991,7 +3989,7 @@ mega_node* mega_session_put(mega_session* s, mega_node* parent_node, GFile* file
     return NULL;
   }
 
-  mega_node* nn = mega_node_parse(s, f_el);
+  struct mega_node* nn = mega_node_parse(s, f_el);
   if (!nn)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Invalid response");
@@ -4010,7 +4008,7 @@ mega_node* mega_session_put(mega_session* s, mega_node* parent_node, GFile* file
 
 static gboolean progress_generic(goffset dltotal, goffset dlnow, goffset ultotal, goffset ulnow, gpointer user_data)
 {
-  mega_session* s = user_data;
+  struct mega_session* s = user_data;
   const gint64 timenow = g_get_monotonic_time();
   if (s->last_progress && s->last_progress + PROGRESS_FREQUENCY > timenow)
     return TRUE;
@@ -4032,13 +4030,13 @@ static gboolean progress_generic(goffset dltotal, goffset dlnow, goffset ultotal
 
 struct get_data_state
 {
-  mega_session* s;
+  struct mega_session* s;
   GFileOutputStream* stream;
   AES_KEY k;
   guchar iv[AES_BLOCK_SIZE];
   gint num;
   guchar ecount[AES_BLOCK_SIZE];
-  chunked_cbc_mac mac;
+  struct chunked_cbc_mac mac;
   GByteArray* buffer;
 };
 
@@ -4073,14 +4071,14 @@ static gsize get_data_cb(gpointer buffer, gsize size, struct get_data_state* dat
 
 #define RESUME_BUF_SIZE (1024 * 1024)
 
-gboolean mega_session_download_data(mega_session* s, mega_download_data_params* params, GFile* file, GError** err)
+gboolean mega_session_download_data(struct mega_session* s, struct mega_download_data_params* params, GFile* file, GError** err)
 {
   GError* local_err = NULL;
   gc_object_unref GFile* dir = NULL;
   gc_object_unref GFile* tmp_file = NULL;
   gc_object_unref GFileOutputStream* stream = NULL;
   gc_free gchar* url = NULL;
-  gc_http_free http* h = NULL;
+  gc_http_free struct http* h = NULL;
   gc_byte_array_unref GByteArray* buffer = NULL;
   struct get_data_state state = {.s = s};
   gc_free gchar* tmp_path = NULL, *file_path = NULL, *tmp_name = NULL;
@@ -4263,7 +4261,7 @@ err_noremove:
   return FALSE;
 }
 
-void mega_download_data_free(mega_download_data_params* params)
+void mega_download_data_free(struct mega_download_data_params* params)
 {
   g_clear_pointer(&params->download_url, g_free);
   g_clear_pointer(&params->node_handle, g_free);
@@ -4273,11 +4271,11 @@ void mega_download_data_free(mega_download_data_params* params)
 // }}}
 // {{{ mega_session_get
 
-gboolean mega_session_get(mega_session* s, GFile* file, mega_node* node, GError** err)
+gboolean mega_session_get(struct mega_session* s, GFile* file, struct mega_node* node, GError** err)
 {
   GError* local_err = NULL;
   gc_free gchar* get_node = NULL, *url = NULL;
-  mega_download_data_params p = {};
+  struct mega_download_data_params p = {};
 
   g_return_val_if_fail(s != NULL, FALSE);
   g_return_val_if_fail(node != NULL, FALSE);
@@ -4320,7 +4318,7 @@ gboolean mega_session_get(mega_session* s, GFile* file, mega_node* node, GError*
 // }}}
 // {{{ mega_session_dl_prepare
 
-gboolean mega_session_dl_prepare(mega_session* s, mega_download_data_params* params, const gchar* handle, const gchar* key, GError** err)
+gboolean mega_session_dl_prepare(struct mega_session* s, struct mega_download_data_params* params, const gchar* handle, const gchar* key, GError** err)
 {
   GError* local_err = NULL;
   gc_free gchar *node_name = NULL, *dl_node = NULL, *url = NULL, *at = NULL;
@@ -4413,7 +4411,7 @@ gboolean mega_session_dl_prepare(mega_session* s, mega_download_data_params* par
 
 // {{{ mega_node_get_link
 
-gchar* mega_node_get_link(mega_node* n, gboolean include_key)
+gchar* mega_node_get_link(struct mega_node* n, gboolean include_key)
 {
   g_return_val_if_fail(n != NULL, NULL);
 
@@ -4435,7 +4433,7 @@ gchar* mega_node_get_link(mega_node* n, gboolean include_key)
 // }}}
 // {{{ mega_node_get_key
 
-gchar* mega_node_get_key(mega_node* n)
+gchar* mega_node_get_key(struct mega_node* n)
 {
   g_return_val_if_fail(n != NULL, NULL);
 
@@ -4448,7 +4446,7 @@ gchar* mega_node_get_key(mega_node* n)
 // }}}
 // {{{ mega_node_get_path
 
-gchar* mega_node_get_path_dup(mega_node* n)
+gchar* mega_node_get_path_dup(struct mega_node* n)
 {
   gchar path[4096];
 
@@ -4458,13 +4456,13 @@ gchar* mega_node_get_path_dup(mega_node* n)
   return NULL;
 }
 
-gboolean mega_node_get_path(mega_node* n, gchar* buf, gsize len)
+gboolean mega_node_get_path(struct mega_node* n, gchar* buf, gsize len)
 {
   g_return_val_if_fail(n != NULL, FALSE);
 
   // count parents
   gint n_parents = 0;
-  mega_node* it = n;
+  struct mega_node* it = n;
   while (it)
   {
     n_parents++;
@@ -4472,7 +4470,7 @@ gboolean mega_node_get_path(mega_node* n, gchar* buf, gsize len)
   }
 
   // allocate pointer list on stack
-  mega_node** parents = g_alloca(sizeof(mega_node*) * n_parents);
+  struct mega_node** parents = g_alloca(sizeof(struct mega_node*) * n_parents);
 
   // get parents into the pointer list
   it = n;
@@ -4510,7 +4508,7 @@ gboolean mega_node_get_path(mega_node* n, gchar* buf, gsize len)
 // }}}
 // {{{ mega_node_is_container
 
-gboolean mega_node_is_container(mega_node* n)
+gboolean mega_node_is_container(struct mega_node* n)
 {
   return n && n->type != MEGA_NODE_FILE;
 }
@@ -4527,7 +4525,7 @@ static void save_share_keys(gchar* handle, gchar* key, SJsonGen* gen)
   s_json_gen_end_object(gen);
 }
 
-gboolean mega_session_save(mega_session* s, GError** err)
+gboolean mega_session_save(struct mega_session* s, GError** err)
 {
   GError* local_err = NULL;
   GSList* i;
@@ -4565,7 +4563,7 @@ gboolean mega_session_save(mega_session* s, GError** err)
   s_json_gen_member_array(gen, "fs_nodes");
   for (i = s->fs_nodes; i; i = i->next)
   {
-    mega_node* n = i->data;
+    struct mega_node* n = i->data;
 
     s_json_gen_start_object(gen);
     s_json_gen_member_string(gen, "name", n->name);
@@ -4603,7 +4601,7 @@ gboolean mega_session_save(mega_session* s, GError** err)
 // }}}
 // {{{ mega_session_load
 
-gboolean mega_session_load(mega_session* s, const gchar* un, const gchar* pw, gint max_age, gchar** last_sid, GError** err)
+gboolean mega_session_load(struct mega_session* s, const gchar* un, const gchar* pw, gint max_age, gchar** last_sid, GError** err)
 {
   GError* local_err = NULL;
   gc_free gchar* cipher = NULL;
@@ -4716,7 +4714,7 @@ gboolean mega_session_load(mega_session* s, const gchar* un, const gchar* pw, gi
     if (s_json_get_type(fs_nodes) == S_JSON_TYPE_ARRAY)
     {
       S_JSON_FOREACH_ELEMENT(fs_nodes, fs_node)
-        mega_node* n = g_new0(mega_node, 1);
+        struct mega_node* n = g_new0(struct mega_node, 1);
 
         n->type = -1;
 
@@ -4764,7 +4762,7 @@ gboolean mega_session_load(mega_session* s, const gchar* un, const gchar* pw, gi
 
 // {{{ mega_session_register
 
-gboolean mega_session_register(mega_session* s, const gchar* email, const gchar* password, const gchar* name, mega_reg_state** state, GError** err)
+gboolean mega_session_register(struct mega_session* s, const gchar* email, const gchar* password, const gchar* name, struct mega_reg_state** state, GError** err)
 {
   GError* local_err = NULL;
 
@@ -4850,7 +4848,7 @@ gboolean mega_session_register(mega_session* s, const gchar* email, const gchar*
   }
 
   // save state
-  mega_reg_state* st = *state = g_new0(mega_reg_state, 1);
+  struct mega_reg_state* st = *state = g_new0(struct mega_reg_state, 1);
   st->user_handle = user_handle;
   user_handle = NULL;
   memcpy(st->password_key, password_key, 16);
@@ -4863,7 +4861,7 @@ gboolean mega_session_register(mega_session* s, const gchar* email, const gchar*
 // }}}
 // {{{ mega_session_register_verify
 
-gboolean mega_session_register_verify(mega_session* s, mega_reg_state* state, const gchar* signup_key, GError** err)
+gboolean mega_session_register_verify(struct mega_session* s, struct mega_reg_state* state, const gchar* signup_key, GError** err)
 {
   GError* local_err = NULL;
   gc_free gchar* node = NULL;
@@ -4877,7 +4875,7 @@ gboolean mega_session_register_verify(mega_session* s, mega_reg_state* state, co
   mega_session_close(s);
 
   // generate RSA key
-  rsa_key key;
+  struct rsa_key key;
   memset(&key, 0, sizeof(key));
   if (!rsa_key_gen(&key))
   {
@@ -5005,10 +5003,10 @@ gboolean mega_session_register_verify(mega_session* s, mega_reg_state* state, co
 
 // {{{ Compatibility: old interfaces
 
-mega_node* mega_session_put_compat(mega_session* s, const gchar* remote_path, const gchar* local_path, GError** err)
+struct mega_node* mega_session_put_compat(struct mega_session* s, const gchar* remote_path, const gchar* local_path, GError** err)
 {
   gc_object_unref GFile* file = NULL;
-  mega_node* node, *parent_node;
+  struct mega_node* node, *parent_node;
 
   node = mega_session_stat(s, remote_path);
   if (node)
@@ -5070,11 +5068,11 @@ mega_node* mega_session_put_compat(mega_session* s, const gchar* remote_path, co
   return mega_session_put(s, parent_node, file, err);
 }
 
-gboolean mega_session_get_compat(mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err)
+gboolean mega_session_get_compat(struct mega_session* s, const gchar* local_path, const gchar* remote_path, GError** err)
 {
   gc_object_unref GFile* file = NULL;
 
-  mega_node* node = mega_session_stat(s, remote_path);
+  struct mega_node* node = mega_session_stat(s, remote_path);
   if (!node)
   {
     g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Remote file not found: %s", remote_path);
@@ -5111,7 +5109,7 @@ gboolean mega_session_get_compat(mega_session* s, const gchar* local_path, const
   return mega_session_get(s, file, node, err);
 }
 
-gboolean mega_session_dl_compat(mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err)
+gboolean mega_session_dl_compat(struct mega_session* s, const gchar* handle, const gchar* key, const gchar* local_path, GError** err)
 {
   GError* local_err = NULL;
   gc_object_unref GFile* file = NULL, *parent_dir = NULL;
@@ -5145,7 +5143,7 @@ gboolean mega_session_dl_compat(mega_session* s, const gchar* handle, const gcha
     }
   }
 
-  mega_download_data_params params = {};
+  struct mega_download_data_params params = {};
   if (!mega_session_dl_prepare(s, &params, handle, key, &local_err))
   {
     g_propagate_error(err, local_err);

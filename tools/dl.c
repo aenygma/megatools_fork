@@ -37,9 +37,9 @@ static GOptionEntry entries[] =
 };
 
 static gchar* cur_file = NULL;
-static mega_session* s;
+static struct mega_session* s;
 
-static gboolean status_callback(mega_status_data* data, gpointer userdata)
+static gboolean status_callback(struct mega_status_data* data, gpointer userdata)
 {
   if (opt_stream && data->type == MEGA_STATUS_DATA)
   {
@@ -60,7 +60,7 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 
 // download operation
 
-static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_path)
+static gboolean dl_sync_file(struct mega_node* node, GFile* file, const gchar* remote_path)
 {
   gc_error_free GError *local_err = NULL;
   gc_free gchar* local_path = g_file_get_path(file);
@@ -91,7 +91,7 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
   return TRUE;
 }
 
-static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_path)
+static gboolean dl_sync_dir(struct mega_node* node, GFile* file, const gchar* remote_path)
 {
   gc_error_free GError *local_err = NULL;
   gc_free gchar* local_path = g_file_get_path(file);
@@ -121,7 +121,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
   gboolean status = TRUE;
   for (i = children; i; i = i->next)
   {
-    mega_node* child = i->data;
+    struct mega_node* child = i->data;
     gc_free gchar* child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
     gc_object_unref GFile* child_file = g_file_get_child(file, child->name);
 
@@ -256,7 +256,7 @@ int main(int ac, char* av[])
         GSList* l = mega_session_ls(s, "/", FALSE);
         if (g_slist_length(l) == 1)
         {
-          mega_node* root_node = l->data;
+          struct mega_node* root_node = l->data;
 
           gc_object_unref GFile* local_dir = g_file_new_for_path(opt_path);
           if (g_file_query_file_type(local_dir, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_DIRECTORY)

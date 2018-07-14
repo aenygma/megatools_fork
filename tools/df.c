@@ -52,7 +52,7 @@ static gchar* format_size(guint64 size)
 int main(int ac, char* av[])
 {
   GError *local_err = NULL;
-  mega_session* s;
+  struct mega_session* s;
 
   tool_init(&ac, &av, "- display mega.nz storage quotas/usage", entries, TOOL_INIT_AUTH);
 
@@ -88,7 +88,7 @@ int main(int ac, char* av[])
   if (!s)
     return 1;
 
-  mega_user_quota* q = mega_session_user_quota(s, &local_err);
+  struct mega_user_quota* q = mega_session_user_quota(s, &local_err);
   if (!q)
   {
     g_printerr("ERROR: Can't determine disk usage: %s\n", local_err->message);

@@ -27,7 +27,7 @@ static GOptionEntry entries[] =
 int main(int ac, char* av[])
 {
   gc_error_free GError *local_err = NULL;
-  static mega_session* s;
+  static struct mega_session* s;
 
   tool_init(&ac, &av, "- remove files from mega.nz", entries, TOOL_INIT_AUTH);
 

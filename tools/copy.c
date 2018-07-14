@@ -25,7 +25,7 @@ static gboolean opt_download;
 static gboolean opt_noprogress;
 static gboolean opt_dryrun;
 static gboolean opt_nofollow;
-static mega_session* s;
+static struct mega_session* s;
 
 static GOptionEntry entries[] =
 {
@@ -38,7 +38,7 @@ static GOptionEntry entries[] =
   { NULL }
 };
 
-static gboolean status_callback(mega_status_data* data, gpointer userdata)
+static gboolean status_callback(struct mega_status_data* data, gpointer userdata)
 {
   if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
     tool_show_progress("copying...", data);
@@ -52,7 +52,7 @@ static gboolean up_sync_file(GFile* root, GFile* file, const gchar* remote_path)
 {
   GError *local_err = NULL;
 
-  mega_node* node = mega_session_stat(s, remote_path);
+  struct mega_node* node = mega_session_stat(s, remote_path);
   if (node)
   {
     g_printerr("ERROR: File already exists at %s\n", remote_path);
@@ -87,7 +87,7 @@ static gboolean up_sync_dir(GFile* root, GFile* file, const gchar* remote_path)
 
   if (root != file)
   {
-    mega_node* node = mega_session_stat(s, remote_path);
+    struct mega_node* node = mega_session_stat(s, remote_path);
     if (node && node->type == MEGA_NODE_FILE)
     {
       g_printerr("ERROR: File already exists at %s\n", remote_path);
@@ -153,7 +153,7 @@ static gboolean up_sync_dir(GFile* root, GFile* file, const gchar* remote_path)
 
 // download operation
 
-static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_path)
+static gboolean dl_sync_file(struct mega_node* node, GFile* file, const gchar* remote_path)
 {
   GError *local_err = NULL;
   gchar* local_path = g_file_get_path(file);
@@ -185,7 +185,7 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
   return TRUE;
 }
 
-static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_path)
+static gboolean dl_sync_dir(struct mega_node* node, GFile* file, const gchar* remote_path)
 {
   GError *local_err = NULL;
   gchar* local_path = g_file_get_path(file);
@@ -218,7 +218,7 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
   GSList* children = mega_session_get_node_chilren(s, node), *i;
   for (i = children; i; i = i->next)
   {
-    mega_node* child = i->data;
+    struct mega_node* child = i->data;
     gchar* child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
     GFile* child_file = g_file_get_child(file, child->name);
 
@@ -263,7 +263,7 @@ int main(int ac, char* av[])
   mega_session_watch_status(s, status_callback, NULL);
 
   // check remote dir existence
-  mega_node* remote_dir = mega_session_stat(s, opt_remote_path);
+  struct mega_node* remote_dir = mega_session_stat(s, opt_remote_path);
   if (!remote_dir)
   {
     g_printerr("ERROR: Remote directory not found %s\n", opt_remote_path);

@@ -32,7 +32,7 @@ static GOptionEntry entries[] =
 
 static gchar* cur_file = NULL;
 
-static gboolean status_callback(mega_status_data* data, gpointer userdata)
+static gboolean status_callback(struct mega_status_data* data, gpointer userdata)
 {
   if (opt_stream && data->type == MEGA_STATUS_DATA)
   {
@@ -55,7 +55,7 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 int main(int ac, char* av[])
 {
   gc_error_free GError *local_err = NULL;
-  mega_session* s;
+  struct mega_session* s;
   gint i, status = 0;
 
   tool_init(&ac, &av, "- download individual files from mega.nz", entries, TOOL_INIT_AUTH);
@@ -87,7 +87,7 @@ int main(int ac, char* av[])
   // stream file
   if (opt_stream)
   {
-    mega_node* n = mega_session_stat(s, av[1]);
+    struct mega_node* n = mega_session_stat(s, av[1]);
     if (!n)
     {
       g_printerr("ERROR: Remote file not found: %s", av[1]);

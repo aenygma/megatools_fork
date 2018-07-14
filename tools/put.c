@@ -31,7 +31,7 @@ static GOptionEntry entries[] =
 
 static gchar* cur_file = NULL;
 
-static gboolean status_callback(mega_status_data* data, gpointer userdata)
+static gboolean status_callback(struct mega_status_data* data, gpointer userdata)
 {
   if (data->type == MEGA_STATUS_FILEINFO)
   {
@@ -48,7 +48,7 @@ static gboolean status_callback(mega_status_data* data, gpointer userdata)
 int main(int ac, char* av[])
 {
   gc_error_free GError *local_err = NULL;
-  mega_session* s;
+  struct mega_session* s;
 
   tool_init(&ac, &av, "- upload files to mega.nz", entries, TOOL_INIT_AUTH | TOOL_INIT_UPLOAD_OPTS);
 

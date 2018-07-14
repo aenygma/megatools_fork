@@ -39,7 +39,7 @@ static GOptionEntry entries[] =
   { NULL }
 };
 
-static gint compare_node(mega_node* a, mega_node* b)
+static gint compare_node(struct mega_node* a, struct mega_node* b)
 {
   gchar path1[4096];
   gchar path2[4096];
@@ -51,7 +51,7 @@ static gint compare_node(mega_node* a, mega_node* b)
 
 int main(int ac, char* av[])
 {
-  mega_session* s;
+  struct mega_session* s;
   gc_error_free GError *local_err = NULL;
   GSList *l = NULL, *i;
   gint j;
@@ -77,7 +77,7 @@ int main(int ac, char* av[])
     {
       gc_free gchar* path = tool_convert_filename(av[j], FALSE);
 
-      mega_node* n = mega_session_stat(s, path);
+      struct mega_node* n = mega_session_stat(s, path);
       if (n && (n->type == MEGA_NODE_FILE || !opt_names))
         l = g_slist_append(l, n);
 
@@ -105,7 +105,7 @@ int main(int ac, char* av[])
 
   for (i = l; i; i = i->next)
   {
-    mega_node* n = i->data;
+    struct mega_node* n = i->data;
     gc_free gchar* node_path = mega_node_get_path_dup(n);
 
     if (opt_export)

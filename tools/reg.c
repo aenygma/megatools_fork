@@ -37,7 +37,7 @@ static GOptionEntry entries[] =
   { NULL }
 };
 
-static gchar* serialize_reg_state(mega_reg_state* state)
+static gchar* serialize_reg_state(struct mega_reg_state* state)
 {
   gc_free gchar* pk = g_base64_encode(state->password_key, 16);
   gc_free gchar* ch = g_base64_encode(state->challenge, 16);
@@ -45,7 +45,7 @@ static gchar* serialize_reg_state(mega_reg_state* state)
   return g_strdup_printf("%s:%s:%s", pk, ch, state->user_handle);
 }
 
-static mega_reg_state* unserialize_reg_state(const gchar* str)
+static struct mega_reg_state* unserialize_reg_state(const gchar* str)
 {
   gc_match_info_unref GMatchInfo* m = NULL;
   gc_regex_unref GRegex* r = g_regex_new("^([a-z0-9/+=]{24}):([a-z0-9/+=]{24}):(.*)$", G_REGEX_CASELESS, 0, NULL);
@@ -62,7 +62,7 @@ static mega_reg_state* unserialize_reg_state(const gchar* str)
   gc_free guchar* decoded_ch = NULL;
   gc_free guchar* decoded_pk = NULL;
 
-  mega_reg_state* state = g_new0(mega_reg_state, 1);
+  struct mega_reg_state* state = g_new0(struct mega_reg_state, 1);
   state->user_handle = g_match_info_fetch(m, 3);;
 
   decoded_pk = g_base64_decode(pk, &len);
@@ -94,9 +94,9 @@ err:
 int main(int ac, char* av[])
 {
   gc_error_free GError *local_err = NULL;
-  mega_reg_state* state = NULL;
+  struct mega_reg_state* state = NULL;
   gc_free gchar* signup_key = NULL;
-  mega_session* s;
+  struct mega_session* s;
 
   tool_init(&ac, &av, "LINK - register a new mega.nz account", entries, 0);
 

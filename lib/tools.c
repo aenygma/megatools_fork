@@ -268,7 +268,7 @@ gboolean tool_is_stdout_tty(void)
 #endif
 }
 
-void tool_show_progress(const gchar* file, const mega_status_data *data)
+void tool_show_progress(const gchar* file, const struct mega_status_data *data)
 {
   if (data->progress.total == 0 || data->progress.span == 0)
     return;
@@ -559,13 +559,13 @@ void tool_init(gint* ac, gchar*** av, const gchar* tool_name, GOptionEntry* tool
     opt_password = input_password();
 }
 
-mega_session* tool_start_session(ToolSessionFlags flags)
+struct mega_session* tool_start_session(ToolSessionFlags flags)
 {
   GError *local_err = NULL;
   gchar* sid = NULL;
   gboolean loaded = FALSE;
 
-  mega_session* s = mega_session_new();
+  struct mega_session* s = mega_session_new();
 
   mega_session_set_speed(s, upload_speed_limit, download_seed_limit);
   mega_session_set_workers(s, transfer_worker_count);
@@ -637,7 +637,7 @@ err:
   return NULL;
 }
 
-void tool_fini(mega_session* s)
+void tool_fini(struct mega_session* s)
 {
   if (s)
     mega_session_free(s);
