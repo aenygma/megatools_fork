@@ -34,6 +34,7 @@
 #include <openssl/rsa.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 
 DEFINE_CLEANUP_FUNCTION(http*, http_free)
 #define gc_http_free CLEANUP(http_free)
@@ -49,26 +50,6 @@ DEFINE_CLEANUP_FUNCTION_NULL(BIGNUM*, BN_free)
 #define PROGRESS_ONESEC ((gint64)1e6)
 
 gint mega_debug = 0;
-
-// Compat:
-
-// {{{ AES_ctr128_encrypt
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-void AES_ctr128_encrypt(
-  const unsigned char *in, 
-  unsigned char *out,
-  size_t length, 
-  const AES_KEY *key,
-  unsigned char ivec[AES_BLOCK_SIZE],
-  unsigned char ecount_buf[AES_BLOCK_SIZE],
-  unsigned int *num) 
-{
-  CRYPTO_ctr128_encrypt(in, out, length, key, ivec, ecount_buf, num, (block128_f)AES_encrypt);
-}
-#endif
-
-// }}}
 
 // Data structures and enums
 
@@ -1090,43 +1071,83 @@ static void chunked_cbc_mac_finish8(chunked_cbc_mac* mac, guchar mac_out[8])
 }
 
 // }}}
-// {{{ chunked CBC-MAC (out of order interface)
+// {{{ chunked CBC-MAC (simpler interface)
 
-static void chunk_mac_calculate(guchar iv[8], AES_KEY* k, const guchar* data, gsize len, guchar mac[16])
+gboolean chunk_mac_calculate(guchar iv[8], guchar key[16], const guchar* data, gsize len, guchar mac[16])
 {
-  guint position = 0;
-  gint i;
+  EVP_CIPHER_CTX* ctx;
+  const guchar* data_end;
+  int out_len;
 
-  g_return_if_fail(iv != NULL);
-  g_return_if_fail(k != NULL);
-  g_return_if_fail(data != NULL);
-  g_return_if_fail(len > 0);
-  g_return_if_fail(mac != NULL);
+  g_return_val_if_fail(iv != NULL, FALSE);
+  g_return_val_if_fail(key != NULL, FALSE);
+  g_return_val_if_fail(data != NULL, FALSE);
+  g_return_val_if_fail(len > 0, FALSE);
+  g_return_val_if_fail(mac != NULL, FALSE);
+
+  data_end = data + len;
+
+  ctx = EVP_CIPHER_CTX_new();
+  if (!ctx)
+    return FALSE;
+
+  if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, key, NULL))
+    goto err_clean;
+
+  EVP_CIPHER_CTX_set_padding(ctx, 0);
 
   memcpy(mac, iv, 8);
   memcpy(mac + 8, iv, 8);
 
-  for (i = 0; i < len; i++)
+  // process data by 16 byte blocks (data is aligned)
+  while (data + 16 < data_end)
   {
-    mac[position++ % 16] ^= data[i];
+    *((guint64*)&mac[0]) ^= *(guint64*)(data);
+    *((guint64*)&mac[8]) ^= *(guint64*)(data + 8);
+    data += 16;
 
-    if (G_UNLIKELY((position % 16) == 0))
-      AES_encrypt(mac, mac, k);
+    if (!EVP_EncryptUpdate(ctx, mac, &out_len, mac, 16))
+      goto err_clean;
+  }  
+
+  if (data_end - data > 0)
+  {
+    int i = 0;
+    while (data_end > data)
+      mac[i++] ^= *data++;
+
+    if (!EVP_EncryptUpdate(ctx, mac, &out_len, mac, 16))
+      goto err_clean;
   }
 
-  if (position % 16)
-    AES_encrypt(mac, mac, k);
+  EVP_CIPHER_CTX_free(ctx);
+  return TRUE;
+
+err_clean:
+  EVP_CIPHER_CTX_free(ctx);
+  return FALSE;
 }
 
 // meta-mac is xor of all chunk macs encrypted along the way
 // chunks is an ordered list of 16 byte chunk mac buffers
-static void meta_mac_calculate(GSList* chunks, AES_KEY* k, guchar meta_mac[16])
+static gboolean meta_mac_calculate(GSList* chunks, guchar key[16], guchar meta_mac[16])
 {
   GSList* ci;
+  EVP_CIPHER_CTX* ctx;
+  int out_len;
 
-  g_return_if_fail(chunks != NULL);
-  g_return_if_fail(k != NULL);
-  g_return_if_fail(meta_mac != NULL);
+  g_return_val_if_fail(chunks != NULL, FALSE);
+  g_return_val_if_fail(key != NULL, FALSE);
+  g_return_val_if_fail(meta_mac != NULL, FALSE);
+
+  ctx = EVP_CIPHER_CTX_new();
+  if (!ctx)
+    return FALSE;
+
+  if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, key, NULL))
+    goto err_clean;
+
+  EVP_CIPHER_CTX_set_padding(ctx, 0);
 
   memset(meta_mac, 0, 16);
 
@@ -1138,8 +1159,16 @@ static void meta_mac_calculate(GSList* chunks, AES_KEY* k, guchar meta_mac[16])
     for (i = 0; i < 16; i++)
       meta_mac[i] ^= mac[i];
 
-    AES_encrypt(meta_mac, meta_mac, k);
+    if (!EVP_EncryptUpdate(ctx, meta_mac, &out_len, meta_mac, 16))
+      goto err_clean;
   }
+
+  EVP_CIPHER_CTX_free(ctx);
+  return TRUE;
+
+err_clean:
+  EVP_CIPHER_CTX_free(ctx);
+  return FALSE;
 }
 
 static void meta_mac_pack(guchar meta_mac[16], guchar packed[8])
@@ -1150,6 +1179,62 @@ static void meta_mac_pack(guchar meta_mac[16], guchar packed[8])
     packed[i] = meta_mac[i] ^ meta_mac[i + 4];
   for (i = 0; i < 4; i++)
     packed[i + 4] = meta_mac[i + 8] ^ meta_mac[i + 12];
+}
+
+// }}}
+// {{{ aes128 ctr
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+void AES_ctr128_encrypt(
+  const unsigned char *in, 
+  unsigned char *out,
+  size_t length, 
+  const AES_KEY *key,
+  unsigned char ivec[AES_BLOCK_SIZE],
+  unsigned char ecount_buf[AES_BLOCK_SIZE],
+  unsigned int *num) 
+{
+  CRYPTO_ctr128_encrypt(in, out, length, key, ivec, ecount_buf, num, (block128_f)AES_encrypt);
+}
+#endif
+
+// data must be aligned to 16 byte block
+static gboolean encrypt_aes128_ctr(guchar* out, const guchar* in, gsize len, guchar key[16], guchar iv[16])
+{
+#if 1
+  EVP_CIPHER_CTX* ctx;
+  int out_len;
+
+  ctx = EVP_CIPHER_CTX_new();
+  if (!ctx)
+    return FALSE;
+
+  if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv))
+    goto err_clean;
+
+  EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+  if (!EVP_EncryptUpdate(ctx, out, &out_len, in, len))
+    goto err_clean;
+
+  if (out_len != len)
+    goto err_clean;
+
+  EVP_CIPHER_CTX_free(ctx);
+  return TRUE;
+
+err_clean:
+  EVP_CIPHER_CTX_free(ctx);
+  return FALSE;
+#else
+  AES_KEY k;
+  gint num = 0;
+  guchar ecount[AES_BLOCK_SIZE] = {0};
+
+  AES_set_encrypt_key(key, 128, &k);
+  AES_ctr128_encrypt(in, out, len, &k, iv, ecount, &num);
+  return TRUE;
+#endif
 }
 
 // }}}
@@ -3103,6 +3188,7 @@ struct transfer
   goffset transfered_size;
 
   AES_KEY k;
+  guchar file_key[16];
   guchar nonce[16];
 
   // file access is serialized with this mutex
@@ -3218,14 +3304,17 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
   }
 
   // perform encryption and chunk mac calculation
-  gint num = 0;
-  guchar ecount[AES_BLOCK_SIZE] = {0};
   guchar iv[AES_BLOCK_SIZE] = {0};
   memcpy(iv, t->nonce, 8);
   *((guint64*)&iv[8]) = GUINT64_TO_BE((guint64)(c->offset / 16)); // this is ok, because chunks are 16b aligned
 
-  chunk_mac_calculate(t->nonce, &t->k, buf, c->size, c->mac);
-  AES_ctr128_encrypt(buf, buf, c->size, &t->k, iv, ecount, &num);
+  chunk_mac_calculate(t->nonce, t->file_key, buf, c->size, c->mac);
+
+  if (!encrypt_aes128_ctr(buf, buf, c->size, t->file_key, iv))
+  {
+    err = g_error_new(MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to encrypt data");
+    goto err;
+  }
 
   // prepare URL including chunk offset
   url = g_strdup_printf("%s/%" G_GOFFSET_FORMAT, t->upload_url, c->offset);
@@ -3398,7 +3487,7 @@ check_completed:
       }
       macs = g_slist_reverse(macs);
 
-      meta_mac_calculate(macs, &t->k, tmsg->meta_mac);
+      meta_mac_calculate(macs, t->file_key, tmsg->meta_mac);
       tmsg->upload_handle = t->upload_handle;
       g_async_queue_push(t->submitter_mailbox, tmsg);
     }
@@ -3595,6 +3684,7 @@ static gboolean tman_run_upload_transfer(
   t.submitter_mailbox = g_async_queue_new();
   t.total_size = file_size;
   AES_set_encrypt_key(file_key, 128, &t.k);
+  memcpy(t.file_key, file_key, 16);
   memcpy(t.nonce, nonce, 8);
   g_mutex_init(&t.stream_lock);
   t.istream = istream;
