@@ -3699,6 +3699,15 @@ static gboolean tman_run_upload_transfer(
   msg->transfer = &t;
   g_async_queue_push(tman.manager_mailbox, msg);
 
+  // send initial progress report
+  init_status(s, MEGA_STATUS_PROGRESS);
+  s->status_data.progress.total = file_size;
+  s->status_data.progress.done = 0;
+  s->status_data.progress.last = 0;
+  s->status_data.progress.span = 0;
+  s->last_progress = g_get_monotonic_time();
+  s->last_progress_bytes = 0;
+
   // wait until the transfer finishes
   while (TRUE)
   {
