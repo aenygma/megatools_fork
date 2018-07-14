@@ -46,16 +46,8 @@ void            tool_fini             (mega_session* s);
 
 void            tool_show_progress    (const gchar* file, const mega_status_data *data);
 gchar*          tool_convert_filename (const gchar* path, gboolean local);
+gboolean        tool_is_stdout_tty    (void);
 
-#ifdef G_OS_WIN32
-#define ESC_CLREOL ""
-#define ESC_WHITE ""
-#define ESC_GREEN ""
-#define ESC_YELLOW ""
-#define ESC_BLUE ""
-#define ESC_GRAY ""
-#define ESC_NORMAL ""
-#else
 #define ESC_CLREOL "\x1b[0K"
 #define ESC_WHITE "\x1b[37;1m"
 #define ESC_GREEN "\x1b[32;1m"
@@ -63,6 +55,5 @@ gchar*          tool_convert_filename (const gchar* path, gboolean local);
 #define ESC_BLUE "\x1b[34;1m"
 #define ESC_GRAY "\x1b[30;1m"
 #define ESC_NORMAL "\x1b[0m"
-#endif
 
 #endif

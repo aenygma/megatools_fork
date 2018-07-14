@@ -115,7 +115,7 @@ int main(int ac, char* av[])
     // perform download
     if (!mega_session_get_compat(s, opt_path, path, &local_err))
     {
-      if (!opt_noprogress)
+      if (!opt_noprogress && tool_is_stdout_tty())
         g_print("\r" ESC_CLREOL "\n");
       g_printerr("ERROR: Download failed for '%s': %s\n", path, local_err->message);
       g_clear_error(&local_err);
@@ -123,8 +123,9 @@ int main(int ac, char* av[])
     }
     else
     {
-      if (!opt_noprogress)
-        g_print("\r" ESC_CLREOL "Downloaded %s\n", cur_file);
+      if (!opt_noprogress && tool_is_stdout_tty())
+        g_print("\r" ESC_CLREOL);
+      g_print("Downloaded %s\n", cur_file);
     }
   }
 

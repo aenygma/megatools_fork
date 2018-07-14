@@ -77,7 +77,7 @@ int main(int ac, char* av[])
     // perform download
     if (!mega_session_put_compat(s, opt_path, path, &local_err))
     {
-      if (!opt_noprogress)
+      if (!opt_noprogress && tool_is_stdout_tty())
         g_print("\r" ESC_CLREOL "\n");
 
       g_printerr("ERROR: Upload failed for '%s': %s\n", path, local_err->message);
@@ -88,7 +88,11 @@ int main(int ac, char* av[])
     else
     {
       if (!opt_noprogress)
-        g_print("\r" ESC_CLREOL "Uploaded %s\n", cur_file);
+      {
+        if (tool_is_stdout_tty())
+          g_print("\r" ESC_CLREOL);
+        g_print("Uploaded %s\n", cur_file);
+      }
     }
   }
 

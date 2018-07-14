@@ -76,13 +76,13 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
 
   if (!mega_session_get_compat(s, local_path, remote_path, &local_err))
   {
-    if (!opt_noprogress)
+    if (!opt_noprogress && tool_is_stdout_tty())
       g_print("\r" ESC_CLREOL);
     g_printerr("ERROR: Download failed for %s: %s\n", remote_path, local_err->message);
     return FALSE;
   }
 
-  if (!opt_noprogress)
+  if (!opt_noprogress && tool_is_stdout_tty())
     g_print("\r" ESC_CLREOL);
 
   if (opt_print_names)
@@ -206,7 +206,7 @@ int main(int ac, char* av[])
       // perform download
       if (!mega_session_dl_compat(s, handle, key, opt_stream ? NULL : opt_path, &local_err))
       {
-        if (!opt_noprogress)
+        if (!opt_noprogress && tool_is_stdout_tty())
           g_print("\r" ESC_CLREOL "\n");
         g_printerr("ERROR: Download failed for '%s': %s\n", link, local_err->message);
         g_clear_error(&local_err);
@@ -215,7 +215,12 @@ int main(int ac, char* av[])
       else
       {
         if (!opt_noprogress)
-          g_print("\r" ESC_CLREOL "Downloaded %s\n", cur_file);
+        {
+          if (tool_is_stdout_tty())
+            g_print("\r" ESC_CLREOL);
+          g_print("Downloaded %s\n", cur_file);
+        }
+
         if (opt_print_names)
           g_print("%s\n", cur_file);
       }

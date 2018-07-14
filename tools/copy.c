@@ -65,7 +65,7 @@ static gboolean up_sync_file(GFile* root, GFile* file, const gchar* remote_path)
   {
     if (!mega_session_put_compat(s, remote_path, g_file_get_path(file), &local_err))
     {
-      if (!opt_noprogress)
+      if (!opt_noprogress && tool_is_stdout_tty())
         g_print("\r" ESC_CLREOL);
 
       g_printerr("ERROR: Upload failed for %s: %s\n", remote_path, local_err->message);
@@ -73,7 +73,7 @@ static gboolean up_sync_file(GFile* root, GFile* file, const gchar* remote_path)
       return FALSE;
     }
 
-    if (!opt_noprogress)
+    if (!opt_noprogress && tool_is_stdout_tty())
       g_print("\r" ESC_CLREOL);
   }
 
@@ -170,7 +170,7 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
   {
     if (!mega_session_get_compat(s, g_file_get_path(file), remote_path, &local_err))
     {
-      if (!opt_noprogress)
+      if (!opt_noprogress && tool_is_stdout_tty())
         g_print("\r" ESC_CLREOL);
 
       g_printerr("ERROR: Download failed for %s: %s\n", remote_path, local_err->message);
@@ -178,7 +178,7 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
       return FALSE;
     }
 
-    if (!opt_noprogress)
+    if (!opt_noprogress && tool_is_stdout_tty())
       g_print("\r" ESC_CLREOL);
   }
 
