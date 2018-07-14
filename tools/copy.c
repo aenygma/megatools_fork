@@ -37,12 +37,12 @@ static GOptionEntry entries[] = {
 	{ NULL }
 };
 
-static gboolean status_callback(struct mega_status_data *data, gpointer userdata)
+static gchar *cur_file = NULL;
+
+static void status_callback(struct mega_status_data *data, gpointer userdata)
 {
 	if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
-		tool_show_progress("copying...", data);
-
-	return FALSE;
+		tool_show_progress(cur_file, data);
 }
 
 // upload operation
@@ -60,6 +60,9 @@ static gboolean up_sync_file(GFile *root, GFile *file, const gchar *remote_path)
 	g_print("F %s\n", remote_path);
 
 	if (!opt_dryrun) {
+		g_free(cur_file);
+		cur_file = g_file_get_basename(file);
+
 		if (!mega_session_put_compat(s, remote_path, g_file_get_path(file), &local_err)) {
 			if (!opt_noprogress && tool_is_stdout_tty())
 				g_print("\r" ESC_CLREOL);

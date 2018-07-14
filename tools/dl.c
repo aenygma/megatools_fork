@@ -35,10 +35,10 @@ static GOptionEntry entries[] = {
 	{ NULL }
 };
 
-static gchar *cur_file = NULL;
+static gchar *cur_file;
 static struct mega_session *s;
 
-static gboolean status_callback(struct mega_status_data *data, gpointer userdata)
+static void status_callback(struct mega_status_data *data, gpointer userdata)
 {
 	if (opt_stream && data->type == MEGA_STATUS_DATA) {
 		fwrite(data->data.buf, data->data.size, 1, stdout);
@@ -46,13 +46,12 @@ static gboolean status_callback(struct mega_status_data *data, gpointer userdata
 	}
 
 	if (data->type == MEGA_STATUS_FILEINFO) {
+		g_free(cur_file);
 		cur_file = g_strdup(data->fileinfo.name);
 	}
 
 	if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
 		tool_show_progress(cur_file, data);
-
-	return FALSE;
 }
 
 // download operation

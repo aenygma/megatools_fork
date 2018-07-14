@@ -42,10 +42,8 @@ struct mega_status_data {
 
 	union {
 		struct {
-			guint64 total;
-			guint64 done;
-			guint64 last;
-			gint64 span;
+			gint64 total;
+			gint64 done;
 		} progress;
 
 		struct {
@@ -60,7 +58,7 @@ struct mega_status_data {
 	};
 };
 
-typedef gboolean (*mega_status_callback)(struct mega_status_data *data, gpointer userdata);
+typedef void (*mega_status_callback)(struct mega_status_data *data, gpointer userdata);
 
 // session data types
 

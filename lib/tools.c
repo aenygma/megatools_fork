@@ -283,28 +283,96 @@ gboolean tool_is_stdout_tty(void)
 #endif
 }
 
+#define PROGRESS_FREQUENCY ((gint64)500000)
+
 void tool_show_progress(const gchar *file, const struct mega_status_data *data)
 {
-	if (data->progress.total == 0 || data->progress.span == 0)
+	static gint64 last_update = 0;
+	static guint64 last_bytes = 0;
+	static gint64 transfer_start = -1;
+
+	gint64 timenow = g_get_monotonic_time();
+	gint64 now_done = 0;
+	gc_free gchar *done_str = NULL;
+	gc_free gchar *total_str = NULL;
+	gc_free gchar *rate_str = NULL;
+
+	if (data->progress.total == 0)
 		return;
 
-	const guint64 rate = (data->progress.done - data->progress.last) * 1e6 / data->progress.span;
-	const double percentage = (double)(data->progress.done * 100 * 1000 / data->progress.total) / 1000.0;
+	// start of the new transfer, initialize progress reporting
+	if (data->progress.done < 0) {
+		transfer_start = last_update = timenow;
+		last_bytes = 0;
+	} else if (transfer_start < 0) {
+		return;
+	} else if (data->progress.done == data->progress.total) {
+		now_done = data->progress.done;
+	} else if (last_update && last_update + PROGRESS_FREQUENCY > timenow)
+		return;
+	else
+		now_done = data->progress.done;
 
-	gc_free gchar *done_str =
-		g_format_size_full(data->progress.done, G_FORMAT_SIZE_IEC_UNITS | G_FORMAT_SIZE_LONG_FORMAT);
-	gc_free gchar *total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
-	gc_free gchar *rate_str = g_format_size_full(rate, G_FORMAT_SIZE_IEC_UNITS);
+	gint64 time_span = timenow - last_update;
+	gint64 size_diff = now_done - last_bytes;
+	gdouble rate, percentage;
 
-	if (tool_is_stdout_tty()) {
-		g_print(ESC_WHITE "%s" ESC_NORMAL ": "
-			ESC_YELLOW "%.2f%%" ESC_NORMAL " - "
-			ESC_GREEN "%s" ESC_BLUE " of %s" ESC_NORMAL
-			" (%s/s)" ESC_CLREOL "\r",
-			file, percentage, done_str, total_str, rate_str);
+	if (now_done == data->progress.total) {
+		// final summary
+		rate = (gdouble)data->progress.total * 1e6 / (timenow - transfer_start);
+		percentage = 100;
+		transfer_start = -1;
+
+		total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
+		rate_str = g_format_size_full(rate, G_FORMAT_SIZE_IEC_UNITS);
+
+		if (tool_is_stdout_tty()) {
+			g_print(ESC_WHITE "%s" ESC_NORMAL ": "
+				ESC_YELLOW "%.2f%%" ESC_NORMAL " - "
+				"done " ESC_GREEN "%s" ESC_NORMAL
+				" (avg. %s/s)" ESC_CLREOL "\r",
+				file, percentage, total_str, rate_str);
+		} else {
+			g_print("%s: %.2f%% - done %s (avg. %s/s)\n", file, percentage, total_str, rate_str);
+		}
+	} else if (time_span == 0) {
+		// just started
+		percentage = 0;
+
+		done_str = g_format_size_full(now_done, G_FORMAT_SIZE_IEC_UNITS | G_FORMAT_SIZE_LONG_FORMAT);
+		total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
+
+		if (tool_is_stdout_tty()) {
+			g_print(ESC_WHITE "%s" ESC_NORMAL ": "
+				ESC_YELLOW "%.2f%%" ESC_NORMAL " - "
+				ESC_GREEN "%s" ESC_BLUE " of %s" ESC_NORMAL
+				ESC_CLREOL "\r",
+				file, percentage, done_str, total_str);
+		} else {
+			g_print("%s: %.2f%% - %s of %s\n", file, percentage, done_str, total_str);
+		}
 	} else {
-		g_print("%s: %.2f%% - %s of %s (%s/s)\n", file, percentage, done_str, total_str, rate_str);
+		// regular update
+		rate = (gdouble)size_diff * 1e6 / time_span;
+		percentage = (gdouble)now_done / data->progress.total * 100;
+
+		done_str = g_format_size_full(now_done, G_FORMAT_SIZE_IEC_UNITS | G_FORMAT_SIZE_LONG_FORMAT);
+		total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
+		rate_str = g_format_size_full(rate, G_FORMAT_SIZE_IEC_UNITS);
+
+		if (tool_is_stdout_tty()) {
+			g_print(ESC_WHITE "%s" ESC_NORMAL ": "
+				ESC_YELLOW "%.2f%%" ESC_NORMAL " - "
+				ESC_GREEN "%s" ESC_BLUE " of %s" ESC_NORMAL
+				" (%s/s)" ESC_CLREOL "\r",
+				file, percentage, done_str, total_str, rate_str);
+		} else {
+			g_print("%s: %.2f%% - %s of %s (%s/s)\n", file, percentage, done_str, total_str, rate_str);
+		}
 	}
+
+	last_update = timenow;
+	last_bytes = now_done;
 }
 
 static gchar *input_password(void)

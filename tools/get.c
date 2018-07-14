@@ -31,7 +31,7 @@ static GOptionEntry entries[] = {
 
 static gchar *cur_file = NULL;
 
-static gboolean status_callback(struct mega_status_data *data, gpointer userdata)
+static void status_callback(struct mega_status_data *data, gpointer userdata)
 {
 	if (opt_stream && data->type == MEGA_STATUS_DATA) {
 		fwrite(data->data.buf, data->data.size, 1, stdout);
@@ -45,8 +45,6 @@ static gboolean status_callback(struct mega_status_data *data, gpointer userdata
 
 	if (!opt_noprogress && data->type == MEGA_STATUS_PROGRESS)
 		tool_show_progress(cur_file, data);
-
-	return FALSE;
 }
 
 int main(int ac, char *av[])

@@ -46,8 +46,6 @@ DEFINE_CLEANUP_FUNCTION_NULL(BIGNUM *, BN_free)
 #define gc_bn_free CLEANUP(BN_free)
 
 #define CACHE_FORMAT_VERSION 3
-#define PROGRESS_FREQUENCY ((gint64)2e6)
-#define PROGRESS_ONESEC ((gint64)1e6)
 
 gint mega_debug = 0;
 
@@ -125,12 +123,9 @@ struct mega_session {
 
 	// progress reporting
 	mega_status_callback status_callback;
-	struct mega_status_data status_data;
 	gpointer status_userdata;
 
 	gint64 last_refresh;
-	gint64 last_progress;
-	guint64 last_progress_bytes;
 	gboolean create_preview;
 	gboolean resume_enabled;
 };
@@ -1795,19 +1790,11 @@ static gchar *path_simplify(const gchar *path)
 
 // {{{ send_status
 
-static void init_status(struct mega_session *s, gint type)
-{
-	memset(&s->status_data, 0, sizeof(s->status_data));
-	s->status_data.type = type;
-}
-
 // true to interrupt
-static gboolean send_status(struct mega_session *s)
+static void send_status(struct mega_session *s, struct mega_status_data* d)
 {
 	if (s->status_callback)
-		return s->status_callback(&s->status_data, s->status_userdata);
-
-	return FALSE;
+		s->status_callback(d, s->status_userdata);
 }
 
 // }}}
@@ -3404,6 +3391,7 @@ static gpointer tman_manager_thread_fn(gpointer data)
 
 				tmsg->total_size = t->total_size;
 				tmsg->transfered_size = t->transfered_size;
+
 				g_async_queue_push(t->submitter_mailbox, tmsg);
 				break;
 			}
@@ -3525,13 +3513,13 @@ static gboolean tman_run_upload_transfer(
 	g_async_queue_push(tman.manager_mailbox, msg);
 
 	// send initial progress report
-	init_status(s, MEGA_STATUS_PROGRESS);
-	s->status_data.progress.total = file_size;
-	s->status_data.progress.done = 0;
-	s->status_data.progress.last = 0;
-	s->status_data.progress.span = 0;
-	s->last_progress = g_get_monotonic_time();
-	s->last_progress_bytes = 0;
+	struct mega_status_data status_data = {
+		.type = MEGA_STATUS_PROGRESS,
+		.progress.total = file_size,
+		.progress.done = -1,
+	};
+
+	send_status(s, &status_data);
 
 	// wait until the transfer finishes
 	while (TRUE) {
@@ -3551,18 +3539,13 @@ static gboolean tman_run_upload_transfer(
 			goto out;
 
 		case TRANSFER_MSG_PROGRESS: {
-			const gint64 timenow = g_get_monotonic_time();
-			if (s->last_progress && s->last_progress + PROGRESS_FREQUENCY > timenow)
-				break;
+			struct mega_status_data status_data = {
+				.type = MEGA_STATUS_PROGRESS,
+				.progress.total = msg->total_size,
+				.progress.done = msg->transfered_size,
+			};
 
-			init_status(s, MEGA_STATUS_PROGRESS);
-			s->status_data.progress.total = msg->total_size;
-			s->status_data.progress.done = msg->transfered_size;
-			s->status_data.progress.last = s->last_progress_bytes;
-			s->status_data.progress.span = timenow - s->last_progress;
-			s->last_progress = timenow;
-			s->last_progress_bytes = msg->transfered_size;
-			send_status(s);
+			send_status(s, &status_data);
 			break;
 		}
 
@@ -3808,28 +3791,6 @@ struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *par
 // }}}
 // {{{ mega_session_download_data
 
-static gboolean progress_generic(goffset dltotal, goffset dlnow, goffset ultotal, goffset ulnow, gpointer user_data)
-{
-	struct mega_session *s = user_data;
-	const gint64 timenow = g_get_monotonic_time();
-	if (s->last_progress && s->last_progress + PROGRESS_FREQUENCY > timenow)
-		return TRUE;
-
-	init_status(s, MEGA_STATUS_PROGRESS);
-	s->status_data.progress.total = dltotal;
-	s->status_data.progress.done = dlnow;
-	s->status_data.progress.last = s->last_progress_bytes;
-	s->status_data.progress.span = timenow - s->last_progress;
-
-	s->last_progress = timenow;
-	s->last_progress_bytes = dlnow;
-
-	if (send_status(s))
-		return FALSE;
-
-	return TRUE;
-}
-
 struct get_data_state {
 	struct mega_session *s;
 	GFileOutputStream *stream;
@@ -3841,8 +3802,23 @@ struct get_data_state {
 	GByteArray *buffer;
 };
 
-static gsize get_data_cb(gpointer buffer, gsize size, struct get_data_state *data)
+static gboolean progress_dl(goffset dltotal, goffset dlnow, goffset ultotal, goffset ulnow, gpointer user_data)
 {
+	struct get_data_state *data = user_data;
+	struct mega_status_data status_data = {
+		.type = MEGA_STATUS_PROGRESS,
+		.progress.total = dltotal,
+		.progress.done = dlnow,
+	};
+
+	send_status(data->s, &status_data);
+
+	return TRUE;
+}
+
+static gsize get_data_cb(gpointer buffer, gsize size, gpointer user_data)
+{
+	struct get_data_state *data = user_data;
 	gc_error_free GError *local_err = NULL;
 
 	if (size > data->buffer->len)
@@ -3852,11 +3828,13 @@ static gsize get_data_cb(gpointer buffer, gsize size, struct get_data_state *dat
 
 	chunked_cbc_mac_update(&data->mac, data->buffer->data, size);
 
-	init_status(data->s, MEGA_STATUS_DATA);
-	data->s->status_data.data.size = size;
-	data->s->status_data.data.buf = data->buffer->data;
-	if (send_status(data->s))
-		return 0;
+	struct mega_status_data status_data = {
+		.type = MEGA_STATUS_DATA,
+		.data.size = size,
+		.data.buf = data->buffer->data,
+	};
+
+	send_status(data->s, &status_data);
 
 	if (!data->stream)
 		return size;
@@ -3887,16 +3865,17 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	gsize download_from = 0;
 	gssize bytes_read;
 	gc_free guchar *buf = NULL;
+	struct mega_status_data status_data;
 
 	g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
-	init_status(s, MEGA_STATUS_FILEINFO);
-	s->status_data.fileinfo.name = params->node_name;
-	s->status_data.fileinfo.size = params->node_size;
-	if (send_status(s)) {
-		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Operation cancelled from status callback");
-		return FALSE;
-	}
+	status_data = (struct mega_status_data) {
+		.type = MEGA_STATUS_FILEINFO,
+		.fileinfo.name = params->node_name,
+		.fileinfo.size = params->node_size,
+	};
+
+	send_status(s, &status_data);
 
 	// initialize decrytpion key/state
 	guchar aes_key[16], meta_mac_xor[8];
@@ -4008,15 +3987,24 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	else
 		url = g_strdup(params->download_url);
 
+	// send initial progress report
+	status_data = (struct mega_status_data) {
+		.type = MEGA_STATUS_PROGRESS,
+		.progress.total = params->node_size,
+		.progress.done = -1,
+	};
+
+	send_status(s, &status_data);
+
 	// setup buffer
 	state.buffer = buffer = g_byte_array_new();
 
 	// perform download
 	h = http_new();
-	http_set_progress_callback(h, progress_generic, s);
+	http_set_progress_callback(h, progress_dl, &state);
 	http_set_speed(h, s->max_ul, s->max_dl);
 	http_set_proxy(h, s->proxy);
-	if (!http_post_stream_download(h, url, (http_data_fn)get_data_cb, &state, &local_err)) {
+	if (!http_post_stream_download(h, url, get_data_cb, &state, &local_err)) {
 		g_propagate_prefixed_error(err, local_err, "Data download failed: ");
 		goto err_noremove;
 	}
