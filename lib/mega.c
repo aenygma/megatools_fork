@@ -3737,18 +3737,14 @@ static gboolean tman_run_upload_transfer(
         s->status_data.progress.done = msg->transfered_size;
         s->status_data.progress.last = s->last_progress_bytes;
         s->status_data.progress.span = timenow - s->last_progress;
-
         s->last_progress = timenow;
         s->last_progress_bytes = msg->transfered_size;
-
-        //XXX: abort if requested
         send_status(s);
         break;
       }
 
-      default: //XXX: improve
+      default:
         g_assert_not_reached();
-        goto out;
     }
 
     g_free(msg);
