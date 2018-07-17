@@ -117,42 +117,75 @@ Megatools is available in ports thanks to Maxim V. Kostikov:
 Building megatools from source code
 ===================================
 
-You will need to install dependnencies first, to be able to do the build from
-the official source code tarball, which is available only at
-http://megatools.megous.com.
+The official source code tarball is available at:
 
-You can also check that the code was released by me, using PGP signatures
+   http://megatools.megous.com/builds/
+
+You will need to install some dependnencies before you can build megatools from
+source code. Package names of these dependencies differ depending on your GNU/Linux
+distribution.
+
+You should also check that the code was released by me, by verifying PGP signatures
 provided alongside the code.
 
-Please don't report build issues against code that you downloaded from github.
+As these tarballs are released infrequently, you can also build code from the master
+branch of megatools git repository. You can get the code using git:
+
+  git clone git://megous.com/megatools
+
+NOTE: Please don't report build issues against code that you downloaded from github.
 These reports will be closed without explanation, with reference to this README
 file. It is not expected to work on all distributions. Use the official tarball.
 
+The necessary dependencies are: glib2, libcurl, openssl
+
+For building from git repository, you'll also need: asciidoc (or use --disable-docs)
+
+If you don't have those already, some basic development packages are also necessary.
+Namely: gcc, make, pkg-config (pkgconf), and when building from git: autoconf,
+automake.
 
 On Debian, Ubuntu:
 
   apt-get -y install build-essential libglib2.0-dev libssl-dev \
     libcurl4-openssl-dev
 
-  Note: when you run into missing .so files, try building with 
-    `./configure --disable-shared --enable-static` instead of plain `./configure`.
-
 On Fedora:
 
-  yum -y install gcc make glib2-devel libcurl-devel openssl-devel gmp-devel tar
+  yum -y install gcc make glib2-devel libcurl-devel openssl-devel
 
 On OpenSUSE:
 
-  zypper -n install gcc make glib2-devel libcurl-devel openssl-devel gmp-devel
+  zypper -n install gcc make glib2-devel libcurl-devel openssl-devel
 
 On Arch Linux:
 
-  pacman -Sy --noconfirm --needed pkg-config gcc make glib2 curl gmp nettle
+  pacman -Sy --noconfirm --needed pkgconf gcc make glib2 curl
 
 On Alpine Linux:
 
   apk add --update build-base libcurl curl-dev asciidoc openssl-dev glib-dev \
     glib libtool automake autoconf
+
+
+You can build megatools into your HOME directory, so that they'll not pollute
+your /usr or /usr/local by using --prefix=$HOME/.local option to configure.
+
+If you're building from git repository, use ./autogen.sh instead of ./configure
+and vice versa.
+
+Example build steps:
+
+  git clone git://megous.com/megatools
+  cd megatools
+  ./autogen.sh --prefix=$HOME/.local --disable-docs
+  make -j4
+  make install
+
+Now you can run megatools from ~/.local/bin.
+
+  export PATH="$HOME/.local/bin:$PATH"
+  megals
 
 
 Third party tools/scripts
