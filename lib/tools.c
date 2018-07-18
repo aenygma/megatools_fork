@@ -291,7 +291,7 @@ gboolean tool_is_stdout_tty(void)
 #endif
 }
 
-#define PROGRESS_FREQUENCY ((gint64)500000)
+#define PROGRESS_FREQUENCY ((gint64)1000000)
 
 void tool_show_progress(const gchar *file, const struct mega_status_data *data)
 {
