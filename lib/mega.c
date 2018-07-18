@@ -4013,7 +4013,7 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	// send initial progress report
 	status_data = (struct mega_status_data) {
 		.type = MEGA_STATUS_PROGRESS,
-		.progress.total = params->node_size,
+		.progress.total = params->node_size - download_from,
 		.progress.done = -1,
 	};
 
