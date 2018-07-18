@@ -1189,18 +1189,9 @@ static void meta_mac_pack(guchar meta_mac[16], guchar packed[8])
 // }}}
 // {{{ aes128 ctr
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-void AES_ctr128_encrypt(const unsigned char *in, unsigned char *out, size_t length, const AES_KEY *key,
-			unsigned char ivec[AES_BLOCK_SIZE], unsigned char ecount_buf[AES_BLOCK_SIZE], unsigned int *num)
-{
-	CRYPTO_ctr128_encrypt(in, out, length, key, ivec, ecount_buf, num, (block128_f)AES_encrypt);
-}
-#endif
-
 // data must be aligned to 16 byte block
 static gboolean encrypt_aes128_ctr(guchar *out, const guchar *in, gsize len, guchar key[16], guchar iv[16])
 {
-#if 1
 	EVP_CIPHER_CTX *ctx;
 	int out_len;
 
@@ -1225,15 +1216,6 @@ static gboolean encrypt_aes128_ctr(guchar *out, const guchar *in, gsize len, guc
 err_clean:
 	EVP_CIPHER_CTX_free(ctx);
 	return FALSE;
-#else
-	AES_KEY k;
-	gint num = 0;
-	guchar ecount[AES_BLOCK_SIZE] = { 0 };
-
-	AES_set_encrypt_key(key, 128, &k);
-	AES_ctr128_encrypt(in, out, len, &k, iv, ecount, &num);
-	return TRUE;
-#endif
 }
 
 // }}}
@@ -3807,12 +3789,8 @@ struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *par
 struct get_data_state {
 	struct mega_session *s;
 	GFileOutputStream *stream;
-	AES_KEY k;
-	guchar iv[AES_BLOCK_SIZE];
-	gint num;
-	guchar ecount[AES_BLOCK_SIZE];
+	EVP_CIPHER_CTX *ctx;
 	struct chunked_cbc_mac mac;
-	GByteArray *buffer;
 };
 
 static gboolean progress_dl(goffset dltotal, goffset dlnow, goffset ultotal, goffset ulnow, gpointer user_data)
@@ -3833,13 +3811,19 @@ static gsize get_data_cb(gpointer buffer, gsize size, gpointer user_data)
 {
 	struct get_data_state *data = user_data;
 	gc_error_free GError *local_err = NULL;
+	int out_len;
 
-	if (size > data->buffer->len)
-		g_byte_array_set_size(data->buffer, size);
+	if (!EVP_EncryptUpdate(data->ctx, buffer, &out_len, buffer, size)) {
+		g_printerr("ERROR: Failed to decrypt data during download\n");
+		return 0;
+	}
 
-	AES_ctr128_encrypt(buffer, data->buffer->data, size, &data->k, data->iv, data->ecount, &data->num);
+	if (out_len != size) {
+		g_printerr("ERROR: Failed to decrypt data during download (out_len != size)\n");
+		return 0;
+	}
 
-	if (!chunked_cbc_mac_update(&data->mac, data->buffer->data, size)) {
+	if (!chunked_cbc_mac_update(&data->mac, buffer, size)) {
 		g_printerr("ERROR: Failed to run mac calculator during download\n");
 		return 0;
 	}
@@ -3847,7 +3831,7 @@ static gsize get_data_cb(gpointer buffer, gsize size, gpointer user_data)
 	struct mega_status_data status_data = {
 		.type = MEGA_STATUS_DATA,
 		.data.size = size,
-		.data.buf = data->buffer->data,
+		.data.buf = buffer,
 	};
 
 	send_status(data->s, &status_data);
@@ -3855,7 +3839,7 @@ static gsize get_data_cb(gpointer buffer, gsize size, gpointer user_data)
 	if (!data->stream)
 		return size;
 
-	if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), data->buffer->data, size, NULL, NULL,
+	if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), buffer, size, NULL, NULL,
 				       &local_err)) {
 		g_printerr("ERROR: Failed writing to stream: %s\n", local_err->message);
 		return 0;
@@ -3875,10 +3859,9 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	gc_object_unref GFileOutputStream *stream = NULL;
 	gc_free gchar *url = NULL;
 	gc_http_free struct http *h = NULL;
-	gc_byte_array_unref GByteArray *buffer = NULL;
 	struct get_data_state state = { .s = s };
 	gc_free gchar *tmp_path = NULL, *file_path = NULL, *tmp_name = NULL;
-	gsize download_from = 0;
+	guint64 download_from = 0;
 	gssize bytes_read;
 	gc_free guchar *buf = NULL;
 	struct mega_status_data status_data;
@@ -3894,10 +3877,9 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	send_status(s, &status_data);
 
 	// initialize decrytpion key/state
-	guchar aes_key[16], meta_mac_xor[8];
-	unpack_node_key(params->node_key, aes_key, state.iv, meta_mac_xor);
-	AES_set_encrypt_key(aes_key, 128, &state.k);
-	if (!chunked_cbc_mac_init8(&state.mac, aes_key, state.iv)) {
+	guchar aes_key[16], meta_mac_xor[8], nonce[8];
+	unpack_node_key(params->node_key, aes_key, nonce, meta_mac_xor);
+	if (!chunked_cbc_mac_init8(&state.mac, aes_key, nonce)) {
 		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to init mac calculator");
 		return FALSE;
 	}
@@ -3955,18 +3937,6 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 					download_from += bytes_read;
 				}
 
-				// initialize CTR counter to the download_from position
-				guint64 block_ctr = download_from / 16;
-				// num is a position within a block we are at
-				state.num = download_from % 16;
-				// lower 8 bytes of iv are the CTR block counter in big-endian
-				*(guint64 *)(state.iv + 8) = GUINT64_TO_BE(block_ctr);
-				// prepare encrypted counter for the current block
-				AES_encrypt(state.iv, state.ecount, &state.k);
-				// if num > 0, AES_ctr128_encrypt expects next block counter in iv
-				if (state.num > 0)
-					*(guint64 *)(state.iv + 8) = GUINT64_TO_BE(block_ctr + 1);
-
 				g_object_unref(tmp_stream);
 
 				// append to temporary file
@@ -4003,6 +3973,37 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 		}
 	}
 
+	// init decryptor
+	state.ctx = EVP_CIPHER_CTX_new();
+	if (!state.ctx) {
+		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to init aes-ctr decryptor");
+		return FALSE;
+	}
+
+	guchar iv[16] = {0};
+	memcpy(iv, nonce, 8);
+	// initialize counter to the download_from position
+	*(guint64 *)(iv + 8) = GUINT64_TO_BE(download_from / 16);
+
+	if (!EVP_EncryptInit_ex(state.ctx, EVP_aes_128_ctr(), NULL, aes_key, iv)) {
+		EVP_CIPHER_CTX_free(state.ctx);
+		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to init aes-ctr decryptor");
+		return FALSE;
+	}
+
+	EVP_CIPHER_CTX_set_padding(state.ctx, 0);
+
+	// finally we may be up to 15 bytes into a block, do some dummy
+	// decryption, to put EVP into a correct state
+	guchar scratch[16];
+	int out_len;
+
+	if (!EVP_EncryptUpdate(state.ctx, scratch, &out_len, scratch, download_from % 16) || out_len != download_from % 16) {
+		EVP_CIPHER_CTX_free(state.ctx);
+		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to init aes-ctr decryptor (intra-block)");
+		return FALSE;
+	}
+
 	if (download_from > 0)
 		url = g_strdup_printf("%s/%" G_GUINT64_FORMAT "-%" G_GUINT64_FORMAT, params->download_url,
 				      download_from, params->node_size - 1);
@@ -4017,9 +4018,6 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	};
 
 	send_status(s, &status_data);
-
-	// setup buffer
-	state.buffer = buffer = g_byte_array_new();
 
 	// perform download
 	h = http_new();
@@ -4053,6 +4051,8 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 		state.stream = stream = NULL;
 	}
 
+	EVP_CIPHER_CTX_free(state.ctx);
+
 	if (file && !g_file_move(tmp_file, file, G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE, NULL,
 				 NULL, NULL, &local_err)) {
 		g_propagate_prefixed_error(
@@ -4069,6 +4069,7 @@ err:
 		g_file_delete(tmp_file, NULL, NULL);
 
 err_noremove:
+	EVP_CIPHER_CTX_free(state.ctx);
 	return FALSE;
 }
 
