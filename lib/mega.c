@@ -936,7 +936,7 @@ static guint get_chunk_size(gsize idx)
 // {{{ chunked CBC-MAC
 
 struct chunked_cbc_mac {
-	AES_KEY k;
+	EVP_CIPHER_CTX *ctx;
 	gsize chunk_idx;
 	guint64 next_boundary;
 	guint64 position;
@@ -945,70 +945,90 @@ struct chunked_cbc_mac {
 	guchar meta_mac[16];
 };
 
-static void chunked_cbc_mac_init(struct chunked_cbc_mac *mac, guchar key[16], guchar iv[16])
+static gboolean chunked_cbc_mac_init(struct chunked_cbc_mac *mac, guchar key[16], guchar iv[16])
 {
-	g_return_if_fail(mac != NULL);
-	g_return_if_fail(key != NULL);
+	g_return_val_if_fail(mac != NULL, FALSE);
+	g_return_val_if_fail(key != NULL, FALSE);
 
 	memset(mac, 0, sizeof(*mac));
 	memcpy(mac->chunk_mac_iv, iv, 16);
 	memcpy(mac->chunk_mac, mac->chunk_mac_iv, 16);
-	AES_set_encrypt_key(key, 128, &mac->k);
 	mac->next_boundary = get_chunk_size(mac->chunk_idx);
+
+	mac->ctx = EVP_CIPHER_CTX_new();
+	if (!mac->ctx)
+		return FALSE;
+
+	if (!EVP_EncryptInit_ex(mac->ctx, EVP_aes_128_ecb(), NULL, key, NULL)) {
+		EVP_CIPHER_CTX_free(mac->ctx);
+		return FALSE;
+	}
+
+	EVP_CIPHER_CTX_set_padding(mac->ctx, 0);
+
+	return TRUE;
 }
 
-static void chunked_cbc_mac_init8(struct chunked_cbc_mac *mac, guchar key[16], guchar iv[8])
+static gboolean chunked_cbc_mac_init8(struct chunked_cbc_mac *mac, guchar key[16], guchar iv[8])
 {
-	g_return_if_fail(iv != NULL);
+	g_return_val_if_fail(iv != NULL, FALSE);
 
 	guchar mac_iv[16];
 	memcpy(mac_iv, iv, 8);
 	memcpy(mac_iv + 8, iv, 8);
 
-	chunked_cbc_mac_init(mac, key, mac_iv);
+	return chunked_cbc_mac_init(mac, key, mac_iv);
 }
 
-static void chunked_cbc_mac_close_chunk(struct chunked_cbc_mac *mac)
+static gboolean chunked_cbc_mac_close_chunk(struct chunked_cbc_mac *mac)
 {
 	gint i;
-	guchar tmp[16];
+	int out_len;
 
 	for (i = 0; i < 16; i++)
 		mac->meta_mac[i] ^= mac->chunk_mac[i];
 
-	AES_encrypt(mac->meta_mac, tmp, &mac->k);
-	memcpy(mac->meta_mac, tmp, 16);
+	if (!EVP_EncryptUpdate(mac->ctx, mac->meta_mac, &out_len, mac->meta_mac, 16))
+		return FALSE;
 
 	memcpy(mac->chunk_mac, mac->chunk_mac_iv, 16);
 	mac->next_boundary += get_chunk_size(++mac->chunk_idx);
+
+	return TRUE;
 }
 
-static void chunked_cbc_mac_update(struct chunked_cbc_mac *mac, const guchar *data, gsize len)
+static gboolean chunked_cbc_mac_update(struct chunked_cbc_mac *mac, const guchar *data, gsize len)
 {
 	gsize i;
+	int out_len;
 
-	g_return_if_fail(mac != NULL);
-	g_return_if_fail(data != NULL);
+	g_return_val_if_fail(mac != NULL, FALSE);
+	g_return_val_if_fail(data != NULL, FALSE);
 
 	for (i = 0; i < len; i++) {
 		mac->chunk_mac[mac->position % 16] ^= data[i];
 		mac->position++;
 
 		if (G_UNLIKELY((mac->position % 16) == 0)) {
-			guchar tmp[16];
-			AES_encrypt(mac->chunk_mac, tmp, &mac->k);
-			memcpy(mac->chunk_mac, tmp, 16);
+			if (!EVP_EncryptUpdate(mac->ctx, mac->chunk_mac, &out_len, mac->chunk_mac, 16))
+				return FALSE;
 		}
 
 		// add chunk mac to the chunk macs list if we are at the chunk boundary
 		if (G_UNLIKELY(mac->position == mac->next_boundary))
-			chunked_cbc_mac_close_chunk(mac);
+			if (!chunked_cbc_mac_close_chunk(mac))
+				return FALSE;
 	}
+
+	return TRUE;
 }
 
-static void chunked_cbc_mac_finish(struct chunked_cbc_mac *mac, guchar mac_out[16])
+// on failure, the memory is freed, but mac_out can't be used
+static gboolean chunked_cbc_mac_finish(struct chunked_cbc_mac *mac, guchar mac_out[16])
 {
-	g_return_if_fail(mac != NULL);
+	int out_len;
+
+	g_return_val_if_fail(mac != NULL, FALSE);
 
 	// finish buffer if necessary
 	if (mac->position % 16) {
@@ -1017,34 +1037,45 @@ static void chunked_cbc_mac_finish(struct chunked_cbc_mac *mac, guchar mac_out[1
 			mac->position++;
 		}
 
-		guchar tmp[16];
-		AES_encrypt(mac->chunk_mac, tmp, &mac->k);
-		memcpy(mac->chunk_mac, tmp, 16);
+		if (!EVP_EncryptUpdate(mac->ctx, mac->chunk_mac, &out_len, mac->chunk_mac, 16)) {
+			EVP_CIPHER_CTX_free(mac->ctx);
+			return FALSE;
+		}
 	}
 
 	// if there last chunk is unfinished, finish it
 	if (mac->position > (mac->next_boundary - get_chunk_size(mac->chunk_idx)))
-		chunked_cbc_mac_close_chunk(mac);
+		if (!chunked_cbc_mac_close_chunk(mac)) {
+			EVP_CIPHER_CTX_free(mac->ctx);
+			return FALSE;
+		}
+
 
 	if (mac_out)
 		memcpy(mac_out, mac->meta_mac, 16);
 
+
+	EVP_CIPHER_CTX_free(mac->ctx);
 	memset(mac, 0, sizeof(*mac));
+	return TRUE;
 }
 
-static void chunked_cbc_mac_finish8(struct chunked_cbc_mac *mac, guchar mac_out[8])
+static gboolean chunked_cbc_mac_finish8(struct chunked_cbc_mac *mac, guchar mac_out[8])
 {
 	guchar buf[16];
 	gint i;
 
-	g_return_if_fail(mac_out != NULL);
+	g_return_val_if_fail(mac_out != NULL, FALSE);
 
-	chunked_cbc_mac_finish(mac, buf);
+	if (!chunked_cbc_mac_finish(mac, buf))
+		return FALSE;
 
 	for (i = 0; i < 4; i++)
 		mac_out[i] = buf[i] ^ buf[i + 4];
 	for (i = 0; i < 4; i++)
 		mac_out[i + 4] = buf[i + 8] ^ buf[i + 12];
+
+	return TRUE;
 }
 
 // }}}
@@ -3808,7 +3839,10 @@ static gsize get_data_cb(gpointer buffer, gsize size, gpointer user_data)
 
 	AES_ctr128_encrypt(buffer, data->buffer->data, size, &data->k, data->iv, data->ecount, &data->num);
 
-	chunked_cbc_mac_update(&data->mac, data->buffer->data, size);
+	if (!chunked_cbc_mac_update(&data->mac, data->buffer->data, size)) {
+		g_printerr("ERROR: Failed to run mac calculator during download\n");
+		return 0;
+	}
 
 	struct mega_status_data status_data = {
 		.type = MEGA_STATUS_DATA,
@@ -3863,7 +3897,10 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	guchar aes_key[16], meta_mac_xor[8];
 	unpack_node_key(params->node_key, aes_key, state.iv, meta_mac_xor);
 	AES_set_encrypt_key(aes_key, 128, &state.k);
-	chunked_cbc_mac_init8(&state.mac, aes_key, state.iv);
+	if (!chunked_cbc_mac_init8(&state.mac, aes_key, state.iv)) {
+		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to init mac calculator");
+		return FALSE;
+	}
 
 	if (file) {
 		file_path = g_file_get_path(file);
@@ -3910,7 +3947,11 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 					}
 
 					// update cbc-mac
-					chunked_cbc_mac_update(&state.mac, buf, bytes_read);
+					if (!chunked_cbc_mac_update(&state.mac, buf, bytes_read)) {
+						g_object_unref(tmp_stream);
+						g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to run mac calculator during resume");
+						return FALSE;
+					}
 					download_from += bytes_read;
 				}
 
@@ -3944,8 +3985,7 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 					return FALSE;
 				}
 			}
-		} else // !resume_enabled
-		{
+		} else {// !resume_enabled
 			// if temporary file exists, delete it
 			if (g_file_query_exists(tmp_file, NULL) && !g_file_delete(tmp_file, NULL, &local_err)) {
 				g_propagate_prefixed_error(err, local_err, "Can't delete previous temporary file %s",
@@ -3993,7 +4033,11 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 
 	// check mac of the downloaded file
 	guchar meta_mac_xor_calc[8];
-	chunked_cbc_mac_finish8(&state.mac, meta_mac_xor_calc);
+	if (!chunked_cbc_mac_finish8(&state.mac, meta_mac_xor_calc)) {
+		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to finish mac calculator");
+		goto err;
+	}
+
 	if (memcmp(meta_mac_xor, meta_mac_xor_calc, 8) != 0) {
 		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "MAC mismatch");
 		goto err;
