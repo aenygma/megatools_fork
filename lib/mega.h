@@ -159,7 +159,8 @@ GSList *mega_session_get_node_chilren(struct mega_session *s, struct mega_node *
 struct mega_node *mega_session_stat(struct mega_session *s, const gchar *path);
 struct mega_node *mega_session_mkdir(struct mega_session *s, const gchar *path, GError **err);
 gboolean mega_session_rm(struct mega_session *s, const gchar *path, GError **err);
-struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *parent_node, GFile *file, GError **err);
+struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *parent_node, const gchar* remote_name,
+				   GFileInputStream *stream, GError **err);
 gchar *mega_session_new_node_attribute(struct mega_session *s, const guchar *data, gsize len, const gchar *type,
 				       const guchar *key, GError **err);
 gboolean mega_session_get(struct mega_session *s, GFile *file, struct mega_node *node, GError **err);

@@ -3677,39 +3677,21 @@ static gchar *create_preview(struct mega_session *s, const gchar *local_path, co
 // }}}
 // {{{ mega_session_put
 
-struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *parent_node, GFile *file, GError **err)
+struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *parent_node, const gchar* remote_name, GFileInputStream *stream, GError **err)
 {
 	GError *local_err = NULL;
-	gc_free gchar *file_name = NULL;
-	gc_free gchar *file_path = NULL;
-	gc_object_unref GFileInputStream *stream = NULL;
-	gc_byte_array_unref GByteArray *buffer = NULL;
 	gc_free gchar *up_handle = NULL;
 
 	g_return_val_if_fail(s != NULL, NULL);
 	g_return_val_if_fail(parent_node != NULL, NULL);
-	g_return_val_if_fail(file != NULL, NULL);
+	g_return_val_if_fail(remote_name != NULL, NULL);
+	g_return_val_if_fail(stream != NULL, NULL);
 	g_return_val_if_fail(err == NULL || *err == NULL, NULL);
-
-	//XXX: check sanity of parent node, we can only upload to normal dirs
-
-	file_path = g_file_get_path(file);
-	file_name = g_file_get_basename(file);
-	if (!file_name || !file_path) {
-		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Invalid file handle");
-		return NULL;
-	}
-
-	stream = g_file_read(file, NULL, &local_err);
-	if (!stream) {
-		g_propagate_prefixed_error(err, local_err, "Can't read local file %s: ", file_path);
-		return NULL;
-	}
 
 	gc_object_unref GFileInfo *info =
 		g_file_input_stream_query_info(stream, G_FILE_ATTRIBUTE_STANDARD_SIZE, NULL, &local_err);
 	if (!info) {
-		g_propagate_prefixed_error(err, local_err, "Can't read local file %s: ", file_path);
+		g_propagate_prefixed_error(err, local_err, "Can't get stream info: ");
 		return NULL;
 	}
 
@@ -3743,10 +3725,10 @@ struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *par
 
 	// create preview
 	gc_free gchar *fa = NULL;
-	if (s->create_preview)
-		fa = create_preview(s, file_path, aes_key, NULL);
+	//if (s->create_preview)
+		//fa = create_preview(s, file_path, aes_key, NULL);
 
-	gc_free gchar *attrs = encode_node_attrs(file_name);
+	gc_free gchar *attrs = encode_node_attrs(remote_name);
 	gc_free gchar *attrs_enc = b64_aes128_cbc_encrypt_str(attrs, aes_key);
 
 	guchar node_key[32];
@@ -4756,36 +4738,39 @@ gboolean mega_session_register_verify(struct mega_session *s, struct mega_reg_st
 struct mega_node *mega_session_put_compat(struct mega_session *s, const gchar *remote_path, const gchar *local_path,
 					  GError **err)
 {
-	gc_object_unref GFile *file = NULL;
+	GError *local_err = NULL;
 	struct mega_node *node, *parent_node;
+	gc_object_unref GFile *file = NULL;
+	gc_free gchar *file_name = NULL;
+	gc_free gchar *file_path = NULL;
+	gc_object_unref GFileInputStream *stream = NULL;
 
 	node = mega_session_stat(s, remote_path);
 	if (node) {
+		// reote path exists
 		if (node->type == MEGA_NODE_FILE) {
 			g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File already exists: %s", remote_path);
 			return NULL;
 		} else {
-			// put into a dir
+			// it's a directory, so we need to check if file with
+			// basename(local_path) already exists there
 			parent_node = node;
 
-			gc_free gchar *basename = g_path_get_basename(local_path);
-			gc_free gchar *tmp = g_strconcat(remote_path, "/", basename, NULL);
+			// remote filename will be a basename(local_path)
+			file_name = g_path_get_basename(local_path);
+			gc_free gchar *tmp = g_strconcat(remote_path, "/", file_name, NULL);
 			node = mega_session_stat(s, tmp);
 			if (node) {
 				g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "File already exists: %s", tmp);
 				return NULL;
 			}
-
-			if (!mega_node_is_writable(s, parent_node) || parent_node->type == MEGA_NODE_NETWORK ||
-			    parent_node->type == MEGA_NODE_CONTACT) {
-				g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Directory is not writable: %s",
-					    remote_path);
-				return NULL;
-			}
 		}
 	} else {
+		// remote path doesn't exists, check the parent dir
 		gc_free gchar *tmp = path_simplify(remote_path);
 		gc_free gchar *parent_path = g_path_get_dirname(tmp);
+		// remote filename will be a basename(remote_path)
+		file_name = g_path_get_basename(tmp);
 
 		if (!strcmp(parent_path, "/")) {
 			g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Can't upload to toplevel dir: %s", remote_path);
@@ -4798,17 +4783,26 @@ struct mega_node *mega_session_put_compat(struct mega_session *s, const gchar *r
 				    parent_path);
 			return NULL;
 		}
+	}
 
-		if (!mega_node_is_writable(s, parent_node) || parent_node->type == MEGA_NODE_NETWORK ||
-		    parent_node->type == MEGA_NODE_CONTACT) {
-			g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Directory is not writable: %s", parent_path);
-			return NULL;
-		}
+	if (!mega_node_is_writable(s, parent_node) || parent_node->type == MEGA_NODE_NETWORK ||
+			parent_node->type == MEGA_NODE_CONTACT) {
+		gchar path[4096];
+		if (!mega_node_get_path(parent_node, path, sizeof(path)))
+			snprintf(path, sizeof path, "???");
+
+		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Directory is not writable: %s", path);
+		return NULL;
 	}
 
 	file = g_file_new_for_path(local_path);
+	stream = g_file_read(file, NULL, &local_err);
+	if (!stream) {
+		g_propagate_prefixed_error(err, local_err, "Can't read local file %s: ", local_path);
+		return NULL;
+	}
 
-	return mega_session_put(s, parent_node, file, err);
+	return mega_session_put(s, parent_node, file_name, stream, err);
 }
 
 gboolean mega_session_get_compat(struct mega_session *s, const gchar *local_path, const gchar *remote_path,
