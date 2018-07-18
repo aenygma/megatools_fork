@@ -3677,7 +3677,7 @@ static gchar *create_preview(struct mega_session *s, const gchar *local_path, co
 // }}}
 // {{{ mega_session_put
 
-struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *parent_node, const gchar* remote_name, GFileInputStream *stream, GError **err)
+struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *parent_node, const gchar* remote_name, GFileInputStream *stream, const gchar* local_path, GError **err)
 {
 	GError *local_err = NULL;
 	gc_free gchar *up_handle = NULL;
@@ -3725,8 +3725,8 @@ struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *par
 
 	// create preview
 	gc_free gchar *fa = NULL;
-	//if (s->create_preview)
-		//fa = create_preview(s, file_path, aes_key, NULL);
+	if (s->create_preview)
+		fa = create_preview(s, local_path, aes_key, NULL);
 
 	gc_free gchar *attrs = encode_node_attrs(remote_name);
 	gc_free gchar *attrs_enc = b64_aes128_cbc_encrypt_str(attrs, aes_key);
@@ -4802,7 +4802,7 @@ struct mega_node *mega_session_put_compat(struct mega_session *s, const gchar *r
 		return NULL;
 	}
 
-	return mega_session_put(s, parent_node, file_name, stream, err);
+	return mega_session_put(s, parent_node, file_name, stream, local_path, err);
 }
 
 gboolean mega_session_get_compat(struct mega_session *s, const gchar *local_path, const gchar *remote_path,
