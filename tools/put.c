@@ -50,8 +50,10 @@ int main(int ac, char *av[])
 	}
 
 	s = tool_start_session(TOOL_SESSION_OPEN);
-	if (!s)
+	if (!s) {
+		tool_fini(NULL);
 		return 1;
+	}
 
 	mega_session_watch_status(s, status_callback, NULL);
 

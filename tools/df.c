@@ -80,8 +80,10 @@ int main(int ac, char *av[])
 	}
 
 	s = tool_start_session(TOOL_SESSION_OPEN);
-	if (!s)
+	if (!s) {
+		tool_fini(NULL);
 		return 1;
+	}
 
 	struct mega_user_quota *q = mega_session_user_quota(s, &local_err);
 	if (!q) {

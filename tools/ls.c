@@ -59,8 +59,10 @@ int main(int ac, char *av[])
 	tool_init(&ac, &av, "- list files stored at mega.nz", entries, TOOL_INIT_AUTH);
 
 	s = tool_start_session(TOOL_SESSION_OPEN);
-	if (!s)
+	if (!s) {
+		tool_fini(NULL);
 		return 1;
+	}
 
 	// gather nodes
 	if (ac == 1) {

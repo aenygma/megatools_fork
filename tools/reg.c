@@ -152,6 +152,10 @@ int main(int ac, char *av[])
 	}
 
 	s = tool_start_session(0);
+	if (!s) {
+		tool_fini(NULL);
+		return 1;
+	}
 
 	if (opt_register) {
 		if (!mega_session_register(s, opt_email, opt_password, opt_name, &state, &local_err)) {
