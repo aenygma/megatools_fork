@@ -8,8 +8,8 @@ New features/optimizations:
 - Improved upload stability. When mega drops or hangs the data connection,
   megatools will simply restart the upload of the chunk of data that got lost.
 - 5x AES enryption/decryption speed increase for uploads and downloads. Now
-  it's possible to max out a gigabit connection on a cheap VPS.
-- Improved progress reporting wih a summary of the average speed at the end. 
+  it's possible to max out a gigabit connection on a cheap Intel based VPS.
+- Improved progress reporting wih a summary of the average speed at the end.
 - You can use --debug http to see all HTTP requests and connections, for
   debugging connection isues.
 - Error 509 is reported with explanation.
