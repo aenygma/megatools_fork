@@ -43,6 +43,7 @@ If `<path>` is `-`, remote file will be streamed to stdout.
 --print-names::
 	Print names/paths of successfully downloaded files (one per line).
 
+include::download-options.txt[]
 include::basic-options.txt[]
 
 <links>::

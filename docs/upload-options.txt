@@ -1,0 +1,8 @@
+--enable-previews::
+	Generate and upload file previews, when uploading new files.
+	This is the default, unless you changed it in the configuration
+	file. Use this to override the option from the configuration file.
+
+--disable-previews::
+	Don't generate and upload file previews. Default is to generate
+	previews.

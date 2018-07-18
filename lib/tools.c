@@ -58,6 +58,7 @@ static gint download_seed_limit;
 static gint transfer_worker_count = 5;
 static gint cache_timout = 10 * 60;
 static gboolean opt_enable_previews = BOOLEAN_UNSET_BUT_TRUE;
+static gboolean opt_disable_resume;
 
 static gboolean opt_debug_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
 {
@@ -111,6 +112,13 @@ static GOptionEntry upload_options[] = {
         { "disable-previews", '\0',
                 G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &opt_enable_previews,
                 "Never generate previews when uploading file", NULL },
+        { NULL }
+};
+
+static GOptionEntry download_options[] = {
+        { "disable-resume", '\0',
+                0, G_OPTION_ARG_NONE, &opt_disable_resume,
+                "Disable resume when downloading file", NULL },
         { NULL }
 };
 
@@ -489,6 +497,13 @@ void tool_init(gint *ac, gchar ***av, const gchar *tool_name, GOptionEntry *tool
 		g_option_context_add_group(opt_context, upload_group);
 	}
 
+	if (flags & TOOL_INIT_DOWNLOAD_OPTS) {
+		GOptionGroup *download_group =
+			g_option_group_new("download", "Dwonload Options:", "Show download options", NULL, NULL);
+		g_option_group_add_entries(download_group, download_options);
+		g_option_context_add_group(opt_context, download_group);
+	}
+
 	if (!g_option_context_parse(opt_context, ac, av, &local_err)) {
 		g_printerr("ERROR: Option parsing failed: %s\n", local_err->message);
 		g_clear_error(&local_err);
@@ -680,6 +695,7 @@ struct mega_session *tool_start_session(ToolSessionFlags flags)
 	}
 
 	mega_session_enable_previews(s, !!opt_enable_previews);
+	mega_session_set_resume(s, !opt_disable_resume);
 
 	g_free(sid);
 	return s;

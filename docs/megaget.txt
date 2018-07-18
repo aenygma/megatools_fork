@@ -35,6 +35,7 @@ If `<path>` is `-`, remote file will be streamed to stdout.
 --no-progress::
 	Disable download progress reporting. This is implied when streaming.
 
+include::download-options.txt[]
 include::auth-options.txt[]
 include::basic-options.txt[]
 

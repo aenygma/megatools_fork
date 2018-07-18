@@ -53,7 +53,7 @@ int main(int ac, char *av[])
 	struct mega_session *s;
 	gint i, status = 0;
 
-	tool_init(&ac, &av, "- download individual files from mega.nz", entries, TOOL_INIT_AUTH);
+	tool_init(&ac, &av, "- download individual files from mega.nz", entries, TOOL_INIT_AUTH | TOOL_INIT_DOWNLOAD_OPTS);
 
 	if (!strcmp(opt_path, "-"))
 		opt_noprogress = opt_stream = TRUE;

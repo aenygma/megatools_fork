@@ -38,6 +38,7 @@ typedef enum {
 	TOOL_INIT_AUTH = 1, // accept auth options, require them
 	TOOL_INIT_AUTH_OPTIONAL = 2, // accept auth options, optionally
 	TOOL_INIT_UPLOAD_OPTS = 4, // accept upload options
+	TOOL_INIT_DOWNLOAD_OPTS = 8, // accept download options
 } ToolInitFlags;
 
 void tool_init(gint *ac, gchar ***av, const gchar *tool_name, GOptionEntry *tool_entries, ToolInitFlags flags);

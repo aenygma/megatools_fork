@@ -226,7 +226,7 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 int main(int ac, char *av[])
 {
 	tool_init(&ac, &av, "- synchronize local and remote mega.nz directories", entries,
-		  TOOL_INIT_AUTH | TOOL_INIT_UPLOAD_OPTS);
+		  TOOL_INIT_AUTH | TOOL_INIT_UPLOAD_OPTS | TOOL_INIT_DOWNLOAD_OPTS);
 
 	if (!opt_local_path || !opt_remote_path) {
 		g_printerr("ERROR: You must specify local and remote paths\n");

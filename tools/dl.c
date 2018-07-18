@@ -133,7 +133,7 @@ int main(int ac, char *av[])
 	gint i;
 	int status = 0;
 
-	tool_init(&ac, &av, "- download exported files from mega.nz", entries, TOOL_INIT_AUTH_OPTIONAL);
+	tool_init(&ac, &av, "- download exported files from mega.nz", entries, TOOL_INIT_AUTH_OPTIONAL | TOOL_INIT_DOWNLOAD_OPTS);
 
 	if (!strcmp(opt_path, "-")) {
 		opt_noprogress = opt_stream = TRUE;
