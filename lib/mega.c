@@ -3430,20 +3430,17 @@ static gpointer tman_manager_thread_fn(gpointer data)
 				tman.current_workers--;
 
 				if (t->error) {
-					tman_debug("M: transfer aborted, chunk %d update ignored\n", c->index);
+					tman_debug("M: transfer is being aborted, chunk %d update ignored\n", c->index);
 					// transfer is in error state and is being aborted
 					g_clear_error(&c->error);
-				} else if (c->failures_count <= 4) {
-					if (g_error_matches(c->error, HTTP_ERROR, HTTP_ERROR_TIMEOUT) ||
-					    g_error_matches(c->error, HTTP_ERROR, HTTP_ERROR_SERVER_BUSY)) {
-						tman_debug("M: chunk %d failed, re-trying\n", c->index);
-						// re-queue
-						c->status = CHUNK_STATE_QUEUED;
-						g_clear_error(&c->error);
-					} else
-						goto non_recoverable;
+				} else if (c->failures_count <= 6) {
+					// re-queue
+					tman_debug("M: chunk %d failed, re-queueing\n", c->index);
+					// now + 2^failures s (2s 4s 8s 16s 32s)
+					c->start_at = g_get_monotonic_time() + 1000 * 1000 * ((1 << c->failures_count));
+					c->status = CHUNK_STATE_QUEUED;
+					g_clear_error(&c->error);
 				} else {
-				non_recoverable:
 					tman_debug("M: chunk %d failed: %s\n", c->index, c->error->message);
 					//TODO: we need to wait for other chunk trasnfers to finish,
 					// otherwise we'd need a way to abort http requests
