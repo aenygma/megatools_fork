@@ -55,7 +55,7 @@ static gchar *opt_proxy;
 static gchar *proxy;
 static gint upload_speed_limit;
 static gint download_seed_limit;
-static gint transfer_worker_count = 5;
+static gint transfer_worker_count = 3;
 static gint cache_timout = 10 * 60;
 static gboolean opt_enable_previews = BOOLEAN_UNSET_BUT_TRUE;
 static gboolean opt_disable_resume;
@@ -586,8 +586,8 @@ void tool_init(gint *ac, gchar ***av, const gchar *tool_name, GOptionEntry *tool
 					g_clear_error(&local_err);
 				}
 
-				if (transfer_worker_count < 1 || transfer_worker_count > 16) {
-					transfer_worker_count = CLAMP(transfer_worker_count, 1, 16);
+				if (transfer_worker_count < 1 || transfer_worker_count > 5) {
+					transfer_worker_count = CLAMP(transfer_worker_count, 1, 5);
 					g_printerr(
 						"WARNING: Invalid number of parallel transfers set in the config file, limited to %d\n",
 						transfer_worker_count);
