@@ -3352,6 +3352,7 @@ static void prepare_transfer(struct transfer *t)
 		c->index = idx;
 		c->status = CHUNK_STATE_QUEUED;
 		c->transfer = t;
+		c->start_at = now + (idx < 4 ? idx : 4) * 200000;
 
 		tman_debug("M: chunk %d prepared\n", c->index);
 
