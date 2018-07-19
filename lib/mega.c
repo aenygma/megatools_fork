@@ -3172,7 +3172,7 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 
 	// prepare URL including chunk offset
 	url = g_strdup_printf("%s/%" G_GOFFSET_FORMAT, t->upload_url, c->offset);
-	//XXX: mega.nz also appends: ?c=????
+	//XXX: mega.nz also appends: ?c=???? (some checksum)
 
 	// perform upload POST
 	h = http_new();
@@ -3190,6 +3190,8 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 	gchar *upload_handle = NULL;
 
 	if (response->len > 0) {
+		//XXX: differnetiate error codes
+
 		// check for numeric error code
 		if (response->len < 10 && g_regex_match_simple("^-(\\d+)$", response->str, 0, 0)) {
 			err = g_error_new(MEGA_ERROR, MEGA_ERROR_OTHER, "Server returned error code %s",
@@ -3197,21 +3199,10 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 			goto err;
 		}
 
-#if 0
-    // server returned the handle, validate it
-    if (response->len > 100 || !g_regex_match_simple("^[a-zA-Z0-9_+/-]{20,50}$", response->str, 0, 0))
-    {
-      err = g_error_new(MEGA_ERROR, MEGA_ERROR_OTHER, "Invalid upload handle");
-      goto err;
-    }
-#endif
 		upload_handle = base64urlencode(response->str, response->len);
 
-		tman_debug("W: got upload data handle with chunk %d: %d'%s'\n", c->index, (int)response->len,
-			   response->str);
-
-		// we got the handle
-		//XXX: mega also has newer api with binary handle that needs to be base64url encoded
+		// we've got the handle
+		tman_debug("W: got upload data handle with chunk %d: '%s'\n", c->index, upload_handle);
 	}
 
 	tman_debug("W: success for chunk %d\n", c->index);
