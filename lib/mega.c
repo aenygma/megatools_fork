@@ -3020,6 +3020,8 @@ struct transfer_chunk {
 	goffset size;
 	goffset transfered_size;
 	guint index;
+
+	gint64 start_at;
 };
 
 enum { TRANSFER_MSG_DONE = 1,
@@ -3250,6 +3252,7 @@ static void schedule_chunk_transfers(void)
 	GList *ti, *ti_next;
 	GSList *ci;
 	struct transfer_msg *tmsg;
+	gint64 now = g_get_monotonic_time();
 
 	// first submit chunks to workers
 	for (ti = tman.transfers; ti; ti = ti->next) {
@@ -3261,6 +3264,11 @@ static void schedule_chunk_transfers(void)
 
 		for (ci = t->chunks; ci; ci = ci->next) {
 			struct transfer_chunk *c = ci->data;
+
+			// if the chunk is scheduled to be started in the
+			// future, skip it
+                        if (c->start_at > now)
+				continue;
 
 			// stop if we can't start more chunk transfers
 			if (tman.current_workers >= tman.max_workers)
@@ -3335,6 +3343,7 @@ static void prepare_transfer(struct transfer *t)
 	// get number of chunks from total size
 	goffset off = 0;
 	gsize idx = 0;
+	gint64 now = g_get_monotonic_time();
 
 	for (idx = 0; off < t->total_size; idx++) {
 		struct transfer_chunk *c = g_new0(struct transfer_chunk, 1);
@@ -3363,10 +3372,15 @@ static gpointer tman_manager_thread_fn(gpointer data)
 	//  - sends progress updates
 
 	while (TRUE) {
-		struct transfer_manager_msg *msg = g_async_queue_pop(tman.manager_mailbox);
+		struct transfer_manager_msg *msg = g_async_queue_timeout_pop(tman.manager_mailbox, 100);
 		struct transfer_msg *tmsg;
 		struct transfer *t;
 		struct transfer_chunk *c;
+
+		if (!msg) {
+			schedule_chunk_transfers();
+			continue;
+		}
 
 		switch (msg->type) {
 		case TRANSFER_MANAGER_MSG_SUBMIT_TRANSFER:
