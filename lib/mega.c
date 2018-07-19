@@ -1403,10 +1403,10 @@ static gchar *api_request_unsafe(struct mega_session *s, const gchar *req_node, 
 	// prepare URL
 	s->id++;
 	if (s->sid)
-		url = g_strdup_printf("https://eu.api.mega.co.nz/cs?id=%u&sid=%s%s", s->id, s->sid,
+		url = g_strdup_printf("https://g.api.mega.co.nz/cs?id=%u&sid=%s%s", s->id, s->sid,
 				      additional_url_params->str);
 	else
-		url = g_strdup_printf("https://eu.api.mega.co.nz/cs?id=%u%s", s->id, additional_url_params->str);
+		url = g_strdup_printf("https://g.api.mega.co.nz/cs?id=%u%s", s->id, additional_url_params->str);
 
 	g_string_free(additional_url_params, TRUE);
 
