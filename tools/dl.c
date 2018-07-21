@@ -27,11 +27,13 @@ static gchar *opt_path = ".";
 static gboolean opt_stream = FALSE;
 static gboolean opt_noprogress = FALSE;
 static gboolean opt_print_names = FALSE;
+static gboolean opt_choose_files = FALSE;
 
 static GOptionEntry entries[] = {
 	{ "path", '\0', 0, G_OPTION_ARG_FILENAME, &opt_path, "Local directory or file name, to save data to", "PATH" },
 	{ "no-progress", '\0', 0, G_OPTION_ARG_NONE, &opt_noprogress, "Disable progress bar", NULL },
 	{ "print-names", '\0', 0, G_OPTION_ARG_NONE, &opt_print_names, "Print names of downloaded files", NULL },
+	{ "choose-files", '\0', 0, G_OPTION_ARG_NONE, &opt_choose_files, "Choose which files to download (interactive)", NULL },
 	{ NULL }
 };
 
@@ -85,6 +87,70 @@ static gboolean dl_sync_file(struct mega_node *node, GFile *file, const gchar *r
 	return TRUE;
 }
 
+static int print_dir_files(struct mega_node *node, int pos, int indent, GSList *source, char *path) {
+	GSList *children = mega_session_get_node_chilren(s, node), *i;
+	for (i = children; i; i = i->next) {
+		struct mega_node *node = i->data;
+		g_print("%*s|-%d. %s", 2*indent, "", pos, node->name);
+		source = g_slist_append(source, node);
+		pos++;
+		if (node->type != 0) {
+			g_print(":\n");
+			pos = print_dir_files(node, pos, indent + 1, source, node->name);
+		} else {
+			g_print("\n");
+		}
+	}
+	return pos;
+}
+
+static GSList *choose_dir_files(GSList *input, GSList *source) {
+	GSList *output = 0, *i;
+	int position = 1;
+	for (i = input; i; i = i->next) {
+		struct mega_node *node = i->data;
+		g_print("%d. %s", position, node->name);
+		source = g_slist_append(source, node);
+		position++;
+		if (node->type != 0) {
+			g_print(":\n");
+			position = print_dir_files(node, position, 0, source, node->name);
+		} else {
+			g_print("\n");
+		}
+	}
+
+	g_print("Which files to download? (numbers separated by space or 'all' for all, choosing a folder will download everything within that folder)\n");
+	char buff[1024];
+	position = 0;
+	gboolean end_of_line = FALSE;
+	while(!end_of_line && fgets(buff, sizeof(buff), stdin)) {
+		//doesn't work for lines longer than 1024 chars, could split a number in half
+		//but I don't think anyone would need more than 1000 chars to specify what they wish to download
+		if(!strcmp(buff, "all\n") || !strcmp(buff, "ALL\n") || !strcmp(buff, "All\n")) {
+			output = input;
+			break;
+		}
+		while(position < 1024) {
+			int pos = atoi(buff+position) - 1;
+			if(pos < g_slist_length(source))
+				output = g_slist_append(output, g_slist_nth_data(source, pos));
+			while(buff[position] != ' ') {
+				position++;
+				if(buff[position] == '\n' || buff[position] == '\0') {
+					if(buff[position] == '\n')
+						end_of_line = TRUE;
+					position = 1024;
+					break;
+				}
+			}
+			position++;
+		}
+		position = 0;
+	}
+	return output;
+}
+
 static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *remote_path)
 {
 	gc_error_free GError *local_err = NULL;
@@ -107,21 +173,59 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 
 	// sync children
 	GSList *children = mega_session_get_node_chilren(s, node), *i;
+	GSList *source = 0;
 	gboolean status = TRUE;
+	if (opt_choose_files) {
+		children = choose_dir_files(children, source);
+		opt_choose_files = FALSE;
+	}
 	for (i = children; i; i = i->next) {
 		struct mega_node *child = i->data;
-		gc_free gchar *child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
-		gc_object_unref GFile *child_file = g_file_get_child(file, child->name);
+		g_print("%s\n", child->name);
+		gc_free gchar *child_remote_path = 0;
+		gc_object_unref GFile *child_file = 0;
+		if (child->parent == NULL) {
+			child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
+			child_file = g_file_get_child(file, child->name);
+		} else {
+			struct mega_node *child_parent = child;
+			child_remote_path = "";
+			while(child_parent->parent->parent != NULL) {
+				child_parent = child_parent->parent;
+				child_remote_path = g_strconcat(child_parent->name, "/", child_remote_path, NULL);
+			}
+
+			if (!g_file_query_exists(g_file_get_child(file, child_remote_path), NULL)) {
+				if (!g_file_make_directory_with_parents(g_file_get_child(file, child_remote_path), NULL, &local_err)) {
+					g_printerr("ERROR: Can't create local directory %s: %s\n", local_path, local_err->message);
+					continue;
+				}
+			}
+
+			child_remote_path = g_strconcat(child_remote_path, child->name, NULL);
+			child_file = g_file_get_child(file, child_remote_path);
+			child_remote_path = g_strconcat("/", child_parent->parent->name, "/", child_remote_path, NULL);
+		}
+
+		if ( child->parent != NULL && child->parent->parent != NULL ) {
+			if (!g_file_query_exists(g_file_get_child(file, child->parent->name), NULL)) {
+				if (!g_file_make_directory_with_parents(g_file_get_child(file, child->parent->name), NULL, &local_err)) {
+					g_printerr("ERROR: Can't create local directory %s: %s\n", local_path, local_err->message);
+					continue;
+				}
+			}
+		}
 
 		if (child->type == 0) {
 			if (!dl_sync_file(child, child_file, child_remote_path))
 				status = FALSE;
 		} else {
-			if (!dl_sync_dir(child, child_file, child_remote_path))
+			if (!dl_sync_dir(child, file, child_remote_path))
 				status = FALSE;
 		}
 	}
 
+	g_slist_free(source);
 	g_slist_free(children);
 	return status;
 }
