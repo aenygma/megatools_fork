@@ -61,17 +61,8 @@ struct http {
 	gpointer progress_data;
 };
 
-struct http *http_new(void)
+void http_init(void)
 {
-	struct http *h = g_new0(struct http, 1);
-
-	h->curl = curl_easy_init();
-	if (!h->curl) {
-		g_free(h);
-		return NULL;
-	}
-
-#if CURL_AT_LEAST_VERSION(7, 57, 0) && defined ENABLE_CONN_SHARING
 	G_LOCK(http_init);
 
 	if (!http_share) {
@@ -90,7 +81,35 @@ struct http *http_new(void)
 	}
 
 	G_UNLOCK(http_init);
+}
 
+void http_cleanup(void)
+{
+	G_LOCK(http_init);
+
+	if (http_share) {
+		curl_share_cleanup(http_share);
+		http_share = NULL;
+
+		for (int i = 0; i < G_N_ELEMENTS(http_locks); i++)
+			g_rw_lock_clear(&http_locks[i]);
+	}
+
+	G_UNLOCK(http_init);
+}
+
+struct http *http_new(void)
+{
+	struct http *h = g_new0(struct http, 1);
+
+	h->curl = curl_easy_init();
+	if (!h->curl) {
+		g_free(h);
+		return NULL;
+	}
+
+#if CURL_AT_LEAST_VERSION(7, 57, 0) && defined ENABLE_CONN_SHARING
+	http_init();
 	curl_easy_setopt(h->curl, CURLOPT_SHARE, http_share);
 #endif
 
@@ -431,7 +450,7 @@ void http_free(struct http *h)
 	if (!h)
 		return;
 
-	g_hash_table_destroy(h->headers);
+	g_hash_table_unref(h->headers);
 	curl_easy_cleanup(h->curl);
 
 	memset(h, 0, sizeof(struct http));

@@ -55,6 +55,8 @@ gboolean http_post_stream_download(struct http *h, const gchar *url, http_data_f
 
 void http_free(struct http *h);
 
+void http_cleanup(void);
+
 GQuark http_error_quark(void);
 
 #endif
