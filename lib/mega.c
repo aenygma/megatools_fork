@@ -3074,9 +3074,11 @@ struct transfer {
 	GError *error;
 };
 
-enum { TRANSFER_MANAGER_MSG_SUBMIT_TRANSFER = 1,
-       TRANSFER_MANAGER_MSG_CHUNK_PROGRESS,
-       TRANSFER_MANAGER_MSG_CHUNK_COMPLETE,
+enum { 
+	TRANSFER_MANAGER_MSG_SUBMIT_TRANSFER = 1,
+	TRANSFER_MANAGER_MSG_CHUNK_PROGRESS,
+	TRANSFER_MANAGER_MSG_CHUNK_COMPLETE,
+	TRANSFER_MANAGER_MSG_STOP,
 };
 
 struct transfer_manager_msg {
@@ -3307,7 +3309,7 @@ check_completed:
 		if (!is_finished)
 			continue;
 
-		tman.transfers = g_list_remove_link(tman.transfers, ti);
+		tman.transfers = g_list_delete_link(tman.transfers, ti);
 
 		if (t->error) {
 			tman_debug("M: transfer %s failed\n", t->upload_url);
@@ -3315,6 +3317,9 @@ check_completed:
 			tmsg = g_new0(struct transfer_msg, 1);
 			tmsg->type = TRANSFER_MSG_ERROR;
 			tmsg->error = t->error;
+
+			g_slist_free_full(t->chunks, g_free);
+
 			g_async_queue_push(t->submitter_mailbox, tmsg);
 		} else {
 			tman_debug("M: transfer %s succeeded\n", t->upload_url);
@@ -3331,6 +3336,10 @@ check_completed:
 			macs = g_slist_reverse(macs);
 
 			meta_mac_calculate(macs, t->file_key, tmsg->meta_mac);
+
+                        g_slist_free(macs);
+			g_slist_free_full(t->chunks, g_free);
+
 			tmsg->upload_handle = t->upload_handle;
 			g_async_queue_push(t->submitter_mailbox, tmsg);
 		}
@@ -3384,6 +3393,10 @@ static gpointer tman_manager_thread_fn(gpointer data)
 		}
 
 		switch (msg->type) {
+		case TRANSFER_MANAGER_MSG_STOP:
+			g_free(msg);
+			return NULL;
+
 		case TRANSFER_MANAGER_MSG_SUBMIT_TRANSFER:
 			t = msg->transfer;
 
@@ -3478,8 +3491,9 @@ static void tman_init(int max_workers)
 	if (tman.manager_thread)
 		return;
 
+	memset(&tman, 0, sizeof tman);
+
 	tman.max_workers = max_workers;
-	tman.current_workers = 0;
 	tman.manager_thread = g_thread_new("transfer manager", tman_manager_thread_fn, &tman);
 	tman.manager_mailbox = g_async_queue_new();
 	tman.workers_pool = g_thread_pool_new(tman_worker_thread_fn, NULL, max_workers, TRUE, &local_err);
@@ -3487,8 +3501,21 @@ static void tman_init(int max_workers)
 		g_printerr("ERROR: Can't create thread pool for transfer workers!\n");
 		exit(1);
 	}
+}
 
-	tman.transfers = NULL;
+static void tman_fini(void)
+{
+	if (tman.manager_thread) {
+		// ask manager to stop
+		struct transfer_manager_msg *msg = g_new0(struct transfer_manager_msg, 1);
+		msg->type = TRANSFER_MANAGER_MSG_STOP;
+		g_async_queue_push(tman.manager_mailbox, msg);
+
+		g_thread_join(tman.manager_thread);
+		g_async_queue_unref(tman.manager_mailbox);
+		g_thread_pool_free(tman.workers_pool, FALSE, TRUE);
+		memset(&tman, 0, sizeof tman);
+	}
 }
 
 static gboolean tman_run_upload_transfer(
@@ -4932,6 +4959,16 @@ gboolean mega_session_dl_compat(struct mega_session *s, const gchar *handle, con
 	mega_download_data_free(&params);
 
 	return status;
+}
+
+// }}}
+
+// {{{ mega_cleanup
+
+void mega_cleanup(void)
+{
+	tman_fini();
+	http_cleanup();
 }
 
 // }}}

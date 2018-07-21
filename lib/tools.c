@@ -712,6 +712,8 @@ void tool_fini(struct mega_session *s)
 	if (s)
 		mega_session_free(s);
 
+	mega_cleanup();
+
 	g_option_context_free(opt_context);
 	curl_global_cleanup();
 	CRYPTO_cleanup_all_ex_data();

@@ -196,4 +196,6 @@ gboolean mega_session_get_compat(struct mega_session *s, const gchar *local_path
 gboolean mega_session_dl_compat(struct mega_session *s, const gchar *handle, const gchar *key, const gchar *local_path,
 				GError **err);
 
+void mega_cleanup(void);
+
 #endif
