@@ -3003,30 +3003,57 @@ gchar *mega_session_new_node_attribute(struct mega_session *s, const guchar *dat
 	}                                                                                                              \
 	G_STMT_END
 
-enum { CHUNK_STATE_QUEUED = 0,
-       CHUNK_STATE_IN_PROGRESS,
-       CHUNK_STATE_DONE,
-       CHUNK_STATE_FAIL,
+enum { 
+	CHUNK_STATE_QUEUED = 0,
+	CHUNK_STATE_IN_PROGRESS,
+	CHUNK_STATE_DONE,
+};
+
+struct transfer_chunk_mac {
+	guchar mac[16];
+	guint off;
+	guint size;
 };
 
 struct transfer_chunk {
 	gint status;
 	gint failures_count; // number of failures when retrying
 	struct transfer *transfer;
-	GError *error; // last error
 
-	guchar mac[16];
 	goffset offset;
 	goffset size;
 	goffset transfered_size;
 	guint index;
 
 	gint64 start_at;
+
+	int n_macs;
+	struct transfer_chunk_mac macs[];
 };
 
-enum { TRANSFER_MSG_DONE = 1,
-       TRANSFER_MSG_PROGRESS,
-       TRANSFER_MSG_ERROR,
+enum {
+	TRANSFER_WORKER_MSG_STOP = 1,
+	TRANSFER_WORKER_MSG_UPLOAD_CHUNK,
+};
+
+struct transfer_worker_msg {
+	gint type;
+
+	struct transfer_chunk* chunk;
+	//GError *error;
+};
+
+struct transfer_worker {
+	gint index;
+	gboolean busy;
+	GThread* thread;
+	GAsyncQueue* mailbox;
+};
+
+enum {
+	TRANSFER_MSG_DONE = 1,
+	TRANSFER_MSG_PROGRESS,
+	TRANSFER_MSG_ERROR,
 };
 
 struct transfer_msg {
@@ -3077,7 +3104,8 @@ struct transfer {
 enum { 
 	TRANSFER_MANAGER_MSG_SUBMIT_TRANSFER = 1,
 	TRANSFER_MANAGER_MSG_CHUNK_PROGRESS,
-	TRANSFER_MANAGER_MSG_CHUNK_COMPLETE,
+	TRANSFER_MANAGER_MSG_CHUNK_FAILED,
+	TRANSFER_MANAGER_MSG_CHUNK_DONE,
 	TRANSFER_MANAGER_MSG_STOP,
 };
 
@@ -3085,8 +3113,10 @@ struct transfer_manager_msg {
 	gint type;
 	struct transfer *transfer;
 	struct transfer_chunk *chunk;
+	struct transfer_worker* worker;
 	goffset transfered_size; // how many bytes of a chunk have been transfered
 	gchar *upload_handle; // can be sent with the last chunk update
+	GError *error;
 };
 
 struct transfer_manager {
@@ -3094,7 +3124,7 @@ struct transfer_manager {
 	GThread *manager_thread;
 
 	// only manager thread accesses these after it is started:
-	GThreadPool *workers_pool;
+	struct transfer_worker *workers;
 	int max_workers;
 	int current_workers;
 	GList *transfers;
@@ -3119,10 +3149,11 @@ static gboolean tman_transfer_progress(goffset dltotal, goffset dlnow, goffset u
 	return TRUE;
 }
 
-// performs single http send operation
-static void tman_worker_thread_fn(gpointer data, gpointer user_data)
+// accesses:
+// - chunk: size, index, offset, mac
+// - transfer: stream_lock, istream, nonce, file_key, upload_url, max_ul, max_dl, proxy
+static void tman_worker_upload_chunk(struct transfer_chunk *c, struct transfer_worker* worker)
 {
-	struct transfer_chunk *c = data;
 	struct transfer *t = c->transfer;
 	struct transfer_manager_msg *msg;
 	gsize bytes_read;
@@ -3132,7 +3163,7 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 	gc_free gchar *url = NULL;
 	gc_string_free GString *response = NULL;
 
-	tman_debug("W: started for chunk %d\n", c->index);
+	tman_debug("W[%d]: started for chunk %d\n", worker->index, c->index);
 
 	// load plaintext data into a buffer from the file
 
@@ -3167,7 +3198,8 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 	memcpy(iv, t->nonce, 8);
 	*((guint64 *)&iv[8]) = GUINT64_TO_BE((guint64)(c->offset / 16)); // this is ok, because chunks are 16b aligned
 
-	chunk_mac_calculate(t->nonce, t->file_key, buf, c->size, c->mac);
+	for (int i = 0; i < c->n_macs; i++)
+		chunk_mac_calculate(t->nonce, t->file_key, buf + c->macs[i].off, c->macs[i].size, c->macs[i].mac);
 
 	if (!encrypt_aes128_ctr(buf, buf, c->size, t->file_key, iv)) {
 		err = g_error_new(MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to encrypt data");
@@ -3216,10 +3248,10 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 		upload_handle = base64urlencode(response->str, response->len);
 
 		// we've got the handle
-		tman_debug("W: got upload data handle with chunk %d: '%s'\n", c->index, upload_handle);
+		tman_debug("W[%d]: got upload data handle with chunk %d: '%s'\n", worker->index, c->index, upload_handle);
 	}
 
-	tman_debug("W: success for chunk %d\n", c->index);
+	tman_debug("W[%d]: success for chunk %d\n", worker->index, c->index);
 
 	// final progress update for 100%
 	msg = g_new0(struct transfer_manager_msg, 1);
@@ -3230,16 +3262,15 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 
 	// send success to the manager
 	msg = g_new0(struct transfer_manager_msg, 1);
-	msg->type = TRANSFER_MANAGER_MSG_CHUNK_COMPLETE;
+	msg->type = TRANSFER_MANAGER_MSG_CHUNK_DONE;
 	msg->chunk = c;
+	msg->worker = worker;
 	msg->upload_handle = upload_handle;
-	c->status = CHUNK_STATE_DONE;
-	g_clear_error(&c->error);
 	g_async_queue_push(tman.manager_mailbox, msg);
 	return;
 
 err:
-	tman_debug("W: error for chunk %d: %s\n", c->index, err->message);
+	tman_debug("W[%d]: error for chunk %d: %s\n", worker->index, c->index, err->message);
 
 	// final progress update for 0% (because we failed to transfer the chunk)
 	msg = g_new0(struct transfer_manager_msg, 1);
@@ -3250,13 +3281,37 @@ err:
 
 	// send error to the manager
 	msg = g_new0(struct transfer_manager_msg, 1);
-	msg->type = TRANSFER_MANAGER_MSG_CHUNK_COMPLETE;
+	msg->type = TRANSFER_MANAGER_MSG_CHUNK_FAILED;
 	msg->chunk = c;
-	c->status = CHUNK_STATE_FAIL;
-	g_clear_error(&c->error);
-	c->error = err;
-	c->failures_count++;
+	msg->worker = worker;
+	msg->error = err;
 	g_async_queue_push(tman.manager_mailbox, msg);
+}
+
+// performs single http send operation
+static gpointer tman_worker_thread_fn(gpointer data)
+{
+	struct transfer_worker* w = data;
+
+	while (TRUE) {
+		struct transfer_worker_msg *msg = g_async_queue_timeout_pop(w->mailbox, 1000);
+		if (!msg) {
+			continue;
+		}
+
+		switch (msg->type) {
+		case TRANSFER_WORKER_MSG_STOP:
+			g_free(msg);
+			return NULL;
+
+		case TRANSFER_WORKER_MSG_UPLOAD_CHUNK:
+			tman_worker_upload_chunk(msg->chunk, w);
+			g_free(msg);
+			break;
+		}
+	}
+
+	return NULL;
 }
 
 static void schedule_chunk_transfers(void)
@@ -3290,9 +3345,24 @@ static void schedule_chunk_transfers(void)
 			if (c->status == CHUNK_STATE_QUEUED) {
 				tman_debug("M: chunk %d pushed to worker\n", c->index);
 
-				c->status = CHUNK_STATE_IN_PROGRESS;
-				tman.current_workers++;
-				g_thread_pool_push(tman.workers_pool, c, NULL);
+				for (int i = 0; i < tman.max_workers; i++) {
+					if (!tman.workers[i].busy) {
+						tman.workers[i].busy = TRUE;
+
+						c->status = CHUNK_STATE_IN_PROGRESS;
+						tman.current_workers++;
+
+						struct transfer_worker_msg *msg = g_new0(struct transfer_worker_msg, 1);
+						msg->type = TRANSFER_WORKER_MSG_UPLOAD_CHUNK;
+						msg->chunk = c;
+						g_async_queue_push(tman.workers[i].mailbox, msg);
+						goto queued;
+					}
+				}
+
+				goto check_completed;
+
+queued:;
 			}
 		}
 	}
@@ -3302,57 +3372,58 @@ check_completed:
 	// next check for finished transfers
 	for (ti = tman.transfers; ti; ti = ti_next) {
 		struct transfer *t = ti->data;
-		gboolean is_finished = TRUE;
 
 		ti_next = ti->next;
 
+		// if some chunks are in flight or queued and transfer is not
+		// aborted, we are not done yet
+		gboolean is_finished = TRUE;
 		for (ci = t->chunks; ci; ci = ci->next) {
 			struct transfer_chunk *c = ci->data;
 
-			if (c->status == CHUNK_STATE_IN_PROGRESS)
+			if (c->status == CHUNK_STATE_IN_PROGRESS || (c->status == CHUNK_STATE_QUEUED && !t->error)) {
 				is_finished = FALSE;
-
-			if (!t->error && (c->status == CHUNK_STATE_QUEUED || c->status == CHUNK_STATE_FAIL))
-				is_finished = FALSE;
+				break;
+			}
 		}
 
 		if (!is_finished)
 			continue;
 
+		// remove transfer from the list
 		tman.transfers = g_list_delete_link(tman.transfers, ti);
+
+		tmsg = g_new0(struct transfer_msg, 1);
 
 		if (t->error) {
 			tman_debug("M: transfer %s failed\n", t->upload_url);
 
-			tmsg = g_new0(struct transfer_msg, 1);
 			tmsg->type = TRANSFER_MSG_ERROR;
 			tmsg->error = t->error;
-
-			g_slist_free_full(t->chunks, g_free);
-
-			g_async_queue_push(t->submitter_mailbox, tmsg);
+			t->error = NULL;
 		} else {
 			tman_debug("M: transfer %s succeeded\n", t->upload_url);
 
-			tmsg = g_new0(struct transfer_msg, 1);
 			tmsg->type = TRANSFER_MSG_DONE;
 
 			// calculate meta_mac
 			GSList *macs = NULL;
 			for (ci = t->chunks; ci; ci = ci->next) {
 				struct transfer_chunk *c = ci->data;
-				macs = g_slist_prepend(macs, c->mac);
+				for (int i = 0; i < c->n_macs; i++)
+					macs = g_slist_prepend(macs, c->macs[i].mac);
 			}
 			macs = g_slist_reverse(macs);
-
 			meta_mac_calculate(macs, t->file_key, tmsg->meta_mac);
-
                         g_slist_free(macs);
-			g_slist_free_full(t->chunks, g_free);
 
 			tmsg->upload_handle = t->upload_handle;
-			g_async_queue_push(t->submitter_mailbox, tmsg);
 		}
+
+		g_slist_free_full(t->chunks, g_free);
+		t->chunks = NULL;
+
+		g_async_queue_push(t->submitter_mailbox, tmsg);
 	}
 }
 
@@ -3365,13 +3436,18 @@ static void prepare_transfer(struct transfer *t)
 	gint64 now = g_get_monotonic_time();
 
 	for (idx = 0; off < t->total_size; idx++) {
-		struct transfer_chunk *c = g_new0(struct transfer_chunk, 1);
+		struct transfer_chunk *c = g_malloc0(sizeof(struct transfer_chunk) + sizeof(struct transfer_chunk_mac) * 1);
+
 		c->offset = off;
 		c->size = MIN(t->total_size - off, get_chunk_size(idx));
 		c->index = idx;
 		c->status = CHUNK_STATE_QUEUED;
 		c->transfer = t;
 		c->start_at = now + (idx < 4 ? idx : 4) * 200000;
+
+		c->n_macs = 1;
+		c->macs[0].off = 0;
+		c->macs[0].size = c->size;
 
 		tman_debug("M: chunk %d prepared\n", c->index);
 
@@ -3417,108 +3493,110 @@ static gpointer tman_manager_thread_fn(gpointer data)
 			schedule_chunk_transfers();
 			break;
 
-		case TRANSFER_MANAGER_MSG_CHUNK_COMPLETE:
 		case TRANSFER_MANAGER_MSG_CHUNK_PROGRESS:
 			c = msg->chunk;
 			t = c->transfer;
 
-			if (msg->type == TRANSFER_MANAGER_MSG_CHUNK_PROGRESS) {
-				//tman_debug("M: chunk progress for %d\n", c->index);
-				tmsg = g_new0(struct transfer_msg, 1);
-				tmsg->type = TRANSFER_MSG_PROGRESS;
+			//tman_debug("M: chunk progress for %d\n", c->index);
+			tmsg = g_new0(struct transfer_msg, 1);
+			tmsg->type = TRANSFER_MSG_PROGRESS;
 
-				// update overall progress
-				t->transfered_size += msg->transfered_size - c->transfered_size;
-				c->transfered_size = msg->transfered_size;
+			// update overall progress
+			t->transfered_size += msg->transfered_size - c->transfered_size;
+			c->transfered_size = msg->transfered_size;
 
-				tmsg->total_size = t->total_size;
-				tmsg->transfered_size = t->transfered_size;
+			tmsg->total_size = t->total_size;
+			tmsg->transfered_size = t->transfered_size;
 
-				g_async_queue_push(t->submitter_mailbox, tmsg);
-				break;
+			g_async_queue_push(t->submitter_mailbox, tmsg);
+			break;
+
+		case TRANSFER_MANAGER_MSG_CHUNK_DONE:
+			c = msg->chunk;
+			t = c->transfer;
+
+			tman_debug("M: chunk done %d\n", c->index);
+
+			msg->worker->busy = FALSE;
+			tman.current_workers--;
+
+			c->status = CHUNK_STATE_DONE;
+			if (msg->upload_handle) {
+				g_free(t->upload_handle);
+				t->upload_handle = msg->upload_handle;
 			}
 
-			switch (c->status) {
-			case CHUNK_STATE_DONE:
-				tman_debug("M: chunk done %d\n", c->index);
+			schedule_chunk_transfers();
+			break;
+		case TRANSFER_MANAGER_MSG_CHUNK_FAILED: {
+			c = msg->chunk;
+			t = c->transfer;
 
-				tman.current_workers--;
-				if (msg->upload_handle)
-					t->upload_handle = msg->upload_handle;
+			tman_debug("M: chunk fail %d\n", c->index);
 
-				schedule_chunk_transfers();
-				break;
+			msg->worker->busy = FALSE;
+			tman.current_workers--;
 
-			case CHUNK_STATE_FAIL: {
-				tman_debug("M: chunk fail %d\n", c->index);
-				tman.current_workers--;
-				gint64 now = g_get_monotonic_time();
+			// re-queue chunk
+			c->status = CHUNK_STATE_QUEUED;
 
-				if (t->error) {
-					tman_debug("M: transfer is being aborted, chunk %d update ignored\n", c->index);
-					// transfer is in error state and is being aborted
-					g_clear_error(&c->error);
+			gint64 now = g_get_monotonic_time();
+
+			if (t->error) {
+				tman_debug("M: transfer is being aborted, chunk %d update ignored\n", c->index);
+				// transfer is in error state and is being aborted
+			} else {
+				// re-queue
+				tman_debug("M: chunk %d failed, re-queueing\n", c->index);
+
+				if (g_error_matches(msg->error, MEGA_ERROR, MEGA_ERROR_RATELIMIT)) {
+					// we need to defer all further chunk transfers by a bit, otherwise
+					// everyhing will get rate limited from now on
+					c->failures_count = 0;
+
+					GSList* ci;
+					for (ci = t->chunks; ci; ci = ci->next) {
+						struct transfer_chunk *c = ci->data;
+
+						g_printerr("WARNING: rate limited, delaying all transfers by 4-6s\n");
+						c->start_at = now + 1000 * (4000 + g_random_int_range(0, 2000));
+					}
+				} else if (g_error_matches(msg->error, MEGA_ERROR, MEGA_ERROR_OVERQUOTA)) {
+					// we need to defer all further
+					// transfers by a lot
+					g_printerr("WARNING: over upload quota, delaying all transfers by 5 minutes\n");
+					c->start_at = now + 1000 * (5*60*1000 + g_random_int_range(0, 2000));
+					c->failures_count = 0;
 				} else {
-					// re-queue
-					tman_debug("M: chunk %d failed, re-queueing\n", c->index);
+					// unspecified failure
+					// now + 2^failures s (2s 4s 8s 16s 32s)
+					g_printerr("WARNING: chunk upload failed, re-trying after %d seconds\n", (1 << c->failures_count));
+					c->start_at = g_get_monotonic_time() + 1000 * 1000 * ((1 << c->failures_count));
+					c->failures_count++;
 
-                                        if (g_error_matches(c->error, MEGA_ERROR, MEGA_ERROR_RATELIMIT)) {
-						// we need to defer all further chunk transfers by a bit, otherwise
-						// everyhing will get rate limited from now on
-						c->status = CHUNK_STATE_QUEUED;
-						c->failures_count = 0;
+					if (c->failures_count > 6) {
+						tman_debug("M: chunk %d failed: %s\n", c->index, msg->error->message);
 
-						GSList* ci;
-						for (ci = t->chunks; ci; ci = ci->next) {
-							struct transfer_chunk *c = ci->data;
-
-							g_printerr("WARNING: rate limited, delaying all transfers by 4-6s\n");
-							c->start_at = now + 1000 * (4000 + g_random_int_range(0, 2000));
-						}
-						g_clear_error(&c->error);
-					} else if (g_error_matches(c->error, MEGA_ERROR, MEGA_ERROR_OVERQUOTA)) {
-						// we need to defer all further
-						// transfers by a lot
-						g_printerr("WARNING: over upload quota, delaying all transfers by 5 minutes\n");
-						c->start_at = now + 1000 * (5*60*1000 + g_random_int_range(0, 2000));
-						c->status = CHUNK_STATE_QUEUED;
-						c->failures_count = 0;
-						g_clear_error(&c->error);
-					} else {
-						// unspecified failure
-						// now + 2^failures s (2s 4s 8s 16s 32s)
-						g_printerr("WARNING: chunk upload failed, re-trying after %d seconds\n", (1 << c->failures_count));
-						c->start_at = g_get_monotonic_time() + 1000 * 1000 * ((1 << c->failures_count));
-						c->status = CHUNK_STATE_QUEUED;
-
-						if (c->failures_count <= 6) {
-							g_clear_error(&c->error);
-						} else {
-							tman_debug("M: chunk %d failed: %s\n", c->index, c->error->message);
-							//TODO: we need to wait for other chunk trasnfers to finish,
-							// otherwise we'd need a way to abort http requests
-							//
-							// mark transfer as aborted
-							t->error = c->error;
-						}
+						//TODO: we need to wait for other chunk trasnfers to finish,
+						// otherwise we'd need a way to abort http requests
+						//
+						// mark transfer as aborted
+						t->error = msg->error;
+						msg->error = NULL;
 					}
 				}
-
-				schedule_chunk_transfers();
-				break;
-                        }
-			default:
-				g_assert_not_reached();
-				break;
 			}
 
+			schedule_chunk_transfers();
 			break;
+		}
 
 		default:
 			g_assert_not_reached();
 			break;
 		}
 
+		g_clear_error(&msg->error);
 		g_free(msg);
 	}
 
@@ -3535,14 +3613,19 @@ static void tman_init(int max_workers)
 
 	memset(&tman, 0, sizeof tman);
 
-	tman.max_workers = max_workers;
-	tman.manager_thread = g_thread_new("transfer manager", tman_manager_thread_fn, &tman);
 	tman.manager_mailbox = g_async_queue_new();
-	tman.workers_pool = g_thread_pool_new(tman_worker_thread_fn, NULL, max_workers, TRUE, &local_err);
-	if (tman.workers_pool == NULL) {
-		g_printerr("ERROR: Can't create thread pool for transfer workers!\n");
-		exit(1);
+
+	// start workers
+	tman.max_workers = max_workers;
+	tman.workers = g_new0(struct transfer_worker, max_workers);
+	for (int i = 0; i < max_workers; i++) {
+		tman.workers[i].index = i;
+		tman.workers[i].thread = g_thread_new("transfer worker", tman_worker_thread_fn, &tman.workers[i]);
+		tman.workers[i].mailbox = g_async_queue_new();
 	}
+
+	// start manager
+	tman.manager_thread = g_thread_new("transfer manager", tman_manager_thread_fn, &tman);
 }
 
 static void tman_fini(void)
@@ -3554,8 +3637,21 @@ static void tman_fini(void)
 		g_async_queue_push(tman.manager_mailbox, msg);
 
 		g_thread_join(tman.manager_thread);
+
+		for (int i = 0; i < tman.max_workers; i++) {
+			struct transfer_worker_msg *msg = g_new0(struct transfer_worker_msg, 1);
+			msg->type = TRANSFER_WORKER_MSG_STOP;
+			g_async_queue_push(tman.workers[i].mailbox, msg);
+		}
+
+		for (int i = 0; i < tman.max_workers; i++) {
+			g_thread_join(tman.workers[i].thread);
+			g_async_queue_unref(tman.workers[i].mailbox);
+		}
+
+		g_free(tman.workers);
 		g_async_queue_unref(tman.manager_mailbox);
-		g_thread_pool_free(tman.workers_pool, FALSE, TRUE);
+
 		memset(&tman, 0, sizeof tman);
 	}
 }
