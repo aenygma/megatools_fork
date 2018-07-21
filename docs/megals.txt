@@ -53,6 +53,10 @@ OPTIONS
 	has effect only if you specified a single path on a command 
 	line.
 
+--print0::
+-0::
+	Separate file names with NULs instead of new lines.
+
 include::auth-options.txt[]
 include::basic-options.txt[]
 

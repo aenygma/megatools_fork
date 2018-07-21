@@ -26,6 +26,7 @@ static gboolean opt_human;
 static gboolean opt_export;
 //static gboolean opt_color;
 static gboolean opt_header;
+static gboolean opt_print0;
 
 static GOptionEntry entries[] = {
 	{ "names", 'n', 0, G_OPTION_ARG_NONE, &opt_names,
@@ -34,6 +35,7 @@ static GOptionEntry entries[] = {
 	{ "long", 'l', 0, G_OPTION_ARG_NONE, &opt_long, "Use a long listing format", NULL },
 	{ "header", '\0', 0, G_OPTION_ARG_NONE, &opt_header, "Show columns header in long listing", NULL },
 	{ "human", 'h', 0, G_OPTION_ARG_NONE, &opt_human, "Human readable sizes", NULL },
+	{ "print0", '0', 0, G_OPTION_ARG_NONE, &opt_print0, "Separate file paths with NULs", NULL },
 	//{ "color",         'c',   0, G_OPTION_ARG_NONE,    &opt_color,        "Use color highlighting of node types",        NULL },
 	{ "export", 'e', 0, G_OPTION_ARG_NONE, &opt_export, "Show mega.nz download links (export)", NULL },
 	{ NULL }
@@ -57,6 +59,12 @@ int main(int ac, char *av[])
 	gint j;
 
 	tool_init(&ac, &av, "- list files stored at mega.nz", entries, TOOL_INIT_AUTH);
+	
+	if (opt_long && opt_print0) {
+		g_printerr("ERROR: You can't combine --print0 and --long\n");
+		tool_fini(NULL);
+		return 1;
+	}
 
 	s = tool_start_session(TOOL_SESSION_OPEN);
 	if (!s) {
@@ -121,8 +129,13 @@ int main(int ac, char *av[])
 
 			g_print("%-11s %-11s %d %13s %19s %s\n", n->handle, n->user_handle ? n->user_handle : "",
 				n->type, size_str, n->timestamp > 0 ? time_str : "", opt_names ? n->name : node_path);
-		} else
-			g_print("%s\n", opt_names ? n->name : node_path);
+		} else {
+			g_print("%s", opt_names ? n->name : node_path);
+			if (opt_print0)
+				putchar('\0');
+			else
+				g_print("\n");
+		}
 	}
 
 	g_slist_free(l);
