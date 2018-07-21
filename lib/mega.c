@@ -3194,12 +3194,22 @@ static void tman_worker_thread_fn(gpointer data, gpointer user_data)
 	gchar *upload_handle = NULL;
 
 	if (response->len > 0) {
-		//XXX: differnetiate error codes
-
 		// check for numeric error code
 		if (response->len < 10 && g_regex_match_simple("^-(\\d+)$", response->str, 0, 0)) {
-			err = g_error_new(MEGA_ERROR, MEGA_ERROR_OTHER, "Server returned error code %s",
-					  srv_error_to_string(atoi(response->str)));
+			int code = atoi(response->str);
+			int mega_err = MEGA_ERROR_OTHER;
+
+			switch (code) {
+				case -SRV_ERATELIMIT:
+					mega_err = MEGA_ERROR_RATELIMIT;
+					break;
+				case -SRV_EOVERQUOTA:
+					mega_err = MEGA_ERROR_OVERQUOTA;
+					break;
+			}
+
+			err = g_error_new(MEGA_ERROR, mega_err, "Server returned error code %s",
+					  srv_error_to_string(code));
 			goto err;
 		}
 
@@ -3435,36 +3445,68 @@ static gpointer tman_manager_thread_fn(gpointer data)
 				tman.current_workers--;
 				if (msg->upload_handle)
 					t->upload_handle = msg->upload_handle;
+
 				schedule_chunk_transfers();
 				break;
 
-			case CHUNK_STATE_FAIL:
+			case CHUNK_STATE_FAIL: {
 				tman_debug("M: chunk fail %d\n", c->index);
 				tman.current_workers--;
+				gint64 now = g_get_monotonic_time();
 
 				if (t->error) {
 					tman_debug("M: transfer is being aborted, chunk %d update ignored\n", c->index);
 					// transfer is in error state and is being aborted
 					g_clear_error(&c->error);
-				} else if (c->failures_count <= 6) {
+				} else {
 					// re-queue
 					tman_debug("M: chunk %d failed, re-queueing\n", c->index);
-					// now + 2^failures s (2s 4s 8s 16s 32s)
-					c->start_at = g_get_monotonic_time() + 1000 * 1000 * ((1 << c->failures_count));
-					c->status = CHUNK_STATE_QUEUED;
-					g_clear_error(&c->error);
-				} else {
-					tman_debug("M: chunk %d failed: %s\n", c->index, c->error->message);
-					//TODO: we need to wait for other chunk trasnfers to finish,
-					// otherwise we'd need a way to abort http requests
-					//
-					// mark transfer as aborted
-					t->error = c->error;
+
+                                        if (g_error_matches(c->error, MEGA_ERROR, MEGA_ERROR_RATELIMIT)) {
+						// we need to defer all further chunk transfers by a bit, otherwise
+						// everyhing will get rate limited from now on
+						c->status = CHUNK_STATE_QUEUED;
+						c->failures_count = 0;
+
+						GSList* ci;
+						for (ci = t->chunks; ci; ci = ci->next) {
+							struct transfer_chunk *c = ci->data;
+
+							g_printerr("WARNING: rate limited, delaying all transfers by 4-6s\n");
+							c->start_at = now + 1000 * (4000 + g_random_int_range(0, 2000));
+						}
+						g_clear_error(&c->error);
+					} else if (g_error_matches(c->error, MEGA_ERROR, MEGA_ERROR_OVERQUOTA)) {
+						// we need to defer all further
+						// transfers by a lot
+						g_printerr("WARNING: over upload quota, delaying all transfers by 5 minutes\n");
+						c->start_at = now + 1000 * (5*60*1000 + g_random_int_range(0, 2000));
+						c->status = CHUNK_STATE_QUEUED;
+						c->failures_count = 0;
+						g_clear_error(&c->error);
+					} else {
+						// unspecified failure
+						// now + 2^failures s (2s 4s 8s 16s 32s)
+						g_printerr("WARNING: chunk upload failed, re-trying after %d seconds\n", (1 << c->failures_count));
+						c->start_at = g_get_monotonic_time() + 1000 * 1000 * ((1 << c->failures_count));
+						c->status = CHUNK_STATE_QUEUED;
+
+						if (c->failures_count <= 6) {
+							g_clear_error(&c->error);
+						} else {
+							tman_debug("M: chunk %d failed: %s\n", c->index, c->error->message);
+							//TODO: we need to wait for other chunk trasnfers to finish,
+							// otherwise we'd need a way to abort http requests
+							//
+							// mark transfer as aborted
+							t->error = c->error;
+						}
+					}
 				}
+
 				schedule_chunk_transfers();
-
 				break;
-
+                        }
 			default:
 				g_assert_not_reached();
 				break;

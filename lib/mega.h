@@ -27,7 +27,11 @@
 
 #define MEGA_ERROR mega_error_quark()
 
-enum { MEGA_ERROR_OTHER };
+enum {
+	MEGA_ERROR_RATELIMIT,
+	MEGA_ERROR_OVERQUOTA,
+	MEGA_ERROR_OTHER
+};
 
 // status callback
 
