@@ -62,8 +62,9 @@ static gboolean up_sync_file(GFile *root, GFile *file, const gchar *remote_path)
 	if (!opt_dryrun) {
 		g_free(cur_file);
 		cur_file = g_file_get_basename(file);
+		gc_free gchar* local_path = g_file_get_path(file);
 
-		if (!mega_session_put_compat(s, remote_path, g_file_get_path(file), &local_err)) {
+		if (!mega_session_put_compat(s, remote_path, local_path, &local_err)) {
 			if (!opt_noprogress && tool_is_stdout_tty())
 				g_print("\r" ESC_CLREOL);
 
@@ -106,7 +107,7 @@ static gboolean up_sync_dir(GFile *root, GFile *file, const gchar *remote_path)
 	}
 
 	// sync children
-	GFileEnumerator *e =
+	gc_object_unref GFileEnumerator *e =
 		g_file_enumerate_children(file, "standard::*",
 					  opt_nofollow ? G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS : G_FILE_QUERY_INFO_NONE,
 					  NULL, &local_err);
@@ -120,9 +121,9 @@ static gboolean up_sync_dir(GFile *root, GFile *file, const gchar *remote_path)
 	gboolean status = TRUE;
 	while ((i = g_file_enumerator_next_file(e, NULL, NULL))) {
 		const gchar *name = g_file_info_get_name(i);
-		GFile *child = g_file_get_child(file, name);
+		gc_object_unref GFile *child = g_file_get_child(file, name);
 		GFileType type = g_file_query_file_type(child, 0, NULL);
-		gchar *child_remote_path = g_strconcat(remote_path, "/", name, NULL);
+		gc_free gchar *child_remote_path = g_strconcat(remote_path, "/", name, NULL);
 
 		if (type == G_FILE_TYPE_DIRECTORY) {
 			if (!up_sync_dir(root, child, child_remote_path))
@@ -131,15 +132,14 @@ static gboolean up_sync_dir(GFile *root, GFile *file, const gchar *remote_path)
 			if (!up_sync_file(root, child, child_remote_path))
 				status = FALSE;
 		} else {
-			g_printerr("WARNING: Skipping special file %s\n", g_file_get_relative_path(root, file));
+			gc_free gchar* rel_path = g_file_get_relative_path(root, file);
+
+			g_printerr("WARNING: Skipping special file %s\n", rel_path);
 		}
 
-		g_free(child_remote_path);
-		g_object_unref(child);
 		g_object_unref(i);
 	}
 
-	g_object_unref(e);
 	return status;
 }
 
@@ -177,7 +177,7 @@ static gboolean dl_sync_file(struct mega_node *node, GFile *file, const gchar *r
 static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *remote_path)
 {
 	GError *local_err = NULL;
-	gchar *local_path = g_file_get_path(file);
+	gc_free gchar *local_path = g_file_get_path(file);
 
 	if (!g_file_query_exists(file, NULL)) {
 		g_print("D %s\n", local_path);
@@ -202,8 +202,8 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 	GSList *children = mega_session_get_node_chilren(s, node), *i;
 	for (i = children; i; i = i->next) {
 		struct mega_node *child = i->data;
-		gchar *child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
-		GFile *child_file = g_file_get_child(file, child->name);
+		gc_free gchar *child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
+		gc_object_unref GFile *child_file = g_file_get_child(file, child->name);
 
 		if (child->type == MEGA_NODE_FILE) {
 			if (!dl_sync_file(child, child_file, child_remote_path))
@@ -212,9 +212,6 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 			if (!dl_sync_dir(child, child_file, child_remote_path))
 				status = FALSE;
 		}
-
-		g_object_unref(child_file);
-		g_free(child_remote_path);
 	}
 
 	g_slist_free(children);
@@ -225,19 +222,20 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 
 int main(int ac, char *av[])
 {
+	gc_object_unref GFile *local_file = NULL;
+	gint status = 0;
+
 	tool_init(&ac, &av, "- synchronize local and remote mega.nz directories", entries,
 		  TOOL_INIT_AUTH | TOOL_INIT_UPLOAD_OPTS | TOOL_INIT_DOWNLOAD_OPTS);
 
 	if (!opt_local_path || !opt_remote_path) {
 		g_printerr("ERROR: You must specify local and remote paths\n");
-		return 1;
+		goto err;
 	}
 
 	s = tool_start_session(TOOL_SESSION_OPEN);
-	if (!s) {
-		tool_fini(NULL);
-		return 1;
-	}
+	if (!s)
+		goto err;
 
 	mega_session_watch_status(s, status_callback, NULL);
 
@@ -245,23 +243,22 @@ int main(int ac, char *av[])
 	struct mega_node *remote_dir = mega_session_stat(s, opt_remote_path);
 	if (!remote_dir) {
 		g_printerr("ERROR: Remote directory not found %s\n", opt_remote_path);
-		goto err0;
+		goto err;
 	} else if (!mega_node_is_container(remote_dir)) {
 		g_printerr("ERROR: Remote path must be a folder: %s\n", opt_remote_path);
-		goto err0;
+		goto err;
 	}
 
 	// check local dir existence
-	GFile *local_file = g_file_new_for_path(opt_local_path);
-	gint status = 0;
+	local_file = g_file_new_for_path(opt_local_path);
 
 	if (opt_download) {
 		if (!dl_sync_dir(remote_dir, local_file, opt_remote_path))
-			status = 1;
+			goto err;
 	} else {
 		if (g_file_query_file_type(local_file, 0, NULL) != G_FILE_TYPE_DIRECTORY) {
 			g_printerr("ERROR: Local directory not found %s\n", opt_local_path);
-			goto err1;
+			goto err;
 		}
 
 		if (!up_sync_dir(local_file, local_file, opt_remote_path))
@@ -270,13 +267,12 @@ int main(int ac, char *av[])
 		mega_session_save(s, NULL);
 	}
 
-	g_object_unref(local_file);
+	g_free(cur_file);
 	tool_fini(s);
 	return status;
 
-err1:
-	g_object_unref(local_file);
-err0:
+err:
+	g_free(cur_file);
 	tool_fini(s);
 	return 1;
 }
