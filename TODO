@@ -1,23 +1,12 @@
 For 1.10.0
 ----------
 
-- fix progress reporting while resuming
-- allow to disable resume
+- retry transfer if mega does not return upload handle
+- 
 
+------------
 - megacopy: show paths relative to destination directory
   https://github.com/megous/megatools/issues/120
-
-- download exported folder with invalid password
-
-ERROR: Can't login to mega.nz: API call 'us' failed: Server returned error ENOENT
-
-(megadl:37830): Mega-CRITICAL **: mega_session_watch_status: assertion 's != NULL' failed
-
-(megadl:37830): Mega-CRITICAL **: mega_session_open_exp_folder: assertion 's != NULL' failed
-[1]    37830 segmentation fault  megadl --config /root/.megarc --debug api
-
-
-
 - https://github.com/megous/megatools/issues/324
 
 
