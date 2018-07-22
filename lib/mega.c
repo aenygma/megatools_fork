@@ -3459,36 +3459,126 @@ check_completed:
 	}
 }
 
+static int get_n_chunks(guint idx, guint size, guint* rounded_size)
+{
+	if (idx < 7) {
+		// special algo
+		guint i = 0;
+		guint csize = 0;
+
+		while (csize < size) {
+			csize += get_chunk_size(idx);
+			idx++;
+			i++;
+		}
+
+		*rounded_size = csize;
+		return i;
+	} else {
+		guint rem = size % (1024 * 1024);
+		int n = size / (1024 * 1024) + (rem > 0 ? 1 : 0);
+
+		*rounded_size = n * 1024 * 1024;
+
+		return n;
+	}
+}
+
 static void prepare_transfer(struct transfer *t)
 {
 	// create list of chunks and initialize it
 	// get number of chunks from total size
-	goffset off = 0;
-	gsize idx = 0;
 	gint64 now = g_get_monotonic_time();
+	goffset off = 0;
+	guint chunk_idx = 0, mac_idx = 0;
 
-	for (idx = 0; off < t->total_size; idx++) {
-		struct transfer_chunk *c = g_malloc0(sizeof(struct transfer_chunk) + sizeof(struct transfer_chunk_mac) * 1);
+	// Here we create a list of chunks that will be used for transfer.
+	// For bigger files, we can create bigger chunks. When creating
+	// bigger chunks we need to account for a fact that chunk mac is
+	// calculated from a fixed pattern of chunk sizes that we can't modify.
+	//
+	// First 8 chunks are 128 kiB * index sized, the rest is 1 MiB sized.
+	//
+	// We pre-define this pattern in the macs array of n_macs size.
 
-		c->offset = off;
-		c->size = MIN(t->total_size - off, get_chunk_size(idx));
-		c->index = idx;
-		c->status = CHUNK_STATE_QUEUED;
-		c->transfer = t;
-		c->start_at = now + (idx < 4 ? idx : 4) * 200000;
+	gboolean boost = TRUE;
+        if (boost) {
+		while (off < t->total_size) {
+			goffset max_size = 16 * 1024 * 1024;
+			if (chunk_idx < 3)
+				max_size = 4 * 1024 * 1024;
 
-		c->n_macs = 1;
-		c->macs[0].off = 0;
-		c->macs[0].size = c->size;
+			guint size = MIN(t->total_size - off, max_size);
+			guint rounded_size;
+			int num_mac_chunks = get_n_chunks(mac_idx, size, &rounded_size);
+			size = MIN(t->total_size - off, rounded_size);
 
-		tman_debug("M: chunk %d prepared\n", c->index);
+			struct transfer_chunk *c = g_malloc0(sizeof(struct transfer_chunk) + sizeof(struct transfer_chunk_mac) * num_mac_chunks);
 
-		t->chunks = g_slist_prepend(t->chunks, c);
+			c->offset = off;
+			c->size = size;
+			c->index = chunk_idx;
+			c->status = CHUNK_STATE_QUEUED;
+			c->transfer = t;
+			c->start_at = now + (chunk_idx < 4 ? chunk_idx : 4) * 200000;
 
-		off += c->size;
+			c->n_macs = num_mac_chunks;
+
+			guint mac_off = 0;
+			for (int i = 0; i < num_mac_chunks; i++) {
+				c->macs[i].off = mac_off;
+				c->macs[i].size = MIN(get_chunk_size(mac_idx), size - mac_off);
+
+				mac_idx++;
+				mac_off += c->macs[i].size;
+			}
+
+			t->chunks = g_slist_prepend(t->chunks, c);
+
+			chunk_idx++;
+			off += c->size;
+
+			// curiously, I found that if the last chunk
+			// is not coalesced, mega will not hang
+			if (off == t->total_size && c->n_macs > 1) {
+				off -= c->macs[c->n_macs - 1].size;
+				c->size -= c->macs[c->n_macs - 1].size;
+				c->n_macs--;
+			}
+		}
+	} else {
+		for (chunk_idx = 0; off < t->total_size; chunk_idx++) {
+			struct transfer_chunk *c = g_malloc0(sizeof(struct transfer_chunk) + sizeof(struct transfer_chunk_mac) * 1);
+
+			c->offset = off;
+			c->size = MIN(t->total_size - off, get_chunk_size(chunk_idx));
+			c->index = chunk_idx;
+			c->status = CHUNK_STATE_QUEUED;
+			c->transfer = t;
+			c->start_at = now + (chunk_idx < 4 ? chunk_idx : 4) * 200000;
+
+			c->n_macs = 1;
+			c->macs[0].off = 0;
+			c->macs[0].size = c->size;
+
+			t->chunks = g_slist_prepend(t->chunks, c);
+
+			off += c->size;
+		}
 	}
 
 	t->chunks = g_slist_reverse(t->chunks);
+
+#if 0
+	GSList* it;
+	for (it = t->chunks; it; it = it->next) {
+		struct transfer_chunk *c = it->data;
+
+		g_print("CH[%d] = { off=%" G_GOFFSET_FORMAT " size=%" G_GOFFSET_FORMAT " macs=%d }\n", c->index, c->offset, c->size, c->n_macs);
+		for (int i = 0; i < c->n_macs; i++)
+			g_print("  CMAC { off=%u size=%u }\n", c->macs[i].off, c->macs[i].size);
+	}
+#endif
 }
 
 static gpointer tman_manager_thread_fn(gpointer data)
