@@ -128,6 +128,7 @@ struct http *http_new(void)
 		curl_easy_setopt(h->curl, CURLOPT_VERBOSE, 1L);
 
 	curl_easy_setopt(h->curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(h->curl, CURLOPT_NOSIGNAL, 1L);
 
 	h->headers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
@@ -147,7 +148,6 @@ void http_expect_short_running(struct http *h)
 	g_return_if_fail(h != NULL);
 
 	// don't use alarm signal to time out dns queries
-	curl_easy_setopt(h->curl, CURLOPT_NOSIGNAL, 1L);
 	curl_easy_setopt(h->curl, CURLOPT_TIMEOUT, 180L); // 180s max per connection
 	curl_easy_setopt(h->curl, CURLOPT_LOW_SPEED_TIME, 30L); // 30s max of very low speed
 	curl_easy_setopt(h->curl, CURLOPT_LOW_SPEED_LIMIT, 60L);
