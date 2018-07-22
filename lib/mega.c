@@ -2998,7 +2998,7 @@ gchar *mega_session_new_node_attribute(struct mega_session *s, const guchar *dat
 #define tman_debug(fmt, args...)                                                                                       \
 	G_STMT_START                                                                                                   \
 	{                                                                                                              \
-		if (mega_debug && MEGA_DEBUG_TMAN)                                                                     \
+		if (mega_debug & MEGA_DEBUG_TMAN)                                                                     \
 			g_print("%" G_GINT64_FORMAT ": " fmt, g_get_monotonic_time(), ##args);                         \
 	}                                                                                                              \
 	G_STMT_END
