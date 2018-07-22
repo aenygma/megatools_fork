@@ -3425,7 +3425,7 @@ check_completed:
 		if (!t->error && !t->upload_handle) {
 			// mega did not return upload handle with the last
 			// uploaded chunk, WTF?
-			t->error = g_error_new(MEGA_ERROR, MEGA_ERROR_OTHER, "Mega didn't return an upload handle");
+			t->error = g_error_new(MEGA_ERROR, MEGA_ERROR_NO_HANDLE, "Mega didn't return an upload handle");
 		}
 
 		// remove transfer from the list
@@ -3671,47 +3671,41 @@ static gpointer tman_manager_thread_fn(gpointer data)
 			gint64 now = g_get_monotonic_time();
 
 			if (t->error) {
-				tman_debug("M: transfer is being aborted, chunk %d update ignored\n", c->index);
 				// transfer is in error state and is being aborted
+				tman_debug("M: transfer is being aborted, chunk %d fail ignored\n", c->index);
 			} else {
-				// re-queue
-				tman_debug("M: chunk %d failed, re-queueing\n", c->index);
+				if (g_error_matches(msg->error, MEGA_ERROR, MEGA_ERROR_AGAIN)
+						|| g_error_matches(msg->error, HTTP_ERROR, HTTP_ERROR_TIMEOUT)
+						|| g_error_matches(msg->error, HTTP_ERROR, HTTP_ERROR_SERVER_BUSY)
+						|| g_error_matches(msg->error, HTTP_ERROR, HTTP_ERROR_NO_RESPONSE)) {
 
-				if (g_error_matches(msg->error, MEGA_ERROR, MEGA_ERROR_RATELIMIT)) {
-					// we need to defer all further chunk transfers by a bit, otherwise
-					// everyhing will get rate limited from now on
-					c->failures_count = 0;
+					if (c->failures_count > 6) {
+						g_printerr("WARNING: chunk upload failed too many times (%s), aborting transfer\n", msg->error->message);
 
+						// mark transfer as aborted
+						t->error = msg->error;
+						msg->error = NULL;
+					} else {
+						g_printerr("WARNING: chunk upload failed (%s), re-trying after %d seconds\n", msg->error->message, (1 << c->failures_count));
+						c->start_at = g_get_monotonic_time() + 1000 * 1000 * ((1 << c->failures_count));
+						c->failures_count++;
+					}
+				} else if (g_error_matches(msg->error, HTTP_ERROR, HTTP_ERROR_BANDWIDTH_LIMIT)) {
+					// we need to defer all further
+					// transfers by a lot
+					g_printerr("WARNING: over upload quota, delaying all transfers by 5 minutes\n");
 					GSList* ci;
 					for (ci = t->chunks; ci; ci = ci->next) {
 						struct transfer_chunk *c = ci->data;
 
-						g_printerr("WARNING: rate limited, delaying all transfers by 4-6s\n");
-						c->start_at = now + 1000 * (4000 + g_random_int_range(0, 2000));
+						c->start_at = now + 1000 * (5*60*1000 + g_random_int_range(0, 2000));
 					}
-				} else if (g_error_matches(msg->error, MEGA_ERROR, MEGA_ERROR_OVERQUOTA)) {
-					// we need to defer all further
-					// transfers by a lot
-					g_printerr("WARNING: over upload quota, delaying all transfers by 5 minutes\n");
-					c->start_at = now + 1000 * (5*60*1000 + g_random_int_range(0, 2000));
-					c->failures_count = 0;
 				} else {
-					// unspecified failure
-					// now + 2^failures s (2s 4s 8s 16s 32s)
-					g_printerr("WARNING: chunk upload failed (%s), re-trying after %d seconds\n", msg->error->message, (1 << c->failures_count));
-					c->start_at = g_get_monotonic_time() + 1000 * 1000 * ((1 << c->failures_count));
-					c->failures_count++;
+					g_printerr("WARNING: chunk upload failed (%s), aborting transfer\n", msg->error->message);
 
-					if (c->failures_count > 6) {
-						tman_debug("M: chunk %d failed: %s\n", c->index, msg->error->message);
-
-						//TODO: we need to wait for other chunk trasnfers to finish,
-						// otherwise we'd need a way to abort http requests
-						//
-						// mark transfer as aborted
-						t->error = msg->error;
-						msg->error = NULL;
-					}
+					// mark transfer as aborted
+					t->error = msg->error;
+					msg->error = NULL;
 				}
 			}
 
@@ -3990,6 +3984,8 @@ struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *par
 {
 	GError *local_err = NULL;
 	gc_free gchar *up_handle = NULL;
+	gc_free gchar *up_node = NULL;
+	gc_free gchar *p_url = NULL;
 
 	g_return_val_if_fail(s != NULL, NULL);
 	g_return_val_if_fail(parent_node != NULL, NULL);
@@ -4006,28 +4002,40 @@ struct mega_node *mega_session_put(struct mega_session *s, struct mega_node *par
 
 	goffset file_size = g_file_info_get_size(info);
 
+	// setup encryption
+	gc_free guchar *aes_key = make_random_key();
+	gc_free guchar *nonce = make_random_key();
+	guchar meta_mac[16];
+	int retries = 3;
+	gboolean transfer_ok;
+
+	tman_init(s->max_workers);
+
+try_again:
 	// ask for upload url - [{"a":"u","ssl":0,"ms":0,"s":<SIZE>,"r":0,"e":0}]
-	gc_free gchar *up_node =
-		api_call(s, 'o', NULL, &local_err, "[{a:u, e:0, ms:0, r:0, s:%i, ssl:0, v:2}]", (gint64)file_size);
+	g_free(up_node);
+	up_node = api_call(s, 'o', NULL, &local_err, "[{a:u, e:0, ms:0, r:0, s:%i, ssl:0, v:2}]", (gint64)file_size);
 	if (!up_node) {
 		g_propagate_error(err, local_err);
 		return NULL;
 	}
 
-	gc_free gchar *p_url = s_json_get_member_string(up_node, "p");
+	g_free(p_url);
+	p_url = s_json_get_member_string(up_node, "p");
 
-	// setup encryption
-	gc_free guchar *aes_key = make_random_key();
-	gc_free guchar *nonce = make_random_key();
-	guchar meta_mac[16];
-
-	tman_init(s->max_workers);
-
-	gboolean transfer_ok = tman_run_upload_transfer(
+	transfer_ok = tman_run_upload_transfer(
 		/* in: */ s, aes_key, nonce, p_url, stream, file_size,
 		/* out: */ &up_handle, meta_mac, &local_err);
 
 	if (!transfer_ok) {
+		if (g_error_matches(local_err, MEGA_ERROR, MEGA_ERROR_NO_HANDLE)) {
+			if (retries-- > 0) {
+				g_printerr("WARNING: Mega didn't return an upload handle, retrying transfer\n");
+				g_clear_error(&local_err);
+				goto try_again;
+			}
+		}
+
 		g_propagate_prefixed_error(err, local_err, "Data upload failed: ");
 		return NULL;
 	}
