@@ -309,14 +309,14 @@ void tool_show_progress(const gchar *file, const struct mega_status_data *data)
 		return;
 
 	// start of the new transfer, initialize progress reporting
-	if (data->progress.done < 0) {
+	if (data->progress.done == -1) {
 		transfer_start = last_update = timenow;
 		last_bytes = 0;
-	} else if (transfer_start < 0) {
+	} else if (transfer_start < 0)
 		return;
-	} else if (data->progress.done == data->progress.total) {
-		now_done = data->progress.done;
-	} else if (last_update && last_update + PROGRESS_FREQUENCY > timenow)
+	else if (data->progress.done == -2)
+		now_done = data->progress.total;
+	else if (last_update && last_update + PROGRESS_FREQUENCY > timenow)
 		return;
 	else
 		now_done = data->progress.done;
@@ -325,7 +325,7 @@ void tool_show_progress(const gchar *file, const struct mega_status_data *data)
 	gint64 size_diff = now_done - last_bytes;
 	gdouble rate, percentage;
 
-	if (now_done == data->progress.total) {
+	if (data->progress.done == -2) {
 		// final summary
 		rate = (gdouble)data->progress.total * 1e6 / (timenow - transfer_start);
 		percentage = 100;

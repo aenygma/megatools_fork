@@ -3787,6 +3787,7 @@ static gboolean tman_run_upload_transfer(
 {
 	struct transfer t = { 0 };
 	gboolean retval = FALSE;
+	struct mega_status_data status_data;
 
 	g_return_val_if_fail(file_key != NULL, FALSE);
 	g_return_val_if_fail(nonce != NULL, FALSE);
@@ -3816,7 +3817,7 @@ static gboolean tman_run_upload_transfer(
 	g_async_queue_push(tman.manager_mailbox, msg);
 
 	// send initial progress report
-	struct mega_status_data status_data = {
+	status_data = (struct mega_status_data){
 		.type = MEGA_STATUS_PROGRESS,
 		.progress.total = file_size,
 		.progress.done = -1,
@@ -3841,8 +3842,8 @@ static gboolean tman_run_upload_transfer(
 			g_free(msg);
 			goto out;
 
-		case TRANSFER_MSG_PROGRESS: {
-			struct mega_status_data status_data = {
+		case TRANSFER_MSG_PROGRESS:
+			status_data = (struct mega_status_data){
 				.type = MEGA_STATUS_PROGRESS,
 				.progress.total = msg->total_size,
 				.progress.done = msg->transfered_size,
@@ -3850,7 +3851,6 @@ static gboolean tman_run_upload_transfer(
 
 			send_status(s, &status_data);
 			break;
-		}
 
 		default:
 			g_assert_not_reached();
@@ -3860,6 +3860,15 @@ static gboolean tman_run_upload_transfer(
 	}
 
 out:
+	// send final progress report
+	status_data = (struct mega_status_data){
+		.type = MEGA_STATUS_PROGRESS,
+		.progress.total = file_size,
+		.progress.done = -2,
+	};
+
+	send_status(s, &status_data);
+
 	// cleanup
 	g_async_queue_unref(t.submitter_mailbox);
 	g_mutex_clear(&t.stream_lock);
@@ -4328,7 +4337,17 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	http_set_progress_callback(h, progress_dl, &state);
 	http_set_speed(h, s->max_ul, s->max_dl);
 	http_set_proxy(h, s->proxy);
-	if (!http_post_stream_download(h, url, get_data_cb, &state, &local_err)) {
+	gboolean download_ok = http_post_stream_download(h, url, get_data_cb, &state, &local_err);
+
+	status_data = (struct mega_status_data){
+		.type = MEGA_STATUS_PROGRESS,
+		.progress.total = params->node_size - download_from,
+		.progress.done = -2,
+	};
+
+	send_status(s, &status_data);
+
+	if (!download_ok) {
 		g_propagate_prefixed_error(err, local_err, "Data download failed: ");
 		goto err_noremove;
 	}
