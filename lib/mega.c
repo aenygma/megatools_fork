@@ -3509,7 +3509,9 @@ static void prepare_transfer(struct transfer *t)
 	//
 	// We pre-define this pattern in the macs array of n_macs size.
 
-	gboolean boost = TRUE;
+	//XXX: mega largely works, but craps out EFAILs on too many connections when coalescing chunks so
+	// let's disable boost for now.
+	gboolean boost = FALSE;
         if (boost) {
 		while (off < t->total_size) {
 			goffset max_size = 16 * 1024 * 1024;
