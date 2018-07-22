@@ -3422,6 +3422,12 @@ check_completed:
 		if (!is_finished)
 			continue;
 
+		if (!t->error && !t->upload_handle) {
+			// mega did not return upload handle with the last
+			// uploaded chunk, WTF?
+			t->error = g_error_new(MEGA_ERROR, MEGA_ERROR_OTHER, "Mega didn't return an upload handle");
+		}
+
 		// remove transfer from the list
 		tman.transfers = g_list_delete_link(tman.transfers, ti);
 
