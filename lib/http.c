@@ -226,10 +226,37 @@ static size_t append_gstring(void *buffer, size_t size, size_t nmemb, GString *s
 	return nmemb;
 }
 
+static gboolean to_error(struct http* h, CURLcode res, GError** err)
+{
+	glong http_status = 0;
+
+	if (res == CURLE_OK) {
+		if (curl_easy_getinfo(h->curl, CURLINFO_RESPONSE_CODE, &http_status) == CURLE_OK) {
+			if (http_status == 200 || http_status == 201)
+				return FALSE;
+			else if (http_status == 500)
+				g_set_error(err, HTTP_ERROR, HTTP_ERROR_SERVER_BUSY,
+					    "Server returned %ld (probably busy)", http_status);
+			else if (http_status == 509)
+				g_set_error(err, HTTP_ERROR, HTTP_ERROR_BANDWIDTH_LIMIT,
+					    "Server returned %ld (over quota)", http_status);
+			else
+				g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Server returned %ld", http_status);
+		} else
+			g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Can't get http status code");
+	} else if (res == CURLE_OPERATION_TIMEDOUT)
+		g_set_error(err, HTTP_ERROR, HTTP_ERROR_TIMEOUT, "CURL timeout: %s", curl_easy_strerror(res));
+	else if (res == CURLE_GOT_NOTHING)
+		g_set_error(err, HTTP_ERROR, HTTP_ERROR_NO_RESPONSE, "CURL error: %s", curl_easy_strerror(res));
+	else
+		g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "CURL error: %s", curl_easy_strerror(res));
+
+	return TRUE;
+}
+
 GString *http_post(struct http *h, const gchar *url, const gchar *body, gssize body_len, GError **err)
 {
 	struct curl_slist *headers = NULL;
-	glong http_status = 0;
 	GString *response;
 	CURLcode res;
 
@@ -261,36 +288,15 @@ GString *http_post(struct http *h, const gchar *url, const gchar *body, gssize b
 
 	// perform HTTP request
 	res = curl_easy_perform(h->curl);
+	if (to_error(h, res, err)) {
+		g_string_free(response, TRUE);
+		response = NULL;
+	}
 
-	// check the result
-	if (res == CURLE_OK) {
-		if (curl_easy_getinfo(h->curl, CURLINFO_RESPONSE_CODE, &http_status) == CURLE_OK) {
-			if (http_status == 200 || http_status == 201)
-				goto out;
-			else if (http_status == 500)
-				g_set_error(err, HTTP_ERROR, HTTP_ERROR_SERVER_BUSY,
-					    "Server returned %ld (probably busy)", http_status);
-			else
-				g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Server returned %ld", http_status);
-		} else
-			g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Can't get http status code");
-	} else if (res == CURLE_OPERATION_TIMEDOUT)
-		g_set_error(err, HTTP_ERROR, HTTP_ERROR_TIMEOUT, "CURL timeout: %s", curl_easy_strerror(res));
-	else if (res == CURLE_GOT_NOTHING)
-		g_set_error(err, HTTP_ERROR, HTTP_ERROR_NO_RESPONSE, "CURL error: %s", curl_easy_strerror(res));
-	else
-		g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "CURL error: %s", curl_easy_strerror(res));
-
-	g_string_free(response, TRUE);
-	response = NULL;
-
-out:
 	curl_easy_setopt(h->curl, CURLOPT_HTTPHEADER, NULL);
 	curl_slist_free_all(headers);
-	if (response)
-		return response;
 
-	return NULL;
+	return response;
 }
 
 struct stream_data {
@@ -307,7 +313,6 @@ GString *http_post_stream_upload(struct http *h, const gchar *url, goffset len, 
 				 gpointer user_data, GError **err)
 {
 	struct curl_slist *headers = NULL;
-	glong http_status = 0;
 	GString *response;
 	CURLcode res;
 	struct stream_data data;
@@ -339,33 +344,15 @@ GString *http_post_stream_upload(struct http *h, const gchar *url, goffset len, 
 
 	// perform HTTP request
 	res = curl_easy_perform(h->curl);
+	if (to_error(h, res, err)) {
+		g_string_free(response, TRUE);
+		response = NULL;
+	}
 
-	// check the result
-	if (res == CURLE_OK) {
-		if (curl_easy_getinfo(h->curl, CURLINFO_RESPONSE_CODE, &http_status) == CURLE_OK) {
-			if (http_status == 200) {
-				goto out;
-			} else
-				g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Server returned %ld", http_status);
-		} else
-			g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Can't get http status code");
-	} else if (res == CURLE_OPERATION_TIMEDOUT)
-		g_set_error(err, HTTP_ERROR, HTTP_ERROR_TIMEOUT, "CURL timeout: %s", curl_easy_strerror(res));
-	else if (res == CURLE_GOT_NOTHING)
-		g_set_error(err, HTTP_ERROR, HTTP_ERROR_NO_RESPONSE, "CURL error: %s", curl_easy_strerror(res));
-	else
-		g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "CURL error: %s", curl_easy_strerror(res));
-
-	g_string_free(response, TRUE);
-	response = NULL;
-
-out:
 	curl_easy_setopt(h->curl, CURLOPT_HTTPHEADER, NULL);
 	curl_slist_free_all(headers);
-	if (response)
-		return response;
 
-	return NULL;
+	return response;
 }
 
 static size_t curl_write(void *buffer, size_t size, size_t nmemb, struct stream_data *data)
@@ -397,10 +384,9 @@ gboolean http_post_stream_download(struct http *h, const gchar *url, http_data_f
 				   GError **err)
 {
 	struct curl_slist *headers = NULL;
-	glong http_status = 0;
 	CURLcode res;
 	struct stream_data data;
-	gboolean status = FALSE;
+	gboolean status = TRUE;
 
 	g_return_val_if_fail(h != NULL, FALSE);
 	g_return_val_if_fail(url != NULL, FALSE);
@@ -424,22 +410,9 @@ gboolean http_post_stream_download(struct http *h, const gchar *url, http_data_f
 
 	// perform HTTP request
 	res = curl_easy_perform_retry_empty(h->curl);
-	// check the result
-	if (res == CURLE_OK) {
-		if (curl_easy_getinfo(h->curl, CURLINFO_RESPONSE_CODE, &http_status) == CURLE_OK) {
-			if (http_status == 200) {
-				status = TRUE;
-				goto out;
-			} else
-				g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Server returned %ld", http_status);
-		} else
-			g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "Can't get http status code");
-	} else if (res == CURLE_OPERATION_TIMEDOUT)
-		g_set_error(err, HTTP_ERROR, HTTP_ERROR_TIMEOUT, "CURL timeout: %s", curl_easy_strerror(res));
-	else
-		g_set_error(err, HTTP_ERROR, HTTP_ERROR_OTHER, "CURL error: %s", curl_easy_strerror(res));
+	if (to_error(h, res, err))
+		status = FALSE;
 
-out:
 	curl_easy_setopt(h->curl, CURLOPT_HTTPHEADER, NULL);
 	curl_slist_free_all(headers);
 	return status;
