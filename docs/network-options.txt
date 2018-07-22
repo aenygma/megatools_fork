@@ -1,6 +1,8 @@
 --limit-speed <speed>::
 	Set maximum allowed upload and download speed in KiB/s.
 	This option overrides config file settings. 0 means no limit.
+	When using ParallelTransfers > 1, upload speed limit is applied
+	to each transfer individually.
 
 --proxy <proxy>::
 	Use proxy server to connect to mega.nz. This option overrides
