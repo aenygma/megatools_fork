@@ -3163,14 +3163,13 @@ static gchar* upload_checksum(const guchar* data, gsize len)
 // accesses:
 // - chunk: size, index, offset, mac
 // - transfer: stream_lock, istream, nonce, file_key, upload_url, max_ul, max_dl, proxy
-static void tman_worker_upload_chunk(struct transfer_chunk *c, struct transfer_worker* worker)
+static void tman_worker_upload_chunk(struct transfer_chunk *c, struct transfer_worker* worker, struct http* h)
 {
 	struct transfer *t = c->transfer;
 	struct transfer_manager_msg *msg;
 	gsize bytes_read;
 	GError *err = NULL;
 	GError *local_err = NULL;
-	gc_http_free struct http *h = NULL;
 	gc_free gchar *url = NULL;
 	gc_string_free GString *response = NULL;
 
@@ -3222,8 +3221,6 @@ static void tman_worker_upload_chunk(struct transfer_chunk *c, struct transfer_w
 	url = g_strdup_printf("%s/%" G_GOFFSET_FORMAT "?c=%s", t->upload_url, c->offset, chksum);
 
 	// perform upload POST
-	h = http_new();
-	http_expect_short_running(h);
 	http_set_content_type(h, "application/octet-stream");
 	http_set_progress_callback(h, tman_transfer_progress, c);
 	http_set_speed(h, t->max_ul, t->max_dl);
@@ -3324,6 +3321,10 @@ err:
 static gpointer tman_worker_thread_fn(gpointer data)
 {
 	struct transfer_worker* w = data;
+	gc_http_free struct http *h = NULL;
+
+	h = http_new();
+	http_expect_short_running(h);
 
 	while (TRUE) {
 		struct transfer_worker_msg *msg = g_async_queue_timeout_pop(w->mailbox, 1000);
@@ -3337,7 +3338,7 @@ static gpointer tman_worker_thread_fn(gpointer data)
 			return NULL;
 
 		case TRANSFER_WORKER_MSG_UPLOAD_CHUNK:
-			tman_worker_upload_chunk(msg->chunk, w);
+			tman_worker_upload_chunk(msg->chunk, w, h);
 			g_free(msg);
 			break;
 		}

@@ -113,8 +113,8 @@ struct http *http_new(void)
 	}
 
 #if CURL_AT_LEAST_VERSION(7, 57, 0) && defined ENABLE_CONN_SHARING
-	http_init();
-	curl_easy_setopt(h->curl, CURLOPT_SHARE, http_share);
+	//http_init();
+	//curl_easy_setopt(h->curl, CURLOPT_SHARE, http_share);
 #endif
 
 #if CURL_AT_LEAST_VERSION(7, 21, 6)
