@@ -149,9 +149,9 @@ void http_expect_short_running(struct http *h)
 	g_return_if_fail(h != NULL);
 
 	// don't use alarm signal to time out dns queries
-	curl_easy_setopt(h->curl, CURLOPT_TIMEOUT, 180L); // 180s max per connection
-	curl_easy_setopt(h->curl, CURLOPT_LOW_SPEED_TIME, 30L); // 30s max of very low speed
-	curl_easy_setopt(h->curl, CURLOPT_LOW_SPEED_LIMIT, 60L);
+	curl_easy_setopt(h->curl, CURLOPT_TIMEOUT, 10*60L); // 10 minutes max per connection
+	curl_easy_setopt(h->curl, CURLOPT_LOW_SPEED_TIME, 60L); // 60s max of very low speed
+	curl_easy_setopt(h->curl, CURLOPT_LOW_SPEED_LIMIT, 10L);
 }
 
 void http_set_header(struct http *h, const gchar *name, const gchar *value)
