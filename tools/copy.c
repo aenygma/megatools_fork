@@ -158,6 +158,9 @@ static gboolean dl_sync_file(struct mega_node *node, GFile *file, const gchar *r
 	g_print("F %s\n", local_path);
 
 	if (!opt_dryrun) {
+		g_free(cur_file);
+		cur_file = g_file_get_basename(file);
+
 		if (!mega_session_get_compat(s, g_file_get_path(file), remote_path, &local_err)) {
 			if (!opt_noprogress && tool_is_stdout_tty())
 				g_print("\r" ESC_CLREOL);
