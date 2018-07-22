@@ -1,18 +1,6 @@
-For 1.10.0
-----------
+- better abort mechanism for http workers
+- use chunked parallel download
 
-- retry transfer if mega does not return upload handle
-- 
-
-------------
 - megacopy: show paths relative to destination directory
   https://github.com/megous/megatools/issues/120
 - https://github.com/megous/megatools/issues/324
-
-
-Maybe someday
--------------
-
-- better abort mechanism for http workers
-- use chunked parallel download
-- set timestamp for downloaded files (makes only sense for syncing use case we don't support ATM)
