@@ -3241,25 +3241,46 @@ static void tman_worker_upload_chunk(struct transfer_chunk *c, struct transfer_w
 		if (response->len < 10 && g_regex_match_simple("^-(\\d+)$", response->str, 0, 0)) {
 			int code = atoi(response->str);
 			int mega_err = MEGA_ERROR_OTHER;
+			const char* err_str = "???";
 
 			switch (code) {
-				case -SRV_ERATELIMIT:
-					mega_err = MEGA_ERROR_RATELIMIT;
+				case -3:
+					err_str = "EAGAIN";
+					mega_err = MEGA_ERROR_AGAIN;
 					break;
-				case -SRV_EOVERQUOTA:
-					mega_err = MEGA_ERROR_OVERQUOTA;
+				case -4:
+					err_str = "EFAILED";
+					break;
+				case -5:
+					err_str = "ENOTFOUND";
+					break;
+				case -6:
+					err_str = "ETOOMANY";
+					break;
+				case -7:
+					err_str = "ERANGE";
+					break;
+				case -8:
+					err_str = "EEXPIRED";
+					break;
+				case -14:
+					err_str = "EKEY";
 					break;
 			}
 
-			err = g_error_new(MEGA_ERROR, mega_err, "Server returned error code %s",
-					  srv_error_to_string(code));
+			err = g_error_new(MEGA_ERROR, mega_err, "Server returned error code %d (%s)", code, err_str);
 			goto err;
 		}
 
-		upload_handle = base64urlencode(response->str, response->len);
+		if (response->len == 36) {
+			upload_handle = base64urlencode(response->str, response->len);
 
-		// we've got the handle
-		tman_debug("W[%d]: got upload data handle with chunk %d: '%s'\n", worker->index, c->index, upload_handle);
+			// we've got the handle
+			tman_debug("W[%d]: got upload data handle with chunk %d: '%s'\n", worker->index, c->index, upload_handle);
+		} else {
+			err = g_error_new(MEGA_ERROR, MEGA_ERROR_OTHER, "Server returned something that does not look like upload handle");
+			goto err;
+		}
 	}
 
 	tman_debug("W[%d]: success for chunk %d\n", worker->index, c->index);
