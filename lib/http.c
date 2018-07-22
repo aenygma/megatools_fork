@@ -51,15 +51,6 @@ static void http_unlock_cb(CURL *handle, curl_lock_data data, void *userptr)
 }
 
 G_LOCK_DEFINE_STATIC(http_init);
-#endif
-
-struct http {
-	CURL *curl;
-	GHashTable *headers;
-
-	http_progress_fn progress_cb;
-	gpointer progress_data;
-};
 
 void http_init(void)
 {
@@ -97,6 +88,19 @@ void http_cleanup(void)
 
 	G_UNLOCK(http_init);
 }
+#else
+void http_init(void) {}
+void http_cleanup(void) {}
+#endif
+
+struct http {
+	CURL *curl;
+	GHashTable *headers;
+
+	http_progress_fn progress_cb;
+	gpointer progress_data;
+};
+
 
 struct http *http_new(void)
 {
