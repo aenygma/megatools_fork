@@ -81,7 +81,10 @@ SpeedLimit::
 ParallelTransfers::
 	Set maximum allowed number of parallel connections when upload or downloading a file.
 	The file is split into chunks of a size between 128 kiB and 1 MiB, and these chunks
-	are then uploaded in parallel. The number must be between 1 and 5. Default is 3.
+	are uploaded in parallel.
+	The number must be between 1 and 16. Default is 5.
+	More is not always better! Libcurl will not cache more than 5 connections, so
+	number above 5 will cause frequent reconnects during upload.
 
 Proxy::
 	Use proxy server to connect to mega.nz.
