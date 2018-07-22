@@ -3149,6 +3149,17 @@ static gboolean tman_transfer_progress(goffset dltotal, goffset dlnow, goffset u
 	return TRUE;
 }
 
+static gchar* upload_checksum(const guchar* data, gsize len)
+{
+	guchar crc[12] = {0};
+	gsize i;
+
+	for (i = 0; i < len; i++)
+		crc[i % sizeof crc] ^= data[i];
+
+	return base64urlencode(crc, sizeof crc);
+}
+
 // accesses:
 // - chunk: size, index, offset, mac
 // - transfer: stream_lock, istream, nonce, file_key, upload_url, max_ul, max_dl, proxy
@@ -3207,8 +3218,8 @@ static void tman_worker_upload_chunk(struct transfer_chunk *c, struct transfer_w
 	}
 
 	// prepare URL including chunk offset
-	url = g_strdup_printf("%s/%" G_GOFFSET_FORMAT, t->upload_url, c->offset);
-	//XXX: mega.nz also appends: ?c=???? (some checksum)
+	gc_free gchar* chksum = upload_checksum(buf, c->size);
+	url = g_strdup_printf("%s/%" G_GOFFSET_FORMAT "?c=%s", t->upload_url, c->offset, chksum);
 
 	// perform upload POST
 	h = http_new();
