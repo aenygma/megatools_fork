@@ -129,6 +129,7 @@ struct http *http_new(void)
 
 	curl_easy_setopt(h->curl, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(h->curl, CURLOPT_NOSIGNAL, 1L);
+	curl_easy_setopt(h->curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
 
 	h->headers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
