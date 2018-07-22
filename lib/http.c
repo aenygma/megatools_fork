@@ -152,6 +152,13 @@ struct http *http_new(void)
 	return h;
 }
 
+void http_set_max_connects(struct http *h, long max)
+{
+	g_return_if_fail(h != NULL);
+
+	curl_easy_setopt(h->curl, CURLOPT_MAXCONNECTS, max);
+}
+
 void http_expect_short_running(struct http *h)
 {
 	g_return_if_fail(h != NULL);

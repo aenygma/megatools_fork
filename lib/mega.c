@@ -3325,6 +3325,7 @@ static gpointer tman_worker_thread_fn(gpointer data)
 
 	h = http_new();
 	http_expect_short_running(h);
+	http_set_max_connects(h, 2);
 
 	while (TRUE) {
 		struct transfer_worker_msg *msg = g_async_queue_timeout_pop(w->mailbox, 1000);
