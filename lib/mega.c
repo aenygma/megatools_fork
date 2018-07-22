@@ -3692,7 +3692,7 @@ static gpointer tman_manager_thread_fn(gpointer data)
 				} else {
 					// unspecified failure
 					// now + 2^failures s (2s 4s 8s 16s 32s)
-					g_printerr("WARNING: chunk upload failed, re-trying after %d seconds\n", (1 << c->failures_count));
+					g_printerr("WARNING: chunk upload failed (%s), re-trying after %d seconds\n", msg->error->message, (1 << c->failures_count));
 					c->start_at = g_get_monotonic_time() + 1000 * 1000 * ((1 << c->failures_count));
 					c->failures_count++;
 
