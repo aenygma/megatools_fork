@@ -1,10 +1,11 @@
-megatools 1.10.0-rc2 - 2018-07-19
-=================================
+megatools 1.10.0 - 2018-07-22
+=============================
 
 This release contains new features and optimizaions.
 
 New features/optimizations:
-- Chunked upload using up to 16 concurrent connections.
+- Chunked upload using up to 16 concurrent connections. Remember, more is not
+  always better.
 - Improved upload stability. When mega drops or hangs the data connection,
   megatools will simply restart the upload of the chunk of data that got lost.
 - 5x AES enryption/decryption speed increase for uploads and downloads. Now
