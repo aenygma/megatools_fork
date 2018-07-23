@@ -4639,6 +4639,26 @@ gboolean mega_node_is_container(struct mega_node *n)
 }
 
 // }}}
+// {{{ mega_node_has_ancestor
+
+gboolean mega_node_has_ancestor(struct mega_node *n, struct mega_node *ancestor)
+{
+	g_return_val_if_fail(n != NULL, FALSE);
+	g_return_val_if_fail(ancestor != NULL, FALSE);
+
+	struct mega_node* it = n->parent;
+
+	while (it) {
+		if (it == ancestor)
+			return TRUE;
+
+		it = it->parent;
+	}
+
+	return FALSE;
+}
+
+// }}}
 
 // {{{ mega_session_save
 
