@@ -259,9 +259,11 @@ GSList* pick_nodes(void)
 	return prune_children(chosen_nodes);
 }
 
-static gboolean dl_sync_dir_choose(GFile *file)
+static gboolean dl_sync_dir_choose(GFile *local_dir)
 {
+	gc_error_free GError *local_err = NULL;
 	GSList* chosen_nodes = pick_nodes(), *it;
+	gboolean status = TRUE;
 
 	if (chosen_nodes == NULL)
 		g_printerr("WARNING: Nothing was selected\n");
@@ -274,91 +276,25 @@ static gboolean dl_sync_dir_choose(GFile *file)
 			g_print("%s\n", path);
 	}
 
-	//XXX: perform downloads
+	for (it = chosen_nodes; it; it = it->next) {
+		struct mega_node *node = it->data;
+		gchar remote_path[4096];
+		if (!mega_node_get_path(node, remote_path, sizeof remote_path))
+			continue;
+
+		gc_object_unref GFile *file = g_file_get_child(local_dir, remote_path + 1);
+
+		if (node->type == MEGA_NODE_FILE) {
+			if (!dl_sync_file(node, file))
+				status = FALSE;
+		} else {
+			if (!dl_sync_dir(node, file))
+				status = FALSE;
+		}
+	}
 
 	g_slist_free(chosen_nodes);
-	return TRUE;
-
-#if 0
-	gc_error_free GError *local_err = NULL;
-	gc_free gchar *local_path = g_file_get_path(file);
-
-	if (!g_file_query_exists(file, NULL)) {
-		if (!opt_noprogress)
-			g_print("D %s\n", local_path);
-
-		if (!g_file_make_directory(file, NULL, &local_err)) {
-			g_printerr("ERROR: Can't create local directory %s: %s\n", local_path, local_err->message);
-			return FALSE;
-		}
-	} else {
-		if (g_file_query_file_type(file, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) != G_FILE_TYPE_DIRECTORY) {
-			g_printerr("ERROR: Can't create local directory %s: file exists\n", local_path);
-			return FALSE;
-		}
-	}
-
-	// sync children
-	GSList *children = mega_session_get_node_chilren(s, node), *i;
-	gboolean status = TRUE;
-	if (opt_choose_files) {
-		children = choose_dir_files(children);
-		opt_choose_files = FALSE;
-	}
-
-	for (i = children; i; i = i->next) {
-		struct mega_node *child = i->data;
-		g_print("%s\n", child->name);
-		gc_free gchar *child_remote_path = 0;
-		gc_object_unref GFile *child_file = 0;
-		if (child->parent == NULL) {
-			child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
-			child_file = g_file_get_child(file, child->name);
-		} else {
-			struct mega_node *child_parent = child;
-			child_remote_path = "";
-			while (child_parent->parent->parent != NULL) {
-				child_parent = child_parent->parent;
-				child_remote_path = g_strconcat(child_parent->name, "/", child_remote_path, NULL);
-			}
-
-			if (!g_file_query_exists(g_file_get_child(file, child_remote_path), NULL)) {
-				if (!g_file_make_directory_with_parents(g_file_get_child(file, child_remote_path), NULL,
-									&local_err)) {
-					g_printerr("ERROR: Can't create local directory %s: %s\n", local_path,
-						   local_err->message);
-					continue;
-				}
-			}
-
-			child_remote_path = g_strconcat(child_remote_path, child->name, NULL);
-			child_file = g_file_get_child(file, child_remote_path);
-			child_remote_path = g_strconcat("/", child_parent->parent->name, "/", child_remote_path, NULL);
-		}
-
-		if (child->parent != NULL && child->parent->parent != NULL) {
-			if (!g_file_query_exists(g_file_get_child(file, child->parent->name), NULL)) {
-				if (!g_file_make_directory_with_parents(g_file_get_child(file, child->parent->name),
-									NULL, &local_err)) {
-					g_printerr("ERROR: Can't create local directory %s: %s\n", local_path,
-						   local_err->message);
-					continue;
-				}
-			}
-		}
-
-		if (child->type == 0) {
-			if (!dl_sync_file(child, child_file, child_remote_path))
-				status = FALSE;
-		} else {
-			if (!dl_sync_dir(child, file, child_remote_path))
-				status = FALSE;
-		}
-	}
-
-	g_slist_free(children);
 	return status;
-#endif
 }
 
 int main(int ac, char *av[])
