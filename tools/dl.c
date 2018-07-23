@@ -88,72 +88,6 @@ static gboolean dl_sync_file(struct mega_node *node, GFile *file, const gchar *r
 	return TRUE;
 }
 
-static int print_dir_files(struct mega_node *node, int pos, int indent, GSList *source, char *path)
-{
-	GSList *children = mega_session_get_node_chilren(s, node), *i;
-	for (i = children; i; i = i->next) {
-		struct mega_node *node = i->data;
-		g_print("%*s|-%d. %s", 2 * indent, "", pos, node->name);
-		source = g_slist_append(source, node);
-		pos++;
-		if (node->type != 0) {
-			g_print(":\n");
-			pos = print_dir_files(node, pos, indent + 1, source, node->name);
-		} else {
-			g_print("\n");
-		}
-	}
-	return pos;
-}
-
-static GSList *choose_dir_files(GSList *input, GSList *source)
-{
-	GSList *output = 0, *i;
-	int position = 1;
-	for (i = input; i; i = i->next) {
-		struct mega_node *node = i->data;
-		g_print("%d. %s", position, node->name);
-		source = g_slist_append(source, node);
-		position++;
-		if (node->type != 0) {
-			g_print(":\n");
-			position = print_dir_files(node, position, 0, source, node->name);
-		} else {
-			g_print("\n");
-		}
-	}
-
-	g_print("Which files to download? (numbers separated by space or 'all' for all, choosing a folder will download everything within that folder)\n");
-	char buff[1024];
-	position = 0;
-	gboolean end_of_line = FALSE;
-	while (!end_of_line && fgets(buff, sizeof(buff), stdin)) {
-		//doesn't work for lines longer than 1024 chars, could split a number in half
-		//but I don't think anyone would need more than 1000 chars to specify what they wish to download
-		if (!strcmp(buff, "all\n") || !strcmp(buff, "ALL\n") || !strcmp(buff, "All\n")) {
-			output = input;
-			break;
-		}
-		while (position < 1024) {
-			int pos = atoi(buff + position) - 1;
-			if (pos < g_slist_length(source))
-				output = g_slist_append(output, g_slist_nth_data(source, pos));
-			while (buff[position] != ' ') {
-				position++;
-				if (buff[position] == '\n' || buff[position] == '\0') {
-					if (buff[position] == '\n')
-						end_of_line = TRUE;
-					position = 1024;
-					break;
-				}
-			}
-			position++;
-		}
-		position = 0;
-	}
-	return output;
-}
-
 static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *remote_path)
 {
 	gc_error_free GError *local_err = NULL;
@@ -176,12 +110,203 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 
 	// sync children
 	GSList *children = mega_session_get_node_chilren(s, node), *i;
-	GSList *source = 0;
+	gboolean status = TRUE;
+	for (i = children; i; i = i->next) {
+		struct mega_node *child = i->data;
+		gc_free gchar *child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
+		gc_object_unref GFile *child_file = g_file_get_child(file, child->name);
+
+		if (child->type == 0) {
+			if (!dl_sync_file(child, child_file, child_remote_path))
+				status = FALSE;
+		} else {
+			if (!dl_sync_dir(child, child_file, child_remote_path))
+				status = FALSE;
+		}
+	}
+
+	g_slist_free(children);
+	return status;
+}
+
+static gint* parse_number_list(const gchar* input, gint* count)
+{
+	*count = 0;
+
+	gc_regex_unref GRegex* re = g_regex_new("\\s+", 0, 0, NULL);
+	if (re == NULL)
+		return NULL;
+
+	gchar** tokens = g_regex_split(re, input, 0);
+	guint i = 0, n_tokens = g_strv_length(tokens);
+	gint* nums = g_new0(gint, n_tokens);
+
+	*count = 0;
+        while (i < n_tokens) {
+		if (g_regex_match_simple("^\\d{1,7}$", tokens[i], 0, 0)) {
+			nums[*count] = atoi(tokens[i]);
+			*count += 1;
+		} else {
+			g_printerr("WARNING: Skipping non-numeric value '%s'\n", tokens[i]);
+		}
+
+		i++;
+	}
+
+	g_strfreev(tokens);
+	return nums;
+}
+
+static GSList *prompt_and_filter_nodes(GSList *nodes)
+{
+	GSList *chosen_nodes = NULL;
+
+        gc_free gchar* input = tool_prompt_input();
+	if (input == NULL)
+		return g_slist_copy(nodes);
+
+	if (g_regex_match_simple("all", input, G_REGEX_CASELESS, 0))
+		return g_slist_copy(nodes);
+
+	gint n_nums;
+	gc_free gint* nums = parse_number_list(input, &n_nums);
+
+	gint max_index = g_slist_length(nodes);
+
+	for (int i = 0; i < n_nums; i++) {
+		if (nums[i] <= max_index && nums[i] >= 1) {
+			struct mega_node* node = g_slist_nth_data(nodes, nums[i] - 1);
+
+			if (!g_slist_find(chosen_nodes, node))
+				chosen_nodes = g_slist_prepend(chosen_nodes, node);
+			else
+				g_printerr("WARNING: Index %d given multiple times\n", nums[i]);
+		} else
+			g_printerr("WARNING: Index %d out of range\n", nums[i]);
+	}
+
+	return chosen_nodes;
+}
+
+static gint compare_node(struct mega_node *a, struct mega_node *b)
+{
+	gchar path1[4096];
+	gchar path2[4096];
+
+	if (mega_node_get_path(a, path1, 4096) && mega_node_get_path(b, path2, 4096))
+		return strcmp(path1, path2);
+	return 0;
+}
+
+GSList* prune_children(GSList* nodes)
+{
+	GSList* pruned = NULL, *it, *it2;
+
+	// not the most optimal, but the working set is small
+	for (it = nodes; it; it = it->next) {
+		struct mega_node *node = it->data;
+
+		// check if there's ancestor of node in the list
+		for (it2 = nodes; it2; it2 = it2->next) {
+			struct mega_node *node2 = it2->data;
+
+			if (mega_node_has_ancestor(node, node2)) {
+				gchar path[4096];
+				if (mega_node_get_path(node, path, sizeof path))
+					g_printerr("WARNING: skipping already included path %s\n", path);
+
+				goto prune_node;
+			}
+		}
+
+		pruned = g_slist_prepend(pruned, node);
+
+prune_node:;
+	}
+
+	g_slist_free(nodes);
+
+	return g_slist_reverse(pruned);
+}
+
+GSList* pick_nodes(void)
+{
+	GSList *nodes = mega_session_ls(s, "/", TRUE), *it, *chosen_nodes;
+	int position = 1;
+
+	nodes = g_slist_sort(nodes, (GCompareFunc)compare_node);
+
+	for (it = nodes; it; it = it->next) {
+		struct mega_node *node = it->data;
+		gchar path[4096];
+
+		if (mega_node_get_path(node, path, sizeof path))
+			g_print("%d. %s%s\n", position, path, mega_node_is_container(node) ? "/" : "");
+
+		position++;
+	}
+
+	g_print("Enter numbers of files or folders to download separated by spaces (or type 'all' to download everything):\n> ");
+
+	chosen_nodes = prompt_and_filter_nodes(nodes);
+
+	g_slist_free(nodes);
+
+	// now, user may have chosen both directories and files contained in
+	// them, prune the list
+
+	chosen_nodes = g_slist_sort(chosen_nodes, (GCompareFunc)compare_node);
+
+	return prune_children(chosen_nodes);
+}
+
+static gboolean dl_sync_dir_choose(GFile *file)
+{
+	GSList* chosen_nodes = pick_nodes(), *it;
+
+	if (chosen_nodes == NULL)
+		g_printerr("WARNING: Nothing was selected\n");
+
+	for (it = chosen_nodes; it; it = it->next) {
+		struct mega_node *node = it->data;
+		gchar path[4096];
+
+		if (mega_node_get_path(node, path, sizeof path))
+			g_print("%s\n", path);
+	}
+
+	//XXX: perform downloads
+
+	g_slist_free(chosen_nodes);
+	return TRUE;
+
+#if 0
+	gc_error_free GError *local_err = NULL;
+	gc_free gchar *local_path = g_file_get_path(file);
+
+	if (!g_file_query_exists(file, NULL)) {
+		if (!opt_noprogress)
+			g_print("D %s\n", local_path);
+
+		if (!g_file_make_directory(file, NULL, &local_err)) {
+			g_printerr("ERROR: Can't create local directory %s: %s\n", local_path, local_err->message);
+			return FALSE;
+		}
+	} else {
+		if (g_file_query_file_type(file, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) != G_FILE_TYPE_DIRECTORY) {
+			g_printerr("ERROR: Can't create local directory %s: file exists\n", local_path);
+			return FALSE;
+		}
+	}
+
+	// sync children
+	GSList *children = mega_session_get_node_chilren(s, node), *i;
 	gboolean status = TRUE;
 	if (opt_choose_files) {
-		children = choose_dir_files(children, source);
+		children = choose_dir_files(children);
 		opt_choose_files = FALSE;
 	}
+
 	for (i = children; i; i = i->next) {
 		struct mega_node *child = i->data;
 		g_print("%s\n", child->name);
@@ -232,9 +357,9 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 		}
 	}
 
-	g_slist_free(source);
 	g_slist_free(children);
 	return status;
+#endif
 }
 
 int main(int ac, char *av[])
@@ -350,8 +475,14 @@ int main(int ac, char *av[])
 					if (g_file_query_file_type(local_dir, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
 								   NULL) == G_FILE_TYPE_DIRECTORY) {
 						gc_free gchar *node_path = mega_node_get_path_dup(root_node);
-						if (!dl_sync_dir(root_node, local_dir, node_path))
-							status = 1;
+
+						if (opt_choose_files) {
+							if (!dl_sync_dir_choose(local_dir))
+								status = 1;
+						} else {
+							if (!dl_sync_dir(root_node, local_dir, node_path))
+								status = 1;
+						}
 					} else {
 						g_printerr("ERROR: %s must be a directory\n", opt_path);
 						status = 1;
