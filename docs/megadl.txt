@@ -44,7 +44,7 @@ If `<path>` is `-`, remote file will be streamed to stdout.
 	Print names/paths of successfully downloaded files (one per line).
 
 --choose-files::
-	Print all files in shared folder and choose which to download (when choosing a folder all files and subfolders in it will be downloaded)
+	Print all files in a shared folder and choose which files or subfolders to download. When choosing a subfolder, the entire subfolder will be downloaded.
 
 include::download-options.txt[]
 include::basic-options.txt[]

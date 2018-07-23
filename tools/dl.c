@@ -33,8 +33,7 @@ static GOptionEntry entries[] = {
 	{ "path", '\0', 0, G_OPTION_ARG_FILENAME, &opt_path, "Local directory or file name, to save data to", "PATH" },
 	{ "no-progress", '\0', 0, G_OPTION_ARG_NONE, &opt_noprogress, "Disable progress bar", NULL },
 	{ "print-names", '\0', 0, G_OPTION_ARG_NONE, &opt_print_names, "Print names of downloaded files", NULL },
-	{ "choose-files", '\0', 0, G_OPTION_ARG_NONE, &opt_choose_files, "Choose which files to download (interactive)",
-	  NULL },
+	{ "choose-files", '\0', 0, G_OPTION_ARG_NONE, &opt_choose_files, "Choose which files to download when downloading folders (interactive)", NULL },
 	{ NULL }
 };
 
