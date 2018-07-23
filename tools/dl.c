@@ -33,7 +33,8 @@ static GOptionEntry entries[] = {
 	{ "path", '\0', 0, G_OPTION_ARG_FILENAME, &opt_path, "Local directory or file name, to save data to", "PATH" },
 	{ "no-progress", '\0', 0, G_OPTION_ARG_NONE, &opt_noprogress, "Disable progress bar", NULL },
 	{ "print-names", '\0', 0, G_OPTION_ARG_NONE, &opt_print_names, "Print names of downloaded files", NULL },
-	{ "choose-files", '\0', 0, G_OPTION_ARG_NONE, &opt_choose_files, "Choose which files to download (interactive)", NULL },
+	{ "choose-files", '\0', 0, G_OPTION_ARG_NONE, &opt_choose_files, "Choose which files to download (interactive)",
+	  NULL },
 	{ NULL }
 };
 
@@ -87,11 +88,12 @@ static gboolean dl_sync_file(struct mega_node *node, GFile *file, const gchar *r
 	return TRUE;
 }
 
-static int print_dir_files(struct mega_node *node, int pos, int indent, GSList *source, char *path) {
+static int print_dir_files(struct mega_node *node, int pos, int indent, GSList *source, char *path)
+{
 	GSList *children = mega_session_get_node_chilren(s, node), *i;
 	for (i = children; i; i = i->next) {
 		struct mega_node *node = i->data;
-		g_print("%*s|-%d. %s", 2*indent, "", pos, node->name);
+		g_print("%*s|-%d. %s", 2 * indent, "", pos, node->name);
 		source = g_slist_append(source, node);
 		pos++;
 		if (node->type != 0) {
@@ -104,7 +106,8 @@ static int print_dir_files(struct mega_node *node, int pos, int indent, GSList *
 	return pos;
 }
 
-static GSList *choose_dir_files(GSList *input, GSList *source) {
+static GSList *choose_dir_files(GSList *input, GSList *source)
+{
 	GSList *output = 0, *i;
 	int position = 1;
 	for (i = input; i; i = i->next) {
@@ -124,21 +127,21 @@ static GSList *choose_dir_files(GSList *input, GSList *source) {
 	char buff[1024];
 	position = 0;
 	gboolean end_of_line = FALSE;
-	while(!end_of_line && fgets(buff, sizeof(buff), stdin)) {
+	while (!end_of_line && fgets(buff, sizeof(buff), stdin)) {
 		//doesn't work for lines longer than 1024 chars, could split a number in half
 		//but I don't think anyone would need more than 1000 chars to specify what they wish to download
-		if(!strcmp(buff, "all\n") || !strcmp(buff, "ALL\n") || !strcmp(buff, "All\n")) {
+		if (!strcmp(buff, "all\n") || !strcmp(buff, "ALL\n") || !strcmp(buff, "All\n")) {
 			output = input;
 			break;
 		}
-		while(position < 1024) {
-			int pos = atoi(buff+position) - 1;
-			if(pos < g_slist_length(source))
+		while (position < 1024) {
+			int pos = atoi(buff + position) - 1;
+			if (pos < g_slist_length(source))
 				output = g_slist_append(output, g_slist_nth_data(source, pos));
-			while(buff[position] != ' ') {
+			while (buff[position] != ' ') {
 				position++;
-				if(buff[position] == '\n' || buff[position] == '\0') {
-					if(buff[position] == '\n')
+				if (buff[position] == '\n' || buff[position] == '\0') {
+					if (buff[position] == '\n')
 						end_of_line = TRUE;
 					position = 1024;
 					break;
@@ -190,14 +193,16 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 		} else {
 			struct mega_node *child_parent = child;
 			child_remote_path = "";
-			while(child_parent->parent->parent != NULL) {
+			while (child_parent->parent->parent != NULL) {
 				child_parent = child_parent->parent;
 				child_remote_path = g_strconcat(child_parent->name, "/", child_remote_path, NULL);
 			}
 
 			if (!g_file_query_exists(g_file_get_child(file, child_remote_path), NULL)) {
-				if (!g_file_make_directory_with_parents(g_file_get_child(file, child_remote_path), NULL, &local_err)) {
-					g_printerr("ERROR: Can't create local directory %s: %s\n", local_path, local_err->message);
+				if (!g_file_make_directory_with_parents(g_file_get_child(file, child_remote_path), NULL,
+									&local_err)) {
+					g_printerr("ERROR: Can't create local directory %s: %s\n", local_path,
+						   local_err->message);
 					continue;
 				}
 			}
@@ -207,10 +212,12 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 			child_remote_path = g_strconcat("/", child_parent->parent->name, "/", child_remote_path, NULL);
 		}
 
-		if ( child->parent != NULL && child->parent->parent != NULL ) {
+		if (child->parent != NULL && child->parent->parent != NULL) {
 			if (!g_file_query_exists(g_file_get_child(file, child->parent->name), NULL)) {
-				if (!g_file_make_directory_with_parents(g_file_get_child(file, child->parent->name), NULL, &local_err)) {
-					g_printerr("ERROR: Can't create local directory %s: %s\n", local_path, local_err->message);
+				if (!g_file_make_directory_with_parents(g_file_get_child(file, child->parent->name),
+									NULL, &local_err)) {
+					g_printerr("ERROR: Can't create local directory %s: %s\n", local_path,
+						   local_err->message);
 					continue;
 				}
 			}
@@ -237,7 +244,8 @@ int main(int ac, char *av[])
 	gint i;
 	int status = 0;
 
-	tool_init(&ac, &av, "- download exported files from mega.nz", entries, TOOL_INIT_AUTH_OPTIONAL | TOOL_INIT_DOWNLOAD_OPTS);
+	tool_init(&ac, &av, "- download exported files from mega.nz", entries,
+		  TOOL_INIT_AUTH_OPTIONAL | TOOL_INIT_DOWNLOAD_OPTS);
 
 	if (!strcmp(opt_path, "-")) {
 		opt_noprogress = opt_stream = TRUE;
