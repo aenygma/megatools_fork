@@ -383,6 +383,31 @@ void tool_show_progress(const gchar *file, const struct mega_status_data *data)
 	last_bytes = now_done;
 }
 
+gchar* tool_prompt_input(void)
+{
+	gc_string_free GString* str = g_string_sized_new(1024);
+	gchar* ret = NULL;
+
+	while (TRUE) {
+		char buf[256];
+
+		if (fgets(buf, sizeof buf, stdin) == NULL)
+			return NULL;
+
+		int len = strlen(buf);
+		gboolean has_eol = buf[len - 1] == '\n';
+		if (len > 0)
+			g_string_append_len(str, buf, has_eol ? len - 1 : len);
+
+		if (has_eol || feof(stdin))
+			break;
+	}
+
+	ret = g_string_free(str, FALSE);
+	str = NULL;
+	return ret;
+}
+
 static gchar *input_password(void)
 {
 	gint tries = 3;

@@ -48,6 +48,7 @@ void tool_fini(struct mega_session *s);
 void tool_show_progress(const gchar *file, const struct mega_status_data *data);
 gchar *tool_convert_filename(const gchar *path, gboolean local);
 gboolean tool_is_stdout_tty(void);
+gchar* tool_prompt_input(void);
 
 #define ESC_CLREOL "\x1b[0K"
 #define ESC_WHITE "\x1b[37;1m"
