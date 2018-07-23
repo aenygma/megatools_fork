@@ -269,14 +269,6 @@ static gboolean dl_sync_dir_choose(GFile *local_dir)
 
 	for (it = chosen_nodes; it; it = it->next) {
 		struct mega_node *node = it->data;
-		gchar path[4096];
-
-		if (mega_node_get_path(node, path, sizeof path))
-			g_print("%s\n", path);
-	}
-
-	for (it = chosen_nodes; it; it = it->next) {
-		struct mega_node *node = it->data;
 		gchar remote_path[4096];
 		if (!mega_node_get_path(node, remote_path, sizeof remote_path))
 			continue;
