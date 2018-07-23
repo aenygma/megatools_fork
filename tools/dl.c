@@ -59,22 +59,37 @@ static void status_callback(struct mega_status_data *data, gpointer userdata)
 
 // download operation
 
-static gboolean dl_sync_file(struct mega_node *node, GFile *file, const gchar *remote_path)
+static gboolean dl_sync_file(struct mega_node *node, GFile *file)
 {
 	gc_error_free GError *local_err = NULL;
+	gc_object_unref GFile *parent = g_file_get_parent(file);
 	gc_free gchar *local_path = g_file_get_path(file);
+	gc_free gchar *parent_path = g_file_get_path(parent);
 
 	if (g_file_query_exists(file, NULL)) {
 		g_printerr("ERROR: File already exists at %s\n", local_path);
 		return FALSE;
 	}
 
+	if (!g_file_query_exists(parent, NULL)) {
+		if (!g_file_make_directory_with_parents(parent, NULL, &local_err)) {
+			g_printerr("ERROR: Can't create local directory %s: %s\n", parent_path, local_err->message);
+			return FALSE;
+		}
+	} else {
+		if (g_file_query_file_type(parent, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) != G_FILE_TYPE_DIRECTORY) {
+			g_printerr("ERROR: Can't create local directory %s: a file exists there!\n", parent_path);
+			return FALSE;
+		}
+	}
+
 	if (!opt_noprogress)
 		g_print("F %s\n", local_path);
 
-	if (!mega_session_get_compat(s, local_path, remote_path, &local_err)) {
+	if (!mega_session_get(s, file, node, &local_err)) {
 		if (!opt_noprogress && tool_is_stdout_tty())
 			g_print("\r" ESC_CLREOL);
+		gc_free gchar* remote_path = mega_node_get_path_dup(node);
 		g_printerr("ERROR: Download failed for %s: %s\n", remote_path, local_err->message);
 		return FALSE;
 	}
@@ -88,39 +103,23 @@ static gboolean dl_sync_file(struct mega_node *node, GFile *file, const gchar *r
 	return TRUE;
 }
 
-static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *remote_path)
+static gboolean dl_sync_dir(struct mega_node *node, GFile *file)
 {
 	gc_error_free GError *local_err = NULL;
 	gc_free gchar *local_path = g_file_get_path(file);
-
-	if (!g_file_query_exists(file, NULL)) {
-		if (!opt_noprogress)
-			g_print("D %s\n", local_path);
-
-		if (!g_file_make_directory(file, NULL, &local_err)) {
-			g_printerr("ERROR: Can't create local directory %s: %s\n", local_path, local_err->message);
-			return FALSE;
-		}
-	} else {
-		if (g_file_query_file_type(file, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) != G_FILE_TYPE_DIRECTORY) {
-			g_printerr("ERROR: Can't create local directory %s: file exists\n", local_path);
-			return FALSE;
-		}
-	}
 
 	// sync children
 	GSList *children = mega_session_get_node_chilren(s, node), *i;
 	gboolean status = TRUE;
 	for (i = children; i; i = i->next) {
 		struct mega_node *child = i->data;
-		gc_free gchar *child_remote_path = g_strconcat(remote_path, "/", child->name, NULL);
 		gc_object_unref GFile *child_file = g_file_get_child(file, child->name);
 
-		if (child->type == 0) {
-			if (!dl_sync_file(child, child_file, child_remote_path))
+		if (child->type == MEGA_NODE_FILE) {
+			if (!dl_sync_file(child, child_file))
 				status = FALSE;
 		} else {
-			if (!dl_sync_dir(child, child_file, child_remote_path))
+			if (!dl_sync_dir(child, child_file))
 				status = FALSE;
 		}
 	}
@@ -474,13 +473,11 @@ int main(int ac, char *av[])
 					gc_object_unref GFile *local_dir = g_file_new_for_path(opt_path);
 					if (g_file_query_file_type(local_dir, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
 								   NULL) == G_FILE_TYPE_DIRECTORY) {
-						gc_free gchar *node_path = mega_node_get_path_dup(root_node);
-
 						if (opt_choose_files) {
 							if (!dl_sync_dir_choose(local_dir))
 								status = 1;
 						} else {
-							if (!dl_sync_dir(root_node, local_dir, node_path))
+							if (!dl_sync_dir(root_node, local_dir))
 								status = 1;
 						}
 					} else {
