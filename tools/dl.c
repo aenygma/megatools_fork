@@ -191,8 +191,23 @@ static gint compare_node(struct mega_node *a, struct mega_node *b)
 	gchar path1[4096];
 	gchar path2[4096];
 
-	if (mega_node_get_path(a, path1, 4096) && mega_node_get_path(b, path2, 4096))
+	if (mega_node_get_path(a, path1, 4096) && mega_node_get_path(b, path2, 4096)) {
+		if (mega_node_is_container(a)) {
+			int pos = strlen(path1);
+			if(pos < 4095) {
+				path1[pos] = '/';
+				path1[pos+1] = '\0';
+			}
+		}
+		if (mega_node_is_container(b)) {
+			int pos = strlen(path2);
+			if(pos < 4095) {
+				path2[pos] = '/';
+				path2[pos+1] = '\0';
+			}
+		}
 		return strcmp(path1, path2);
+	}
 	return 0;
 }
 
@@ -230,16 +245,29 @@ prune_node:;
 GSList* pick_nodes(void)
 {
 	GSList *nodes = mega_session_ls(s, "/", TRUE), *it, *chosen_nodes;
-	int position = 1;
+	int position = 2;
 
 	nodes = g_slist_sort(nodes, (GCompareFunc)compare_node);
 
-	for (it = nodes; it; it = it->next) {
-		struct mega_node *node = it->data;
-		gchar path[4096];
+	struct mega_node *parent = nodes->data;
+	int indent = 0;
 
-		if (mega_node_get_path(node, path, sizeof path))
-			g_print("%d. %s%s\n", position, path, mega_node_is_container(node) ? "/" : "");
+	g_print("1. %s/\n", ((struct mega_node*)nodes->data)->name);
+
+	for (it = nodes->next; it; it = it->next) {
+		struct mega_node *node = it->data;
+		while(parent != node->parent && indent != 0) {
+			indent--;
+			parent = parent->parent;
+		}
+
+		g_print("%*s" ESC_GRAY "|--" ESC_NORMAL "%d. %s", indent*3, "", position, node->name);
+		if (mega_node_is_container(node)) {
+			g_print("/");
+			indent++;
+			parent = node;
+		}
+		g_print("\n");
 
 		position++;
 	}
