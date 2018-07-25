@@ -118,7 +118,7 @@ struct mega_download_data_params {
 
 	gchar *node_handle;
 	gchar *node_name;
-	gsize node_size;
+	guint64 node_size;
 };
 
 #define MEGA_DEBUG_API 0x01
