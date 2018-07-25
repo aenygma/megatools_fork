@@ -3172,6 +3172,7 @@ static void tman_worker_upload_chunk(struct transfer_chunk *c, struct transfer_w
 	GError *local_err = NULL;
 	gc_free gchar *url = NULL;
 	gc_string_free GString *response = NULL;
+	gc_free gchar* chksum = NULL;
 
 	tman_debug("W[%d]: started for chunk %d\n", worker->index, c->index);
 
@@ -3217,7 +3218,7 @@ static void tman_worker_upload_chunk(struct transfer_chunk *c, struct transfer_w
 	}
 
 	// prepare URL including chunk offset
-	gc_free gchar* chksum = upload_checksum(buf, c->size);
+	chksum = upload_checksum(buf, c->size);
 	url = g_strdup_printf("%s/%" G_GOFFSET_FORMAT "?c=%s", t->upload_url, c->offset, chksum);
 
 	// perform upload POST
