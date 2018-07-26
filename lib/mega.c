@@ -3747,8 +3747,8 @@ static void tman_init(int max_workers)
 	tman.workers = g_new0(struct transfer_worker, max_workers);
 	for (int i = 0; i < max_workers; i++) {
 		tman.workers[i].index = i;
-		tman.workers[i].thread = g_thread_new("transfer worker", tman_worker_thread_fn, &tman.workers[i]);
 		tman.workers[i].mailbox = g_async_queue_new();
+		tman.workers[i].thread = g_thread_new("transfer worker", tman_worker_thread_fn, &tman.workers[i]);
 	}
 
 	// start manager
