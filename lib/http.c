@@ -194,7 +194,7 @@ void http_set_content_length(struct http *h, goffset len)
 	g_free(tmp);
 }
 
-static int curl_progress(struct http *h, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
+static int curl_progress(struct http *h, double dltotal, double dlnow, double ultotal, double ulnow)
 {
 	if (h->progress_cb) {
 		if (!h->progress_cb(dltotal, dlnow, ultotal, ulnow, h->progress_data))
@@ -224,8 +224,8 @@ void http_set_progress_callback(struct http *h, http_progress_fn cb, gpointer da
 		h->progress_data = data;
 
 		curl_easy_setopt(h->curl, CURLOPT_NOPROGRESS, 0L);
-		curl_easy_setopt(h->curl, CURLOPT_XFERINFOFUNCTION, curl_progress);
-		curl_easy_setopt(h->curl, CURLOPT_XFERINFODATA, h);
+		curl_easy_setopt(h->curl, CURLOPT_PROGRESSFUNCTION, (curl_progress_callback)curl_progress);
+		curl_easy_setopt(h->curl, CURLOPT_PROGRESSDATA, h);
 	} else {
 		curl_easy_setopt(h->curl, CURLOPT_NOPROGRESS, 1L);
 	}
