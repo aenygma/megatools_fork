@@ -59,10 +59,10 @@ void http_init(void)
 	if (!http_share) {
 		http_share = curl_share_init();
 
-		curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+		//curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
 		curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
-		curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_SSL_SESSION);
-		curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+		//curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_SSL_SESSION);
+		//curl_share_setopt(http_share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
 
 		for (int i = 0; i < G_N_ELEMENTS(http_locks); i++)
 			g_rw_lock_init(&http_locks[i]);
@@ -113,8 +113,8 @@ struct http *http_new(void)
 	}
 
 #if CURL_AT_LEAST_VERSION(7, 57, 0) && defined ENABLE_CONN_SHARING
-	//http_init();
-	//curl_easy_setopt(h->curl, CURLOPT_SHARE, http_share);
+	http_init();
+	curl_easy_setopt(h->curl, CURLOPT_SHARE, http_share);
 #endif
 
 #if CURL_AT_LEAST_VERSION(7, 21, 6)
