@@ -11,7 +11,7 @@ Fixes:
 - Connection dropping when downloading big files
 - Compatibility with older libcurl releases
 - Fix occasional crashes when starting transfer worker threads
-
+- Fix clang compatibility
 
 megatools 1.10.0 - 2018-07-22
 =============================
