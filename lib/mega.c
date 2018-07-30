@@ -1176,6 +1176,7 @@ err_clean:
 	return FALSE;
 }
 
+#if 0
 static void meta_mac_pack(guchar meta_mac[16], guchar packed[8])
 {
 	gint i;
@@ -1185,6 +1186,7 @@ static void meta_mac_pack(guchar meta_mac[16], guchar packed[8])
 	for (i = 0; i < 4; i++)
 		packed[i + 4] = meta_mac[i + 8] ^ meta_mac[i + 12];
 }
+#endif
 
 // }}}
 // {{{ aes128 ctr
