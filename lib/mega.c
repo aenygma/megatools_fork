@@ -4108,9 +4108,12 @@ try_again:
 
 struct get_data_state {
 	struct mega_session *s;
-	GFileOutputStream *stream;
+	GOutputStream *ostream;
 	EVP_CIPHER_CTX *ctx;
 	struct chunked_cbc_mac mac;
+	struct chunked_cbc_mac mac_saved;
+	guint64 progress_offset;
+	guint64 progress_total;
 };
 
 static gboolean progress_dl(goffset dltotal, goffset dlnow, goffset ultotal, goffset ulnow, gpointer user_data)
@@ -4118,8 +4121,8 @@ static gboolean progress_dl(goffset dltotal, goffset dlnow, goffset ultotal, gof
 	struct get_data_state *data = user_data;
 	struct mega_status_data status_data = {
 		.type = MEGA_STATUS_PROGRESS,
-		.progress.total = dltotal,
-		.progress.done = dlnow,
+		.progress.total = data->progress_total,
+		.progress.done = data->progress_offset + dlnow,
 	};
 
 	send_status(data->s, &status_data);
@@ -4156,16 +4159,58 @@ static gsize get_data_cb(gpointer buffer, gsize size, gpointer user_data)
 
 	send_status(data->s, &status_data);
 
-	if (!data->stream)
+	if (!data->ostream)
 		return size;
 
-	if (!g_output_stream_write_all(G_OUTPUT_STREAM(data->stream), buffer, size, NULL, NULL,
-				       &local_err)) {
+	if (!g_output_stream_write_all(data->ostream, buffer, size, NULL, NULL, &local_err)) {
 		g_printerr("ERROR: Failed writing to stream: %s\n", local_err->message);
 		return 0;
 	}
 
 	return size;
+}
+
+static gboolean evp_set_ctr_postion(EVP_CIPHER_CTX* ctx, guint64 off, guchar* nonce, guchar* key, GError** err)
+{
+	g_return_val_if_fail(ctx != NULL, FALSE);
+	g_return_val_if_fail(nonce != NULL, FALSE);
+	g_return_val_if_fail(key != NULL, FALSE);
+	g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
+
+	union {
+		guchar iv[16];
+		struct {
+			guchar nonce[8];
+			guint64 ctr;
+		};
+	} iv;
+
+	_Static_assert(sizeof(iv) == 16, "iv union is not 16bytes long, you're using an interesting architecture");
+
+	memcpy(iv.nonce, nonce, 8);
+	iv.ctr = GUINT64_TO_BE(off / 16);
+
+	if (!EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv.iv)) {
+		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to init aes-ctr decryptor");
+		return FALSE;
+	}
+
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+	// offset may be up to 15 bytes into a block, do some dummy decryption,
+	// to put EVP into a correct state
+	guchar scratch[16];
+	int out_len;
+	int ib_off = off % 16;
+
+	if (ib_off > 0) {
+		if (!EVP_EncryptUpdate(ctx, scratch, &out_len, scratch, ib_off) || out_len != ib_off) {
+			g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to init aes-ctr decryptor (intra-block)");
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
 
 #define RESUME_BUF_SIZE (1024 * 1024)
@@ -4176,8 +4221,9 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	GError *local_err = NULL;
 	gc_object_unref GFile *dir = NULL;
 	gc_object_unref GFile *tmp_file = NULL;
-	gc_object_unref GFileOutputStream *stream = NULL;
-	gc_free gchar *url = NULL;
+	gc_object_unref GFileIOStream *iostream = NULL;
+	gc_object_unref GFileOutputStream *ostream = NULL;
+	GSeekable* seekable = NULL;
 	gc_http_free struct http *h = NULL;
 	struct get_data_state state = { .s = s };
 	gc_free gchar *tmp_path = NULL, *file_path = NULL, *tmp_name = NULL;
@@ -4224,9 +4270,11 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 		tmp_path = g_file_get_path(tmp_file);
 
 		if (s->resume_enabled) {
+			// if temporary file exists, read it and initialize the
+			// meta mac calculator state with the contents
 			if (g_file_query_exists(tmp_file, NULL)) {
-				GFileInputStream *tmp_stream = g_file_read(tmp_file, NULL, &local_err);
-				if (tmp_stream == NULL) {
+				iostream = g_file_open_readwrite(tmp_file, NULL, &local_err);
+				if (iostream == NULL) {
 					g_propagate_prefixed_error(err, local_err,
 								   "Can't open previous temporary file for resume %s",
 								   tmp_path);
@@ -4234,14 +4282,15 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 				}
 
 				buf = g_malloc(RESUME_BUF_SIZE);
+				GInputStream* istream = g_io_stream_get_input_stream(G_IO_STREAM(iostream));
+				state.ostream = g_io_stream_get_output_stream(G_IO_STREAM(iostream));
+				seekable = G_SEEKABLE(iostream);
 
 				while (TRUE) {
-					bytes_read = g_input_stream_read(G_INPUT_STREAM(tmp_stream), buf,
-									 RESUME_BUF_SIZE, NULL, &local_err);
+					bytes_read = g_input_stream_read(istream, buf, RESUME_BUF_SIZE, NULL, &local_err);
 					if (bytes_read == 0)
 						break;
 					if (bytes_read < 0) {
-						g_object_unref(tmp_stream);
 						g_propagate_prefixed_error(
 							err, local_err,
 							"Can't read previous temporary file for resume %s", tmp_path);
@@ -4250,30 +4299,28 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 
 					// update cbc-mac
 					if (!chunked_cbc_mac_update(&state.mac, buf, bytes_read)) {
-						g_object_unref(tmp_stream);
 						g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to run mac calculator during resume");
 						return FALSE;
 					}
+
 					download_from += bytes_read;
 				}
 
-				g_object_unref(tmp_stream);
-
-				// append to temporary file
-				state.stream = stream = g_file_append_to(tmp_file, 0, NULL, &local_err);
-				if (!state.stream) {
-					g_propagate_prefixed_error(
-						err, local_err, "Can't open local file %s for appending: ", tmp_path);
+				if (download_from > params->node_size) {
+					g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Unfinished downloaded data are larger than the node being downloaded (you can eg. remove %s to fix the issue)", tmp_path);
 					return FALSE;
 				}
 			} else {
-				// create temporary file
-				state.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
-				if (!state.stream) {
+				// create a new temporary file
+				ostream = g_file_create(tmp_file, 0, NULL, &local_err);
+				if (!ostream) {
 					g_propagate_prefixed_error(err, local_err,
 								   "Can't open local file %s for writing: ", tmp_path);
 					return FALSE;
 				}
+
+				seekable = G_SEEKABLE(ostream);
+				state.ostream = G_OUTPUT_STREAM(ostream);
 			}
 		} else {// !resume_enabled
 			// if temporary file exists, delete it
@@ -4284,12 +4331,15 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 			}
 
 			// create temporary file
-			state.stream = stream = g_file_create(tmp_file, 0, NULL, &local_err);
-			if (!state.stream) {
+			ostream = g_file_create(tmp_file, 0, NULL, &local_err);
+			if (!ostream) {
 				g_propagate_prefixed_error(err, local_err,
 							   "Can't open local file %s for writing: ", tmp_path);
 				return FALSE;
 			}
+
+			seekable = G_SEEKABLE(ostream);
+			state.ostream = G_OUTPUT_STREAM(ostream);
 		}
 	}
 
@@ -4300,12 +4350,7 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 		return FALSE;
 	}
 
-	guchar iv[16] = {0};
-	memcpy(iv, nonce, 8);
-	// initialize counter to the download_from position
-	*(guint64 *)(iv + 8) = GUINT64_TO_BE(download_from / 16);
-
-	if (!EVP_EncryptInit_ex(state.ctx, EVP_aes_128_ctr(), NULL, aes_key, iv)) {
+	if (!EVP_EncryptInit_ex(state.ctx, EVP_aes_128_ctr(), NULL, NULL, NULL)) {
 		EVP_CIPHER_CTX_free(state.ctx);
 		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to init aes-ctr decryptor");
 		return FALSE;
@@ -4313,22 +4358,11 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 
 	EVP_CIPHER_CTX_set_padding(state.ctx, 0);
 
-	// finally we may be up to 15 bytes into a block, do some dummy
-	// decryption, to put EVP into a correct state
-	guchar scratch[16];
-	int out_len;
-
-	if (!EVP_EncryptUpdate(state.ctx, scratch, &out_len, scratch, download_from % 16) || out_len != download_from % 16) {
+	if (!evp_set_ctr_postion(state.ctx, download_from, nonce, aes_key, &local_err)) {
 		EVP_CIPHER_CTX_free(state.ctx);
-		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Failed to init aes-ctr decryptor (intra-block)");
+		g_propagate_error(err, local_err);
 		return FALSE;
 	}
-
-	if (download_from > 0)
-		url = g_strdup_printf("%s/%" G_GUINT64_FORMAT "-%" G_GUINT64_FORMAT, params->download_url,
-				      download_from, params->node_size - 1);
-	else
-		url = g_strdup(params->download_url);
 
 	// send initial progress report
 	status_data = (struct mega_status_data) {
@@ -4344,7 +4378,71 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	http_set_progress_callback(h, progress_dl, &state);
 	http_set_speed(h, s->max_ul, s->max_dl);
 	http_set_proxy(h, s->proxy);
-	gboolean download_ok = http_post_stream_download(h, url, get_data_cb, &state, &local_err);
+
+	// We'll download the file sequentially in 256MB increments (chunks),
+	// re-trying if a chunk fails. We will pre-encrypt and pre-calculate mac
+	// for the chunk so that we don't need to do it again when download
+	// fails.
+	//
+	// It's a big chunk, because mega takes ~800ms to respond to a POST
+	// request for data. So if we use 16MB we'd naturally limit ourselves
+	// to ~18MiB/s on an infinitely fast network. With big chunk size,
+	// the limit is proportionally higher.
+	//
+	// Because meta-mac calculation can't be reversed in case of a chunk
+	// download failure, we save its state prior to chunk download and
+	// restore it from saved state in case we need to rewind.
+
+        state.progress_total = params->node_size - download_from;
+	state.progress_offset = 0;
+
+	const guint64 chunk_size = 256 * 1024 * 1024;
+	while (download_from < params->node_size) {
+		guint64 from = download_from;
+		guint64 to = download_from + MIN(params->node_size - download_from, chunk_size);
+		state.mac_saved = state.mac;
+		guint tries = 0;
+		gboolean download_ok;
+		gc_free gchar *url = g_strdup_printf("%s/%" G_GUINT64_FORMAT "-%" G_GUINT64_FORMAT,
+						     params->download_url,
+						     from, to - 1);
+
+retry:
+		download_ok = http_post_stream_download(h, url, get_data_cb, &state, &local_err);
+		if (!download_ok) {
+			// try 3 times at most (we only retry if we can seek the stream)
+			tries++;
+			if (tries <= 3 && seekable) {
+				g_printerr("WARNING: chunk download failed (%s), re-trying after %d seconds\n", local_err ? local_err->message : "?", (1 << tries));
+				g_clear_error(&local_err);
+			} else {
+				g_propagate_prefixed_error(err, local_err, "Data download failed: ");
+				goto err_noremove;
+			}
+
+			// restore saved mac calculation state
+			state.mac = state.mac_saved;
+
+			// seek back the stream
+			if (!g_seekable_seek(seekable, from, G_SEEK_SET, NULL, &local_err)) {
+				g_propagate_prefixed_error(err, local_err, "Failed to rewind the temporary file after chunk download failure");
+				goto err_noremove;
+			}
+
+			// restore CTR encryption state
+			if (!evp_set_ctr_postion(state.ctx, from, nonce, aes_key, &local_err)) {
+				g_propagate_prefixed_error(err, local_err, "Failed to rewind the temporary file after chunk download failure");
+				goto err_noremove;
+			}
+
+			g_usleep(1000 * 1000 * (1 << tries));
+			goto retry;
+		}
+
+		// move to the next chunk
+		state.progress_offset += to - from;
+		download_from = to;
+	}
 
 	status_data = (struct mega_status_data){
 		.type = MEGA_STATUS_PROGRESS,
@@ -4353,11 +4451,6 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	};
 
 	send_status(s, &status_data);
-
-	if (!download_ok) {
-		g_propagate_prefixed_error(err, local_err, "Data download failed: ");
-		goto err_noremove;
-	}
 
 	// check mac of the downloaded file
 	guchar meta_mac_xor_calc[8];
@@ -4371,14 +4464,14 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 		goto err;
 	}
 
-	if (state.stream) {
-		if (!g_output_stream_close(G_OUTPUT_STREAM(state.stream), NULL, &local_err)) {
-			g_propagate_prefixed_error(err, local_err, "Can't close downloaded file: ");
-			goto err_noremove;
-		}
+	if (ostream && !g_output_stream_close(G_OUTPUT_STREAM(ostream), NULL, &local_err)) {
+		g_propagate_prefixed_error(err, local_err, "Can't close downloaded file: ");
+		goto err_noremove;
+	}
 
-		g_object_unref(state.stream);
-		state.stream = stream = NULL;
+	if (iostream && !g_io_stream_close(G_IO_STREAM(iostream), NULL, &local_err)) {
+		g_propagate_prefixed_error(err, local_err, "Can't close downloaded file: ");
+		goto err_noremove;
 	}
 
 	EVP_CIPHER_CTX_free(state.ctx);
