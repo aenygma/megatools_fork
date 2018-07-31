@@ -29,6 +29,7 @@
 #define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
 #endif
 
+//#define STEALTH_MODE
 
 #if CURL_AT_LEAST_VERSION(7, 12, 0)
 static CURLSH *http_share;
@@ -136,9 +137,7 @@ struct http *http_new(void)
 
 	h->headers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
-	// set default headers
-	//http_set_header(h, "User-Agent", "Megatools (" VERSION ")");
-	
+#if STEALTH_MODE
 	// we are Firefox!
 	http_set_header(h, "User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0");
 	http_set_header(h, "Referer", "https://mega.nz/");
@@ -148,7 +147,10 @@ struct http *http_new(void)
 	http_set_header(h, "Cache-Control", "no-cache");
 	http_set_header(h, "Pragma", "no-cache");
 	http_set_header(h, "DNT", "1");
-
+#else
+	// set default headers
+	http_set_header(h, "User-Agent", "Megatools (" VERSION ")");
+#endif
 	// Disable 100-continue (because it causes needless roundtrips)
 	http_set_header(h, "Expect", "");
 
