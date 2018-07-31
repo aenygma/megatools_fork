@@ -29,9 +29,8 @@
 #define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
 #endif
 
-#define ENABLE_CONN_SHARING
 
-#if CURL_AT_LEAST_VERSION(7, 57, 0) && defined ENABLE_CONN_SHARING
+#if CURL_AT_LEAST_VERSION(7, 57, 0)
 static CURLSH *http_share;
 static GRWLock http_locks[CURL_LOCK_DATA_LAST];
 
@@ -112,7 +111,7 @@ struct http *http_new(void)
 		return NULL;
 	}
 
-#if CURL_AT_LEAST_VERSION(7, 57, 0) && defined ENABLE_CONN_SHARING
+#if CURL_AT_LEAST_VERSION(7, 57, 0)
 	http_init();
 	curl_easy_setopt(h->curl, CURLOPT_SHARE, http_share);
 #endif
