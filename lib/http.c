@@ -30,7 +30,7 @@
 #endif
 
 
-#if CURL_AT_LEAST_VERSION(7, 57, 0)
+#if CURL_AT_LEAST_VERSION(7, 12, 0)
 static CURLSH *http_share;
 static GRWLock http_locks[CURL_LOCK_DATA_LAST];
 
