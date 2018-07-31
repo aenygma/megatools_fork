@@ -1,16 +1,16 @@
-megadl(1)
-=========
+megatools-dl(1)
+===============
 
 NAME
 ----
-megadl - download exported files and directories from Mega.nz
+megatools dl - download exported files and directories from Mega.nz
 
 
 SYNOPSIS
 --------
 [verse]
-'megadl' [--no-progress] [--path <path>] <links>...
-'megadl' --path - <filelink>
+'megatools dl' [--no-progress] [--path <path>] <links>...
+'megatools dl' --path - <filelink>
 
 
 DESCRIPTION
@@ -25,7 +25,7 @@ When downloading individual files, these are placed into `<path>`. When
 downloading folders, the contents of the folder are placed into directory
 specified by `<path>`.
 
-To export files, you can use Mega.nz web application, or man:megals[1]'s
+To export files, you can use Mega.nz web application, or man:megatools-ls[1]'s
 `--export` option.
 
 
@@ -62,14 +62,14 @@ EXAMPLES
 * Download exported file:
 +
 ------------
-$ megadl 'https://mega.nz/#!7YVWhCzZ!bauBlAkKKvv8hIm-8-qFmGOYS289ToQWN7rGFPzXB_w'
+$ megatools dl 'https://mega.nz/#!7YVWhCzZ!bauBlAkKKvv8hIm-8-qFmGOYS289ToQWN7rGFPzXB_w'
 ------------
 
 
 * Download exported folder:
 +
 ------------
-$ megadl 'https://mega.nz/#F!HIlFDajT!HLiVvQQkSe1d0ogxZuaOJg'
+$ megatools dl 'https://mega.nz/#F!HIlFDajT!HLiVvQQkSe1d0ogxZuaOJg'
 ------------
 
 

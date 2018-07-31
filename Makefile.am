@@ -1,9 +1,9 @@
-# {{{ global flags
+# global flags
 
-BUILT_SOURCES =
-CLEANFILES =
-EXTRA_DIST =
-DISTCLEANFILES =
+COMMANDS = df dl get ls mkdir put reg rm copy
+
+export MAKEFLAGS += --no-print-directory -s
+ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = \
 	$(GLIB_CFLAGS) \
@@ -18,11 +18,9 @@ LDADD = \
 	$(OPENSSL_LIBS) \
 	$(LIBCURL_LIBS)
 
-# }}}
-# {{{ tools
+# tools
 
-EXTRA_DIST += \
-	lib/sjson.c
+EXTRA_DIST = lib/sjson.c
 
 bin_PROGRAMS = megatools
 
@@ -51,60 +49,39 @@ megatools_SOURCES = \
 
 if INSTALL_COMPAT_SYMLINKS
 
-COMMANDS = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy
-
 install-exec-hook:
 	cd $(DESTDIR)$(bindir) && \
 	for cmd in $(COMMANDS) ; do \
-		rm -f $$cmd$(EXEEXT) ; \
-		$(LN_S) megatools$(EXEEXT) $$cmd$(EXEEXT) ; \
+		rm -f mega$$cmd$(EXEEXT) ; \
+		$(LN_S) megatools$(EXEEXT) mega$$cmd$(EXEEXT) ; \
 	done
 
 endif
 
-# }}}
-# {{{ docs
+# docs
 
-MAN1 = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy
+MAN1 = megatools $(addprefix megatools-,$(COMMANDS))
 MAN5 = megarc
-MAN7 = megatools
-
-EXTRA_DIST += \
-	docs/asciidoc.conf \
-	docs/footer.txt \
-	docs/remote-paths.txt \
-	docs/basic-options.txt \
-	docs/auth-options.txt \
-	$(addprefix docs/,$(addsuffix .txt, $(MAN1) $(MAN5) $(MAN7)))
-
-if ENABLE_DOCS
 
 man1_MANS = $(addprefix docs/,$(addsuffix .1, $(MAN1)))
 man5_MANS = $(addprefix docs/,$(addsuffix .5, $(MAN5)))
-man7_MANS = $(addprefix docs/,$(addsuffix .7, $(MAN7)))
 
-MANS_ALL = $(man1_MANS) $(man5_MANS) $(man7_MANS)
-
-BUILT_SOURCES += $(MANS_ALL)
-DISTCLEANFILES += $(MANS_ALL)
-EXTRA_DIST += $(MANS_ALL)
-
-%.1 %.5 %.7: %.txt docs/auth-options.txt docs/basic-options.txt docs/remote-paths.txt docs/footer.txt docs/asciidoc.conf
-	$(AM_V_GEN)mkdir -p "$(top_builddir)/docs"
-	$(AM_V_GEN)a2x --asciidoc-opts="-f $(top_srcdir)/docs/asciidoc.conf -o $@" --destination-dir $(top_builddir)/docs -f manpage $<
-	@sed -i 's/\[FIXME: manual]/Megatools Manual/' $@
-	@sed -i 's/\[FIXME: source]/megatools $(VERSION)/' $@
-
-endif
-
-# }}}
-# {{{ more docs
+EXTRA_DIST += $(man1_MANS) $(man5_MANS)
 
 EXTRA_DIST += LICENSE HACKING contrib/bash-completion/megatools
 
 doc_DATA = LICENSE NEWS TODO README INSTALL HACKING
 
-# }}}
-
-export MAKEFLAGS += --no-print-directory -s
-ACLOCAL_AMFLAGS = -I m4
+EXTRA_DIST += \
+	docs/auth-options.txt \
+	docs/basic-options.txt \
+	docs/download-options.txt \
+	docs/footer.txt \
+	docs/megarc.txt \
+	$(addsuffix .txt,$(addprefix docs/megatools-,$(COMMANDS))) \
+	docs/megatools.txt \
+	docs/network-options.txt \
+	docs/remote-paths.txt \
+	docs/upload-options.txt \
+	docs/asciidoc.conf \
+	docs/Makefile

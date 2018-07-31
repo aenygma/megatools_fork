@@ -1,16 +1,16 @@
-megarm(1)
-=========
+megatools-rm(1)
+===============
 
 NAME
 ----
-megarm - Remove files and folders from your Mega.nz account
+megatools rm - Remove files and folders from your Mega.nz account
 
 
 SYNOPSIS
 --------
 [verse]
-'megarm' <remotepaths>...
-'megarm' /Contacts/<contactemail>
+'megatools rm' <remotepaths>...
+'megatools rm' /Contacts/<contactemail>
 
 
 DESCRIPTION
@@ -42,18 +42,18 @@ EXAMPLES
 * Remove a folder:
 +
 ------------
-$ megals /Root
+$ megatools ls /Root
 /Root
 /Root/MyNewFolder
-$ megarm /Root/MyNewFolder
-$ megals /Root
+$ megatools rm /Root/MyNewFolder
+$ megatools ls /Root
 /Root
 ------------
 
 * Remove contact from your contacts list:
 +
 ------------
-$ megarm /Contacts/some@email.com
+$ megatools rm /Contacts/some@email.com
 ------------
 
 

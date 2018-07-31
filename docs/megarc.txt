@@ -20,13 +20,13 @@ Megatools use INI configuration file to store commonly used login credentials.
 This makes it less bothersome to use the tools, as you can simply write
 
 --------
-$ megadf
+$ megatools df
 --------
 
 instead of
 
 --------
-$ megadf --username my@email.com --password mypass
+$ megatools df --username my@email.com --password mypass
 --------
 
 when using the tools.
@@ -119,7 +119,7 @@ Proxy = socks5://127.0.0.1:9050
 ParallelTransfers = 2
 ------------
 
-Run man:megadf[1] to check that megatools are able to login to your account.
+Run man:megatools-df[1] to check that megatools are able to login to your account.
 
 
 include::footer.txt[]

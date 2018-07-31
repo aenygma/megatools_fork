@@ -1,15 +1,15 @@
-megaput(1)
-=========
+megatools-put(1)
+================
 
 NAME
 ----
-megaput - upload files to your Mega.nz account
+megatools put - upload files to your Mega.nz account
 
 
 SYNOPSIS
 --------
 [verse]
-'megaput' [--no-progress] [--path <remotepath>] <paths>...
+'megatools put' [--no-progress] [--path <remotepath>] <paths>...
 
 
 DESCRIPTION
@@ -17,7 +17,7 @@ DESCRIPTION
 
 Uploads files to your Mega.nz account.
 
-*NOTE*: If you want to upload entire directories, use man:megacopy[1].
+*NOTE*: If you want to upload entire directories, use man:megatools-copy[1].
 
 
 OPTIONS
@@ -47,8 +47,8 @@ EXAMPLES
 * Upload file to the /Root:
 +
 ------------
-$ megaput README
-$ megals /Root
+$ megatools put README
+$ megatools ls /Root
 
 /Root
 /Root/README
@@ -58,8 +58,8 @@ $ megals /Root
 * Upload file, while naming it differently:
 +
 ------------
-$ megaput --path /Root/README.TXT README
-$ megals /Root
+$ megatools put --path /Root/README.TXT README
+$ megatools ls /Root
 
 /Root
 /Root/README.TXT

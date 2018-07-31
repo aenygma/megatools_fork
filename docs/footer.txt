@@ -1,21 +1,21 @@
 SEE ALSO
 --------
-man:megatools[7],
+man:megatools[1],
 man:megarc[5],
-man:megadf[1],
-man:megadl[1],
-man:megaget[1],
-man:megals[1],
-man:megamkdir[1],
-man:megaput[1],
-man:megareg[1],
-man:megarm[1],
-man:megacopy[1].
+man:megatools-df[1],
+man:megatools-dl[1],
+man:megatools-get[1],
+man:megatools-ls[1],
+man:megatools-mkdir[1],
+man:megatools-put[1],
+man:megatools-reg[1],
+man:megatools-rm[1],
+man:megatools-copy[1].
 
 
 MEGATOOLS
 ---------
-Part of the man:megatools[7] suite. 
+Part of the man:megatools[1] suite of commands.
 
 
 BUGS
@@ -27,6 +27,6 @@ Report bugs at link:https://github.com/megous/megatools[] or megous@megous.com.
 AUTHOR
 ------
 
-Megatools was written by Ondrej Jirman <megous@megous.com>, 2013-2016.
+Megatools was written by Ondrej Jirman <megous@megous.com>, 2013-2018.
 
 Official website is link:http://megatools.megous.com[].

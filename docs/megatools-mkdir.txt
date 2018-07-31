@@ -1,16 +1,16 @@
-megamkdir(1)
-============
+megatools-mkdir(1)
+==================
 
 NAME
 ----
-megamkdir - Create remote folder under your Mega.nz account
+megatools mkdir - Create remote folder under your Mega.nz account
 
 
 SYNOPSIS
 --------
 [verse]
-'megamkdir' <remotepaths>...
-'megamkdir' /Contacts/<contactemail>
+'megatools mkdir' <remotepaths>...
+'megatools mkdir' /Contacts/<contactemail>
 
 
 DESCRIPTION
@@ -41,8 +41,8 @@ EXAMPLES
 * Create new folder:
 +
 ------------
-$ megamkdir /Root/MyNewFolder
-$ megals /Root
+$ megatools mkdir /Root/MyNewFolder
+$ megatools ls /Root
 /Root
 /Root/MyNewFolder
 ------------
@@ -51,7 +51,7 @@ $ megals /Root
 * Add new contact to your contacts list:
 +
 ------------
-$ megamkdir /Contacts/some@email.com
+$ megatools mkdir /Contacts/some@email.com
 ------------
 
 

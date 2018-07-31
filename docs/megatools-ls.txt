@@ -1,15 +1,15 @@
-megals(1)
-=========
+megatools-ls(1)
+===============
 
 NAME
 ----
-megals - List files stored in the cloud
+megatools ls - List files stored in the cloud
 
 
 SYNOPSIS
 --------
 [verse]
-'megals' [-e] [-h] [--header] [-l] [-R] [-n] [<remotepaths>...]
+'megatools ls' [-e] [-h] [--header] [-l] [-R] [-n] [<remotepaths>...]
 
 
 DESCRIPTION
@@ -76,7 +76,7 @@ EXAMPLES
 * List all files:
 +
 ------------
-$ megals
+$ megatools ls
 
 /Contacts
 /Inbox
@@ -90,7 +90,7 @@ $ megals
 * List all files in the /Root, recursively and with details:
 +
 ------------
-$ megals -l /Root
+$ megatools ls -l /Root
 
 3RsS2QwJ                2             - 2013-01-22 12:31:06 /Root
 2FFSiaKZ    Xz2tWWB5Dmo 0          2686 2013-04-15 08:33:47 /Root/README
@@ -101,7 +101,7 @@ udtDgR7I    Xz2tWWB5Dmo 0    4405067776 2013-04-10 19:16:02 /Root/bigfile
 * List all files in the /Root, recursively and with details, show only file names:
 +
 ------------
-$ megals -ln /Root
+$ megatools ls -ln /Root
 
 2FFSiaKZ    Xz2tWWB5Dmo 0          2686 2013-04-15 08:33:47 README
 udtDgR7I    Xz2tWWB5Dmo 0    4405067776 2013-04-10 19:16:02 bigfile
@@ -111,7 +111,7 @@ udtDgR7I    Xz2tWWB5Dmo 0    4405067776 2013-04-10 19:16:02 bigfile
 * Export download links:
 +
 ------------
-$ megals -e /Root/README
+$ megatools ls -e /Root/README
 
 https://mega.nz/#!OFFRlbgR!k5rWmLp3mxB0gsq07Ii67PLd9L0wq4KondFLDlfH3Uw /Root/README
 ------------
@@ -120,7 +120,7 @@ https://mega.nz/#!OFFRlbgR!k5rWmLp3mxB0gsq07Ii67PLd9L0wq4KondFLDlfH3Uw /Root/REA
 * List files in a more human readable format:
 +
 ------------
-$ megals -hnl --header /Root/README
+$ megatools ls -hnl --header /Root/README
    
 ===================================================================================
 Handle      Owner       T          Size Mod. Date           Filename

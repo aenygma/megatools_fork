@@ -1,5 +1,5 @@
-Makefile
-Makefile.in
+/Makefile
+/Makefile.in
 .deps
 .libs
 .dirstamp
@@ -17,50 +17,18 @@ Makefile.in
 /install-sh
 /missing
 /stamp-h1
-/libtool
-/ltmain.sh
 /compile
-/test-driver
 /m4
 
-/mega/mega-enum-types.c
-/mega/mega-enum-types.c.stamp
-/mega/mega-enum-types.h
-/mega/mega-enum-types.h.stamp
-/mega/mega-marshal.c
-/mega/mega-marshal.h
-/mega/mega-marshal.list
-/mega/mega-marshal.list.stamp
+/megatools
 
-/Mega-1.0.gir
-/Mega-1.0.typelib
-
-/megacopy
-/megadf
-/megadl
-/megaget
-/megals
-/megamkdir
-/megaput
-/megareg
-/megarm
-/megamv
-/megasync
-/megatest
-/megafs
-/megasample
-
-/tests/test-aes
-/tests/test-rsa
 /tests/tools/*.dat
 /tests/tools/Mount
 /tests/tools/TestDir
 
 /.vimrc
-/libmega.pc
 /*.tar.xz
 /*.tar.gz
 
 /docs/*.1
-/docs/*.7
 /docs/*.5

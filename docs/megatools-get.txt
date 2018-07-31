@@ -1,16 +1,16 @@
-megaget(1)
-=========
+megatools-get(1)
+================
 
 NAME
 ----
-megaget - download files from your Mega.nz account
+megatools get - download files from your Mega.nz account
 
 
 SYNOPSIS
 --------
 [verse]
-'megaget' [--no-progress] [--path <path>] <remotepaths>...
-'megaget' --path - <remotefile>
+'megatools get' [--no-progress] [--path <path>] <remotepaths>...
+'megatools get' --path - <remotefile>
 
 
 DESCRIPTION
@@ -18,7 +18,7 @@ DESCRIPTION
 
 Downloads files from your Mega.nz account.
 
-*NOTE*: If you want to download entire directories, use man:megacopy[1].
+*NOTE*: If you want to download entire directories, use man:megatools-copy[1].
 
 
 OPTIONS
@@ -52,12 +52,12 @@ EXAMPLES
 * Download file to the current directory:
 +
 ------------
-$ megals /Root
+$ megatools ls /Root
 
 /Root
 /Root/README
 
-$ megaget /Root/README
+$ megatools get /Root/README
 $ ls
 
 README

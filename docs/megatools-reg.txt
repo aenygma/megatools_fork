@@ -1,16 +1,16 @@
-megareg(1)
-=========
+megatools-reg(1)
+================
 
 NAME
 ----
-megareg - Register new Mega.nz account
+megatools reg - Register new Mega.nz account
 
 
 SYNOPSIS
 --------
 [verse]
-'megareg' [--scripted] --register --email <email> --name <realname> --password <password>
-'megareg' [--scripted] --verify <state> <link>
+'megatools reg' [--scripted] --register --email <email> --name <realname> --password <password>
+'megatools reg' [--scripted] --verify <state> <link>
 
 
 DESCRIPTION
@@ -31,8 +31,8 @@ OPTIONS
 	Create new non-verified account.
 
 --verify <state> <link>::
-	Verify account previously created by `megareg --register`. You need to
-	pass `<state>` that was returned from `megareg --register` and
+	Verify account previously created by `megatools reg --register`. You need to
+	pass `<state>` that was returned from `megatools reg --register` and
 	a verification link from the email that was sent to `<email>`.
 
 --email <email>::
@@ -60,11 +60,11 @@ EXAMPLE
 First create an non-verified account:
 
 ------------
-$ megareg --register --email your@email.com --name "Your Name" --password "Your Password"
+$ megatools reg --register --email your@email.com --name "Your Name" --password "Your Password"
 
 Registration email was sent to test@megous.com. To complete registration, you must run:
 
-  megareg --verify vbFFFv7AFM25etzkFXLs9A==:Z7FFbgAAAAAAAAAArL33eA==:inEONh3tmwY @LINK@
+  megatools reg --verify vbFFFv7AFM25etzkFXLs9A==:Z7FFbgAAAAAAAAAArL33eA==:inEONh3tmwY @LINK@
 
 (Where @LINK@ is registration link from the 'MEGA Signup' email)
 ------------
@@ -72,7 +72,7 @@ Registration email was sent to test@megous.com. To complete registration, you mu
 Now wait for a verification mail and run the command as asked:
 
 ------------
-$ megareg --verify vbFFFv7AFM25etzkFXLs9A==:Z7FFbgAAAAAAAAAArL33eA==:inEONh3tmwY \
+$ megatools reg --verify vbFFFv7AFM25etzkFXLs9A==:Z7FFbgAAAAAAAAAArL33eA==:inEONh3tmwY \
     'https://mega.nz/#confirmciyfWXRGFNcM...'
 
 Account registered successfully!

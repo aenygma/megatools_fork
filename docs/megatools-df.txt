@@ -1,15 +1,15 @@
-megadf(1)
-=========
+megatools-df(1)
+===============
 
 NAME
 ----
-megadf - Show total available, used, or free space in the cloud
+megatools df - Show total available, used, or free space in the cloud
 
 
 SYNOPSIS
 --------
 [verse]
-'megadf' [--free|--total|--used] [--mb|--gb|-h]
+'megatools df' [--free|--total|--used] [--mb|--gb|-h]
 
 
 DESCRIPTION
@@ -51,7 +51,7 @@ EXAMPLES
 * Show overall human readable space usage information:
 +
 ------------
-$ megadf -h
+$ megatools df -h
 Total: 50.0 GiB
 Used:  6.4 GiB
 Free:  43.6 GiB
@@ -61,7 +61,7 @@ Free:  43.6 GiB
 * Check free space from a script:
 +
 ------------
-$ test `megadf --free --gb` -lt 1 && \
+$ test `megatools df --free --gb` -lt 1 && \
   echo "You have less than 1 GiB of available free space"
 ------------
 
