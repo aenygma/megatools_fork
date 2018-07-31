@@ -49,7 +49,18 @@ megatools_SOURCES = \
 	tools/shell.c \
 	tools/shell.h
 
+if INSTALL_COMPAT_SYMLINKS
 
+COMMANDS = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy
+
+install-exec-hook:
+	cd $(DESTDIR)$(bindir) && \
+	for cmd in $(COMMANDS) ; do \
+		rm -f $$cmd$(EXEEXT) ; \
+		$(LN_S) megatools$(EXEEXT) $$cmd$(EXEEXT) ; \
+	done
+
+endif
 
 # }}}
 # {{{ docs
