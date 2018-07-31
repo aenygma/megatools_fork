@@ -424,7 +424,7 @@ static void print_version(void)
 {
 	if (opt_version) {
 		g_print("megatools " VERSION " - command line tools for Mega.nz\n\n");
-		g_print("Written by Ondřej Jirman <megous@megous.com>, 2013\n");
+		g_print("Written by Ondřej Jirman <megous@megous.com>, 2013-2018\n");
 		g_print("Go to http://megatools.megous.com for more information\n");
 		exit(0);
 	}
