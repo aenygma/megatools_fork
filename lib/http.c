@@ -23,6 +23,8 @@
 #include <curl/curl.h>
 #include <string.h>
 
+#define MEGA_NZ_API_PUBKEY_PIN "sha256//0W38e765pAfPqS3DqSVOrPsC4MEOvRBaXQ7nY1AJ47E="
+
 // curlver.h: this macro was added in May 14, 2015
 #ifndef CURL_AT_LEAST_VERSION
 #define CURL_VERSION_BITS(x, y, z) ((x) << 16 | (y) << 8 | z)
@@ -136,6 +138,19 @@ struct http *http_new(void)
 	curl_easy_setopt(h->curl, CURLOPT_TCP_KEEPINTVL, 60L);
 
 	curl_easy_setopt(h->curl, CURLOPT_BUFFERSIZE, 256 * 1024L);
+
+#if CURL_AT_LEAST_VERSION(7, 44, 0)
+	const gchar* pkp_disable = g_getenv("MEGATOOLS_PKP_DISABLE");
+	if (pkp_disable == NULL || strcmp(pkp_disable, "1")) {
+		if (curl_easy_setopt(h->curl, CURLOPT_PINNEDPUBLICKEY, MEGA_NZ_API_PUBKEY_PIN) != CURLE_OK) {
+			g_printerr("ERROR: Failed to setup public key pinning, aborting! You probably need a newer cURL library.\n");
+			exit(1);
+		} else {
+			curl_easy_setopt(h->curl, CURLOPT_CAINFO, NULL);
+			curl_easy_setopt(h->curl, CURLOPT_SSL_VERIFYPEER, 0L);
+		}
+	}
+#endif
 
 	h->headers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
