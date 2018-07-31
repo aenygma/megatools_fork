@@ -1,3 +1,17 @@
+megatools 1.10.2 - 2018-07-31
+=============================
+
+This is a bugfix release. This release was sponsored by donations to fix
+large file downloads and improve download robustness after recent mega.nz
+API change. Thank you!
+
+Fixes:
+- Actually fix connection dropping when downloading big files
+
+Improvements:
+- Add DNS resolution cache sharing accross all cURL handles
+- Increase receive buffer size to 256kB
+
 megatools 1.10.1 - 2018-07-27
 =============================
 

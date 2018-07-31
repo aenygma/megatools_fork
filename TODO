@@ -1,5 +1,9 @@
+- only retry on non-persistent errors
+- rework streaming (split download function into a streaming core and a wrapper)
+
+------
+
 - better abort mechanism for http workers
-- use chunked parallel download
 
 - megacopy: show paths relative to destination directory
   https://github.com/megous/megatools/issues/120
