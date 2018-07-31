@@ -18,6 +18,7 @@
  */
 
 #include "tools.h"
+#include "shell.h"
 
 static gboolean opt_human;
 static gboolean opt_mb;
@@ -48,7 +49,7 @@ static gchar *format_size(guint64 size)
 	return g_strdup_printf("%" G_GUINT64_FORMAT, size);
 }
 
-int main(int ac, char *av[])
+static int df_main(int ac, char *av[])
 {
 	GError *local_err = NULL;
 	struct mega_session *s;
@@ -115,3 +116,12 @@ err:
 	tool_fini(s);
 	return 1;
 }
+
+struct shell_tool shell_tool_df = {
+	.name = "df",
+	.main = df_main,
+	.usages = (char*[]){
+		"[--free|--total|--used] [--mb|--gb|-h]",
+		NULL
+	},
+};

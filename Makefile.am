@@ -13,12 +13,20 @@ AM_CFLAGS = \
 	-I$(srcdir)/lib \
 	-I$(srcdir)
 
+LDADD = \
+	$(GLIB_LIBS) \
+	$(OPENSSL_LIBS) \
+	$(LIBCURL_LIBS)
+
 # }}}
-# {{{ libmega
+# {{{ tools
 
-noinst_LIBRARIES = libmega.a
+EXTRA_DIST += \
+	lib/sjson.c
 
-libmega_a_SOURCES = \
+bin_PROGRAMS = megatools
+
+megatools_SOURCES = \
 	lib/sjson.gen.c \
 	lib/sjson.h \
 	lib/http.c \
@@ -28,31 +36,20 @@ libmega_a_SOURCES = \
 	lib/tools.c \
 	lib/tools.h \
 	lib/alloc.h \
-	lib/mega.h
+	lib/mega.h \
+	tools/df.c \
+	tools/dl.c \
+	tools/get.c \
+	tools/ls.c \
+	tools/mkdir.c \
+	tools/put.c \
+	tools/reg.c \
+	tools/rm.c \
+	tools/copy.c \
+	tools/shell.c \
+	tools/shell.h
 
-# }}}
-# {{{ tools
 
-EXTRA_DIST += \
-	lib/sjson.c
-
-LDADD = \
-	libmega.a \
-	$(GLIB_LIBS) \
-	$(OPENSSL_LIBS) \
-	$(LIBCURL_LIBS)
-
-bin_PROGRAMS = megadf megadl megaget megals megamkdir megaput megareg megarm megacopy
-
-megadf_SOURCES     = tools/df.c
-megadl_SOURCES     = tools/dl.c
-megaget_SOURCES    = tools/get.c
-megals_SOURCES     = tools/ls.c
-megamkdir_SOURCES  = tools/mkdir.c
-megaput_SOURCES    = tools/put.c
-megareg_SOURCES    = tools/reg.c
-megarm_SOURCES     = tools/rm.c
-megacopy_SOURCES   = tools/copy.c
 
 # }}}
 # {{{ docs

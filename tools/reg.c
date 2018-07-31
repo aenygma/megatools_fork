@@ -18,6 +18,7 @@
  */
 
 #include "tools.h"
+#include "shell.h"
 
 static gchar *opt_name;
 static gchar *opt_email;
@@ -92,14 +93,14 @@ err:
 	return NULL;
 }
 
-int main(int ac, char *av[])
+static int reg_main(int ac, char *av[])
 {
 	gc_error_free GError *local_err = NULL;
 	struct mega_reg_state *state = NULL;
 	gc_free gchar *signup_key = NULL;
 	struct mega_session *s;
 
-	tool_init(&ac, &av, "LINK - register a new mega.nz account", entries, 0);
+	tool_init(&ac, &av, " - register a new mega.nz account", entries, 0);
 
 	if (opt_verify && opt_register) {
 		g_printerr("ERROR: You must specify either --register or --verify option\n");
@@ -167,12 +168,12 @@ int main(int ac, char *av[])
 		gc_free gchar *serialized_state = serialize_reg_state(state);
 
 		if (opt_script)
-			g_print("%s --verify %s @LINK@\n", av[0], serialized_state);
+			g_print("megatools reg --verify %s @LINK@\n", serialized_state);
 		else
 			g_print("Registration email was sent to %s. To complete registration, you must run:\n\n"
-				"  %s --verify %s @LINK@\n\n"
+				"  megatools reg --verify %s @LINK@\n\n"
 				"(Where @LINK@ is registration link from the 'MEGA Signup' email)\n",
-				opt_email, g_get_prgname(), serialized_state);
+				opt_email, serialized_state);
 	}
 
 	if (opt_verify) {
@@ -193,3 +194,13 @@ err:
 	tool_fini(s);
 	return 1;
 }
+
+const struct shell_tool shell_tool_reg = {
+	.name = "reg",
+	.main = reg_main,
+	.usages = (char*[]){
+		"[--scripted] --register --email <email> --name <realname> --password <password>",
+		"[--scripted] --verify <state> <link>",
+		NULL
+	},
+};

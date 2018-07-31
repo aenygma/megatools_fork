@@ -18,6 +18,7 @@
  */
 
 #include "tools.h"
+#include "shell.h"
 
 static gchar *opt_remote_path;
 static gchar *opt_local_path;
@@ -223,7 +224,7 @@ static gboolean dl_sync_dir(struct mega_node *node, GFile *file, const gchar *re
 
 // main program
 
-int main(int ac, char *av[])
+static int copy_main(int ac, char *av[])
 {
 	gc_object_unref GFile *local_file = NULL;
 	gint status = 0;
@@ -279,3 +280,15 @@ err:
 	tool_fini(s);
 	return 1;
 }
+
+const struct shell_tool shell_tool_copy = {
+	.name = "copy",
+	.main = copy_main,
+	.usages = (char*[]){
+		"[-n] [--no-progress] --local <path> --remote <remotepath>",
+		"[-n] [--no-progress] --download --local <path> --remote <remotepath>",
+		NULL
+	},
+};
+
+

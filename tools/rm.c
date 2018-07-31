@@ -18,10 +18,11 @@
  */
 
 #include "tools.h"
+#include "shell.h"
 
 static GOptionEntry entries[] = { { NULL } };
 
-int main(int ac, char *av[])
+static int rm_main(int ac, char *av[])
 {
 	gc_error_free GError *local_err = NULL;
 	static struct mega_session *s;
@@ -56,3 +57,13 @@ int main(int ac, char *av[])
 	tool_fini(s);
 	return status;
 }
+
+const struct shell_tool shell_tool_rm = {
+	.name = "rm",
+	.main = rm_main,
+	.usages = (char*[]){
+		"<remotepaths>...",
+		"/Contacts/<contactemail>",
+		NULL
+	},
+};

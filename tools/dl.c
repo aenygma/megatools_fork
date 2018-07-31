@@ -18,6 +18,7 @@
  */
 
 #include "tools.h"
+#include "shell.h"
 #ifdef G_OS_WIN32
 #include <io.h>
 #include <fcntl.h>
@@ -316,7 +317,7 @@ static gboolean dl_sync_dir_choose(GFile *local_dir)
 	return status;
 }
 
-int main(int ac, char *av[])
+static int dl_main(int ac, char *av[])
 {
 	gc_error_free GError *local_err = NULL;
 	gc_regex_unref GRegex *file_regex = NULL, *folder_regex = NULL;
@@ -454,3 +455,13 @@ int main(int ac, char *av[])
 	tool_fini(s);
 	return status;
 }
+
+const struct shell_tool shell_tool_dl = {
+	.name = "dl",
+	.main = dl_main,
+	.usages = (char*[]){
+		"[--no-progress] [--path <path>] <links>...",
+		"--path - <filelink>",
+		NULL
+	},
+};

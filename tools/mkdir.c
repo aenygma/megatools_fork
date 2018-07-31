@@ -18,12 +18,13 @@
  */
 
 #include "tools.h"
+#include "shell.h"
 
 static struct mega_session *s;
 
 static GOptionEntry entries[] = { { NULL } };
 
-int main(int ac, char *av[])
+static int mkdir_main(int ac, char *av[])
 {
 	gc_error_free GError *local_err = NULL;
 
@@ -57,3 +58,13 @@ int main(int ac, char *av[])
 	tool_fini(s);
 	return status;
 }
+
+const struct shell_tool shell_tool_mkdir = {
+	.name = "mkdir",
+	.main = mkdir_main,
+	.usages = (char*[]){
+		"<remotepaths>...",
+		"/Contacts/<contactemail>",
+		NULL
+	},
+};

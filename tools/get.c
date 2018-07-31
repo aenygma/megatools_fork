@@ -18,6 +18,7 @@
  */
 
 #include "tools.h"
+#include "shell.h"
 
 static gchar *opt_path = ".";
 static gboolean opt_stream = FALSE;
@@ -47,7 +48,7 @@ static void status_callback(struct mega_status_data *data, gpointer userdata)
 		tool_show_progress(cur_file, data);
 }
 
-int main(int ac, char *av[])
+static int get_main(int ac, char *av[])
 {
 	gc_error_free GError *local_err = NULL;
 	struct mega_session *s;
@@ -117,3 +118,13 @@ int main(int ac, char *av[])
 	tool_fini(s);
 	return status;
 }
+
+const struct shell_tool shell_tool_get = {
+	.name = "get",
+	.main = get_main,
+	.usages = (char*[]){
+		"[--no-progress] [--path <path>] <remotepaths>...",
+		"--path - <remotefile>",
+		NULL
+	},
+};
