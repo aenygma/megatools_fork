@@ -4480,7 +4480,7 @@ retry:
 				 NULL, NULL, &local_err)) {
 		g_propagate_prefixed_error(
 			err, local_err,
-			"Can't rename donwloaded temporary file %s to %s (downloaded data are good!): ", tmp_path,
+			"Can't rename downloaded temporary file %s to %s (downloaded data are good!): ", tmp_path,
 			file_path);
 		return FALSE;
 	}

@@ -68,7 +68,7 @@ include::basic-options.txt[]
 
 	If path points to a file, the file itself is listed.
 
-	If ommited, the entire remote filesystem is listed recursively.
+	If omitted, the entire remote filesystem is listed recursively.
 
 EXAMPLES
 --------
