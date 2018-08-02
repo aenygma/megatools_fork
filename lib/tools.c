@@ -452,13 +452,6 @@ gchar *tool_convert_filename(const gchar *path, gboolean local)
 	return locale_path;
 }
 
-static void fix_options(GOptionEntry* list)
-{
-	for (int i = 0; list[i].long_name; i++) {
-		list[i].flags |= G_OPTION_FLAG_IN_MAIN;
-	}
-}
-
 void tool_init(gint *ac, gchar ***av, const gchar *tool_name, GOptionEntry *tool_entries, ToolInitFlags flags)
 {
 	GError *local_err = NULL;
@@ -469,40 +462,17 @@ void tool_init(gint *ac, gchar ***av, const gchar *tool_name, GOptionEntry *tool
 	if (tool_entries)
 		g_option_context_add_main_entries(opt_context, tool_entries, NULL);
 
-	if (flags & TOOL_INIT_UPLOAD_OPTS) {
-		GOptionGroup *upload_group =
-			g_option_group_new("upload", "Upload Options:", "Show upload options", NULL, NULL);
-		fix_options(upload_options);
-		g_option_group_add_entries(upload_group, upload_options);
-		g_option_context_add_group(opt_context, upload_group);
-	}
+	if (flags & TOOL_INIT_UPLOAD_OPTS)
+		g_option_context_add_main_entries(opt_context, upload_options, NULL);
 
-	if (flags & TOOL_INIT_DOWNLOAD_OPTS) {
-		GOptionGroup *download_group =
-			g_option_group_new("download", "Dwonload Options:", "Show download options", NULL, NULL);
-		fix_options(download_options);
-		g_option_group_add_entries(download_group, download_options);
-		g_option_context_add_group(opt_context, download_group);
-	}
+	if (flags & TOOL_INIT_DOWNLOAD_OPTS)
+		g_option_context_add_main_entries(opt_context, download_options, NULL);
 
-	if (flags & (TOOL_INIT_AUTH | TOOL_INIT_AUTH_OPTIONAL)) {
-		GOptionGroup *auth_group = g_option_group_new(
-			"auth", "Authentication Options:", "Show authentication options", NULL, NULL);
-		fix_options(auth_options);
-		g_option_group_add_entries(auth_group, auth_options);
-		g_option_context_add_group(opt_context, auth_group);
-	}
+	if (flags & (TOOL_INIT_AUTH | TOOL_INIT_AUTH_OPTIONAL))
+		g_option_context_add_main_entries(opt_context, auth_options, NULL);
 
-	GOptionGroup *network_group =
-		g_option_group_new("network", "Network Options:", "Show network options", NULL, NULL);
-	fix_options(network_options);
-	g_option_group_add_entries(network_group, network_options);
-	g_option_context_add_group(opt_context, network_group);
-
-	GOptionGroup *basic_group = g_option_group_new("basic", "Basic Options:", "Show basic options", NULL, NULL);
-	fix_options(basic_options);
-	g_option_group_add_entries(basic_group, basic_options);
-	g_option_context_add_group(opt_context, basic_group);
+	g_option_context_add_main_entries(opt_context, network_options, NULL);
+	g_option_context_add_main_entries(opt_context, basic_options, NULL);
 
 	if (!g_option_context_parse(opt_context, ac, av, &local_err)) {
 		g_printerr("ERROR: Option parsing failed: %s\n", local_err->message);
