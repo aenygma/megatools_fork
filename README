@@ -150,9 +150,12 @@ On Debian, Ubuntu:
   apt-get -y install build-essential libglib2.0-dev libssl-dev \
     libcurl4-openssl-dev
 
-On Fedora:
+On Fedora and CentOS:
 
   yum -y install gcc make glib2-devel libcurl-devel openssl-devel
+
+  If you're building megatools on CentOS or other simialrly old system, you may
+  need to pass -std=gnu99 to the C comipler.
 
 On OpenSUSE:
 
@@ -186,6 +189,9 @@ Now you can run megatools from ~/.local/bin.
 
   export PATH="$HOME/.local/bin:$PATH"
   megals
+
+If you encounter issues, read the error messages carefully. They may contain
+hints on how you can solve the issue yourself.
 
 
 Third party tools/scripts
