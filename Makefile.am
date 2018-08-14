@@ -2,7 +2,6 @@
 
 COMMANDS = df dl get ls mkdir put reg rm copy
 
-export MAKEFLAGS += --no-print-directory -s
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = \
