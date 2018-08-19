@@ -5360,6 +5360,13 @@ gboolean mega_session_dl_compat(struct mega_session *s, const gchar *handle, con
 	if (local_path) {
 		if (!file)
 			file = g_file_get_child(parent_dir, params.node_name);
+
+		if (g_file_query_exists(file, NULL)) {
+			g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER,
+				    "Local file already exists: %s/%s", local_path, params.node_name);
+			mega_download_data_free(&params);
+			return FALSE;
+		}
 	}
 
 	gboolean status = mega_session_download_data(s, &params, file, err);
