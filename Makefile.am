@@ -10,7 +10,8 @@ AM_CFLAGS = \
 	$(LIBCURL_CFLAGS) \
 	-DG_LOG_DOMAIN=\"Mega\" \
 	-I$(srcdir)/lib \
-	-I$(srcdir)
+	-I$(srcdir) \
+	-std=c99
 
 LDADD = \
 	$(GLIB_LIBS) \
