@@ -223,7 +223,7 @@ method.
 
 In addition to the regular build steps, you'll need to install additional
 dependencies. For building from git repository, you'll also need: asciidoc,
-autoconf, libtool, automake.
+docbook-xml, autoconf, libtool, automake.
 
 Now, get the code using git:
 
