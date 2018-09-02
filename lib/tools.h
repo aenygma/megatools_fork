@@ -58,4 +58,7 @@ gchar* tool_prompt_input(void);
 #define ESC_GRAY "\x1b[30;1m"
 #define ESC_NORMAL "\x1b[0m"
 
+DEFINE_CLEANUP_FUNCTION(struct mega_session*, tool_fini)
+#define gc_tool_fini CLEANUP(tool_fini)
+
 #endif
