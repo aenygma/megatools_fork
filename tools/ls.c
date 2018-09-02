@@ -114,7 +114,7 @@ static int ls_main(int ac, char *av[])
 		gc_free gchar *node_path = mega_node_get_path_dup(n);
 
 		if (opt_export)
-			g_print("%73s ", n->link ? mega_node_get_link(n, TRUE) : "");
+			g_print("%-70s ", n->link ? mega_node_get_link(n, TRUE) : "");
 
 		if (opt_long) {
 			GDateTime *dt = g_date_time_new_from_unix_local(n->timestamp);
