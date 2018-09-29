@@ -4391,6 +4391,7 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
         state.progress_total = params->node_size - download_from;
 	state.progress_offset = 0;
 
+
 	const guint64 chunk_size = 256 * 1024 * 1024;
 	while (download_from < params->node_size) {
 		guint64 from = download_from;
@@ -4401,18 +4402,26 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 		gc_free gchar *url = g_strdup_printf("%s/%" G_GUINT64_FORMAT "-%" G_GUINT64_FORMAT,
 						     params->download_url,
 						     from, to - 1);
+		// 640 minutes should be enough for everyone
+		const gint64 retry_timeout = 1000ll * 1000 * 60 * 640;
+		gint64 end_time = g_get_monotonic_time() + retry_timeout;
 
 retry:
 		download_ok = http_post_stream_download(h, url, get_data_cb, &state, &local_err);
 		if (!download_ok) {
-			// try 3 times at most (we only retry if we can seek the stream)
-			tries++;
-			if (tries <= 3 && seekable) {
-				g_printerr("WARNING: chunk download failed (%s), re-trying after %d seconds\n", local_err ? local_err->message : "?", (1 << tries));
-				g_clear_error(&local_err);
-			} else {
+			// retry timeout reached
+			if (g_get_monotonic_time() > end_time) {
 				g_propagate_prefixed_error(err, local_err, "Data download failed: ");
 				goto err_noremove;
+			}
+
+			// we wait at most 256 seconds between retries (~4 minutes)
+			tries = MIN(tries + 1, 8);
+
+			// we only retry if we can seek the stream
+			if (seekable) {
+				g_printerr("WARNING: chunk download failed (%s), re-trying after %d seconds\n", local_err ? local_err->message : "?", (1 << tries));
+				g_clear_error(&local_err);
 			}
 
 			// restore saved mac calculation state
