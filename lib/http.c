@@ -327,7 +327,7 @@ GString *http_post(struct http *h, const gchar *url, const gchar *body, gssize b
 	if (body) {
 		curl_easy_setopt(h->curl, CURLOPT_NOBODY, 0L);
 		curl_easy_setopt(h->curl, CURLOPT_POSTFIELDS, body);
-		curl_easy_setopt(h->curl, CURLOPT_POSTFIELDSIZE, body_len);
+		curl_easy_setopt(h->curl, CURLOPT_POSTFIELDSIZE, (long)body_len);
 	} else {
 		curl_easy_setopt(h->curl, CURLOPT_NOBODY, 1L);
 		curl_easy_setopt(h->curl, CURLOPT_POSTFIELDS, NULL);
