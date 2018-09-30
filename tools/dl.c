@@ -262,7 +262,7 @@ GSList* pick_nodes(void)
 			parent = parent->parent;
 		}
 
-		g_print("%*s" ESC_GRAY "|--" ESC_NORMAL "%d. %s", indent*3, "", position, node->name);
+		g_print("%*s|--" ESC_NORMAL "%d. %s", indent*3, "", position, node->name);
 		if (mega_node_is_container(node)) {
 			g_print("/");
 			indent++;

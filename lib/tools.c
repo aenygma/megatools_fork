@@ -60,6 +60,8 @@ static gint cache_timout = 10 * 60;
 static gboolean opt_enable_previews = BOOLEAN_UNSET_BUT_TRUE;
 static gboolean opt_disable_resume;
 
+static gboolean tool_use_colors = FALSE;
+
 static gboolean opt_debug_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
 {
 	if (value) {
@@ -297,11 +299,11 @@ void tool_show_progress(const gchar *file, const struct mega_status_data *data)
 		total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
 		rate_str = g_format_size_full(rate, G_FORMAT_SIZE_IEC_UNITS);
 
-		if (tool_is_stdout_tty()) {
+		if (tool_use_colors) {
 			g_print(ESC_WHITE "%s" ESC_NORMAL ": "
 				ESC_YELLOW "%.2f%%" ESC_NORMAL " - "
 				"done " ESC_GREEN "%s" ESC_NORMAL
-				" (avg. %s/s)" ESC_CLREOL "\r",
+				" (avg. %s/s)\n",
 				file, percentage, total_str, rate_str);
 		} else {
 			g_print("%s: %.2f%% - done %s (avg. %s/s)\n", file, percentage, total_str, rate_str);
@@ -313,15 +315,16 @@ void tool_show_progress(const gchar *file, const struct mega_status_data *data)
 		done_str = g_format_size_full(now_done, G_FORMAT_SIZE_IEC_UNITS | G_FORMAT_SIZE_LONG_FORMAT);
 		total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
 
-		if (tool_is_stdout_tty()) {
+		if (tool_use_colors) {
 			g_print(ESC_WHITE "%s" ESC_NORMAL ": "
 				ESC_YELLOW "%.2f%%" ESC_NORMAL " - "
-				ESC_GREEN "%s" ESC_BLUE " of %s" ESC_NORMAL
-				ESC_CLREOL "\r",
+				ESC_GREEN "%s" ESC_BLUE " of %s" ESC_NORMAL,
 				file, percentage, done_str, total_str);
 		} else {
-			g_print("%s: %.2f%% - %s of %s\n", file, percentage, done_str, total_str);
+			g_print("%s: %.2f%% - %s of %s", file, percentage, done_str, total_str);
 		}
+
+		g_print("%s", tool_is_stdout_tty() ? ESC_CLREOL "\r" : "\n");
 	} else {
 		// regular update
 		rate = (gdouble)size_diff * 1e6 / time_span;
@@ -331,15 +334,17 @@ void tool_show_progress(const gchar *file, const struct mega_status_data *data)
 		total_str = g_format_size_full(data->progress.total, G_FORMAT_SIZE_IEC_UNITS);
 		rate_str = g_format_size_full(rate, G_FORMAT_SIZE_IEC_UNITS);
 
-		if (tool_is_stdout_tty()) {
+		if (tool_use_colors) {
 			g_print(ESC_WHITE "%s" ESC_NORMAL ": "
 				ESC_YELLOW "%.2f%%" ESC_NORMAL " - "
 				ESC_GREEN "%s" ESC_BLUE " of %s" ESC_NORMAL
-				" (%s/s)" ESC_CLREOL "\r",
+				" (%s/s)",
 				file, percentage, done_str, total_str, rate_str);
 		} else {
-			g_print("%s: %.2f%% - %s of %s (%s/s)\n", file, percentage, done_str, total_str, rate_str);
+			g_print("%s: %.2f%% - %s of %s (%s/s)", file, percentage, done_str, total_str, rate_str);
 		}
+
+		g_print("%s", tool_is_stdout_tty() ? ESC_CLREOL "\r" : "\n");
 	}
 
 	last_update = timenow;
@@ -572,6 +577,17 @@ void tool_init(gint *ac, gchar ***av, const gchar *tool_name, GOptionEntry *tool
 					opt_enable_previews = enable;
 				else
 					g_clear_error(&local_err);
+			}
+
+			if (g_key_file_has_key(kf, "UI", "Colors", NULL) && tool_is_stdout_tty()) {
+				tool_use_colors = g_key_file_get_boolean(kf, "UI", "Colors", &local_err);
+				if (local_err) {
+					g_printerr(
+						"WARNING: Invalid value for UI.Colors set in the config file: %s\n",
+						local_err->message);
+					g_clear_error(&local_err);
+					tool_use_colors = FALSE;
+				}
 			}
 		}
 	}
