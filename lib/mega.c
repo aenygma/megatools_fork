@@ -2223,22 +2223,22 @@ gboolean mega_session_open_exp_folder(struct mega_session *s, const gchar *n, co
 
 	const gchar *ff_node = s_json_get_member(f_node, "f");
 	if (ff_node && s_json_get_type(ff_node) == S_JSON_TYPE_ARRAY) {
-		const gchar *node;
-		gint i = 0;
+		gc_free gchar** f_elems = s_json_get_elements(ff_node);
+		gchar** f_elem = f_elems;
 
-		while ((node = s_json_get_element(ff_node, i++))) {
-			if (s_json_get_type(node) == S_JSON_TYPE_OBJECT) {
+		while (*f_elem) {
+			if (s_json_get_type(*f_elem) == S_JSON_TYPE_OBJECT) {
 				// first node is the root folder
-				if (i == 1) {
-					gc_free gchar *node_h = s_json_get_member_string(node, "h");
+				if (f_elem == f_elems) {
+					gc_free gchar *node_h = s_json_get_member_string(*f_elem, "h");
 
 					add_share_key(s, node_h, s->master_key);
 				}
 
 				// import nodes into the fs
-				struct mega_node *n = mega_node_parse(s, node);
+				struct mega_node *n = mega_node_parse(s, *f_elem);
 				if (n) {
-					if (i == 1) {
+					if (f_elem == f_elems) {
 						g_free(n->parent_handle);
 						n->parent_handle = NULL;
 					}
@@ -2246,6 +2246,8 @@ gboolean mega_session_open_exp_folder(struct mega_session *s, const gchar *n, co
 					list = g_slist_prepend(list, n);
 				}
 			}
+
+			f_elem++;
 		}
 	}
 
