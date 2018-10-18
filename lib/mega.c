@@ -4221,7 +4221,6 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 	gc_object_unref GFileIOStream *iostream = NULL;
 	gc_object_unref GFileOutputStream *ostream = NULL;
 	GSeekable* seekable = NULL;
-	gc_http_free struct http *h = NULL;
 	struct get_data_state state = { .s = s };
 	gc_free gchar *tmp_path = NULL, *file_path = NULL, *tmp_name = NULL;
 	guint64 download_from = 0;
@@ -4370,12 +4369,6 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 
 	send_status(s, &status_data);
 
-	// perform download
-	h = http_new();
-	http_set_progress_callback(h, progress_dl, &state);
-	http_set_speed(h, s->max_ul, s->max_dl);
-	http_set_proxy(h, s->proxy);
-
 	// We'll download the file sequentially in 256MB increments (chunks),
 	// re-trying if a chunk fails. We will pre-encrypt and pre-calculate mac
 	// for the chunk so that we don't need to do it again when download
@@ -4393,7 +4386,6 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
         state.progress_total = params->node_size - download_from;
 	state.progress_offset = 0;
 
-
 	const guint64 chunk_size = 256 * 1024 * 1024;
 	while (download_from < params->node_size) {
 		guint64 from = download_from;
@@ -4401,6 +4393,7 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 		state.mac_saved = state.mac;
 		guint tries = 0;
 		gboolean download_ok;
+		struct http *h;
 		gc_free gchar *url = g_strdup_printf("%s/%" G_GUINT64_FORMAT "-%" G_GUINT64_FORMAT,
 						     params->download_url,
 						     from, to - 1);
@@ -4409,7 +4402,14 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 		gint64 end_time = g_get_monotonic_time() + retry_timeout;
 
 retry:
+		// perform download
+		h = http_new();
+		http_set_progress_callback(h, progress_dl, &state);
+		http_set_speed(h, s->max_ul, s->max_dl);
+		http_set_proxy(h, s->proxy);
 		download_ok = http_post_stream_download(h, url, get_data_cb, &state, &local_err);
+		http_free(h);
+
 		if (!download_ok) {
 			// retry timeout reached
 			if (g_get_monotonic_time() > end_time) {
