@@ -267,6 +267,9 @@ GSList* pick_nodes(void)
 			g_print("/");
 			indent++;
 			parent = node;
+		} else {
+			gc_free gchar *size_str = g_format_size_full(node->size, G_FORMAT_SIZE_IEC_UNITS);
+			g_print(" (%s)", size_str);
 		}
 		g_print("\n");
 
