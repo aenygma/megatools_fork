@@ -1851,6 +1851,7 @@ static struct mega_node *mega_node_parse(struct mega_session *s, const gchar *no
 	if (node_t == MEGA_NODE_ROOT) {
 		struct mega_node *n = g_new0(struct mega_node, 1);
 		n->name = g_strdup("Root");
+		n->name_collate_key = g_utf8_collate_key_for_filename(n->name, -1);
 		n->handle = g_strdup(node_h);
 		n->timestamp = node_ts;
 		n->type = node_t;
@@ -1858,6 +1859,7 @@ static struct mega_node *mega_node_parse(struct mega_session *s, const gchar *no
 	} else if (node_t == MEGA_NODE_INBOX) {
 		struct mega_node *n = g_new0(struct mega_node, 1);
 		n->name = g_strdup("Inbox");
+		n->name_collate_key = g_utf8_collate_key_for_filename(n->name, -1);
 		n->handle = g_strdup(node_h);
 		n->timestamp = node_ts;
 		n->type = node_t;
@@ -1865,6 +1867,7 @@ static struct mega_node *mega_node_parse(struct mega_session *s, const gchar *no
 	} else if (node_t == MEGA_NODE_TRASH) {
 		struct mega_node *n = g_new0(struct mega_node, 1);
 		n->name = g_strdup("Trash");
+		n->name_collate_key = g_utf8_collate_key_for_filename(n->name, -1);
 		n->handle = g_strdup(node_h);
 		n->timestamp = node_ts;
 		n->type = node_t;
@@ -1997,6 +2000,7 @@ static struct mega_node *mega_node_parse(struct mega_session *s, const gchar *no
 
 	n->s = s;
 	n->name = TAKE(node_name);
+	n->name_collate_key = g_utf8_collate_key_for_filename(n->name, -1);
 	n->handle = TAKE(node_h);
 	n->parent_handle = TAKE(node_p);
 	n->user_handle = TAKE(node_u);
@@ -2029,6 +2033,7 @@ static struct mega_node *mega_node_parse_user(struct mega_session *s, const gcha
 	struct mega_node *n = g_new0(struct mega_node, 1);
 	n->s = s;
 	n->name = node_m;
+	n->name_collate_key = g_utf8_collate_key_for_filename(n->name, -1);
 	n->handle = node_u;
 	n->parent_handle = g_strdup("NETWORK");
 	n->user_handle = g_strdup(node_u);
@@ -2060,6 +2065,7 @@ static void mega_node_free(struct mega_node *n)
 {
 	if (n) {
 		g_free(n->name);
+		g_free(n->name_collate_key);
 		g_free(n->handle);
 		g_free(n->parent_handle);
 		g_free(n->user_handle);
@@ -2530,6 +2536,7 @@ gboolean mega_session_refresh(struct mega_session *s, GError **err)
 	struct mega_node *n = g_new0(struct mega_node, 1);
 	n->s = s;
 	n->name = g_strdup("Contacts");
+	n->name_collate_key = g_utf8_collate_key_for_filename(n->name, -1);
 	n->handle = g_strdup("NETWORK");
 	n->type = MEGA_NODE_NETWORK;
 	list = g_slist_prepend(list, n);
@@ -2739,6 +2746,18 @@ struct mega_node *mega_session_stat(struct mega_session *s, const gchar *path)
 // }}}
 // {{{ mega_session_get_node_chilren
 
+static gint node_name_compare(const struct mega_node *a, const struct mega_node *b)
+{
+	if (a->name_collate_key == NULL && b->name_collate_key == NULL)
+		return 0;
+	if (a->name_collate_key == NULL)
+		return -1;
+	if (b->name_collate_key == NULL)
+		return 1;
+
+	return strcmp(a->name_collate_key, b->name_collate_key);
+}
+
 GSList *mega_session_get_node_chilren(struct mega_session *s, struct mega_node *node)
 {
 	GSList *list = NULL, *i;
@@ -2751,10 +2770,10 @@ GSList *mega_session_get_node_chilren(struct mega_session *s, struct mega_node *
 		struct mega_node *child = i->data;
 
 		if (child->parent_handle && !strcmp(child->parent_handle, node->handle))
-			list = g_slist_prepend(list, child);
+			list = g_slist_insert_sorted(list, child, (GCompareFunc)node_name_compare);
 	}
 
-	return g_slist_reverse(list);
+	return list;
 }
 
 // }}}
@@ -4956,9 +4975,10 @@ gboolean mega_session_load(struct mega_session *s, const gchar *un, const gchar 
 			n->type = -1;
 
 			S_JSON_FOREACH_MEMBER(fs_node, k, v)
-			if (s_json_string_match(k, "name"))
+			if (s_json_string_match(k, "name")) {
 				n->name = s_json_get_string(v);
-			else if (s_json_string_match(k, "handle"))
+				n->name_collate_key = g_utf8_collate_key_for_filename(n->name, -1);
+			} else if (s_json_string_match(k, "handle"))
 				n->handle = s_json_get_string(v);
 			else if (s_json_string_match(k, "parent_handle"))
 				n->parent_handle = s_json_get_string(v);

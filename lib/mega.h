@@ -82,6 +82,7 @@ struct mega_share_key {
 
 struct mega_node {
 	gchar *name;
+	gchar *name_collate_key;
 	gchar *handle;
 	gchar *parent_handle;
 	gchar *user_handle;
