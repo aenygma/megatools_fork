@@ -432,8 +432,14 @@ static int dl_main(int ac, char *av[])
 							if (!dl_sync_dir_choose(local_dir))
 								status = 1;
 						} else {
-							if (!dl_sync_dir(root_node, local_dir))
-								status = 1;
+							if (root_node->type == MEGA_NODE_FILE) {
+								gc_object_unref GFile *local_path = g_file_get_child(local_dir, root_node->name);
+								if (!dl_sync_file(root_node, local_path))
+									status = 1;
+							} else {
+								if (!dl_sync_dir(root_node, local_dir))
+									status = 1;
+							}
 						}
 					} else {
 						g_printerr("ERROR: %s must be a directory\n", opt_path);
