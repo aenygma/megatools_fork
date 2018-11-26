@@ -1605,11 +1605,11 @@ static gchar *api_call(struct mega_session *s, gchar expects, gint *error_code, 
 
 // Remote filesystem helpers
 
-// {{{ update_pathmap
+// {{{ build_node_tree
 
 static void mega_node_free(struct mega_node *n);
 
-static void update_pathmap(struct mega_session *s)
+static void build_node_tree(struct mega_session *s)
 {
 	GSList *i, *next;
 	g_return_if_fail(s != NULL);
@@ -1642,21 +1642,6 @@ static void update_pathmap(struct mega_session *s)
 				n->parent = g_hash_table_lookup(handle_map, n->parent_handle);
 		}
 
-#if 0
-		// remove parentless non-root nodes from the list
-		if (!n->parent && (n->type == MEGA_NODE_FILE || n->type == MEGA_NODE_FOLDER || n->type == MEGA_NODE_CONTACT)) {
-			// remove current node
-			if (prev) 
-				prev->next = next;
-			else 
-				s->fs_nodes = next;
-
-			g_slist_free_1(i);
-			mega_node_free(n);
-		}
-		else
-			prev = i;
-#endif
 		i = next;
 	}
 
@@ -1666,13 +1651,8 @@ static void update_pathmap(struct mega_session *s)
 // }}}
 // {{{ update_pathmap_prune
 
-static void update_pathmap_prune(struct mega_session *s, const gchar *specific)
+static gboolean rebase_node_tree(struct mega_session *s, const gchar *new_root)
 {
-	update_pathmap(s);
-
-	if (!specific)
-		return;
-
 	/* Remove nodes that are not decendents of nodes with their |handle| == |specific|
 	// -------------------------------------------------------------------------------
 	// Example with dir1 as the target, e.g. |handle| == |specific|:
@@ -1688,35 +1668,49 @@ static void update_pathmap_prune(struct mega_session *s, const gchar *specific)
 	// This will remove 'root', 'dir2', and 'file2'; 'dir1' becomes the root node.
 	// -----------------------------------------------------------------------------*/
 
-	gc_array_unref GArray *remove_nodes = g_array_new(FALSE, FALSE, sizeof(struct mega_node *));
-	GSList *i;
+	struct mega_node *root_node = mega_session_get_node_by_handle(s, new_root);
+	if (root_node == NULL)
+		return FALSE;
 
-	// find nodes to remove
-	for (i = s->fs_nodes; i; i = i->next) {
-		struct mega_node *n = i->data;
-		struct mega_node *p_node = n->parent;
+	if (root_node->type == MEGA_NODE_FILE) {
+		// if the new root is a file, just place it under a newly
+		// created root and remove everything else
 
-		if (g_str_equal(n->handle, specific)) {
-			// convert target into root node
-			n->type = MEGA_NODE_ROOT;
-			n->parent = NULL;
-			n->parent_handle = NULL;
-		} else {
-			while (p_node && !g_str_equal(p_node->handle, specific))
-				p_node = p_node->parent;
+		s->fs_nodes = g_slist_remove(s->fs_nodes, root_node);
+		g_slist_free_full(s->fs_nodes, (GDestroyNotify)mega_node_free);
+		s->fs_nodes = NULL;
 
-			if (!p_node || !g_str_equal(p_node->handle, specific))
-				g_array_append_val(remove_nodes, n);
+		// add 
+		g_clear_pointer(&root_node->parent_handle, g_free);
+		root_node->parent = NULL;
+		s->fs_nodes = g_slist_prepend(s->fs_nodes, root_node);
+	} else if (root_node->type == MEGA_NODE_FOLDER) {
+		GSList *i, *i_next, **i_prev_next = &s->fs_nodes;
+
+		g_clear_pointer(&root_node->parent_handle, g_free);
+		root_node->parent = NULL;
+
+		// find nodes that are not children of root_node and remove them
+		for (i = s->fs_nodes; i; i = i_next) {
+			struct mega_node *n = i->data;
+
+			i_next = i->next;
+
+			if (n != root_node && !mega_node_has_ancestor(n, root_node)) {
+				// drop link
+				*i_prev_next = i_next;
+				g_slist_free_1(i);
+				mega_node_free(n);
+			} else {
+				// move next address of previously kept node
+				i_prev_next = &i->next;
+			}
 		}
+	} else {
+		return FALSE;
 	}
 
-	// remove nodes from s->fs_nodes
-	gint idx;
-	for (idx = 0; idx < remove_nodes->len; idx++) {
-		struct mega_node *r = g_array_index(remove_nodes, struct mega_node *, idx);
-		s->fs_nodes = g_slist_remove(s->fs_nodes, r);
-		mega_node_free(r);
-	}
+	return TRUE;
 }
 
 // }}}
@@ -2259,7 +2253,16 @@ gboolean mega_session_open_exp_folder(struct mega_session *s, const gchar *n, co
 
 	g_slist_free_full(s->fs_nodes, (GDestroyNotify)mega_node_free);
 	s->fs_nodes = g_slist_reverse(list);
-	update_pathmap_prune(s, specific);
+
+	build_node_tree(s);
+
+	// rebase node tree
+	if (specific) {
+		if (!rebase_node_tree(s, specific)) {
+			g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Node not found: %s", specific);
+			return FALSE;
+		}
+	}
 
 	return TRUE;
 }
@@ -2566,7 +2569,7 @@ gboolean mega_session_refresh(struct mega_session *s, GError **err)
 	g_slist_free_full(s->fs_nodes, (GDestroyNotify)mega_node_free);
 	s->fs_nodes = g_slist_reverse(list);
 
-	update_pathmap(s);
+	build_node_tree(s);
 
 	s->last_refresh = time(NULL);
 
@@ -2865,7 +2868,7 @@ struct mega_node *mega_session_mkdir(struct mega_session *s, const gchar *path, 
 
 	// add mkdired node to the filesystem
 	s->fs_nodes = g_slist_append(s->fs_nodes, n);
-	update_pathmap(s);
+	build_node_tree(s);
 
 	return n;
 }
@@ -2914,7 +2917,7 @@ gboolean mega_session_rm(struct mega_session *s, const gchar *path, GError **err
 	// remove node from the filesystem
 	s->fs_nodes = g_slist_remove(s->fs_nodes, mn);
 	mega_node_free(mn);
-	update_pathmap(s);
+	build_node_tree(s);
 
 	return TRUE;
 }
@@ -4660,6 +4663,25 @@ gboolean mega_session_dl_prepare(struct mega_session *s, struct mega_download_da
 
 // }}}
 
+// {{{ mega_session_get_node_by_handle
+
+struct mega_node* mega_session_get_node_by_handle(struct mega_session *s, const gchar* handle)
+{
+	GSList *i;
+
+	g_return_val_if_fail(s != NULL, NULL);
+
+	for (i = s->fs_nodes; i; i = i->next) {
+		struct mega_node *n = i->data;
+
+		if (n->handle && g_str_equal(n->handle, handle))
+			return n;
+	}
+
+	return NULL;
+}
+
+// }}}
 // {{{ mega_node_get_link
 
 gchar *mega_node_get_link(struct mega_node *n, gboolean include_key)
@@ -5008,7 +5030,7 @@ gboolean mega_session_load(struct mega_session *s, const gchar *un, const gchar 
 		return FALSE;
 	}
 
-	update_pathmap(s);
+	build_node_tree(s);
 
 	return TRUE;
 }
