@@ -1649,7 +1649,7 @@ static void build_node_tree(struct mega_session *s)
 }
 
 // }}}
-// {{{ update_pathmap_prune
+// {{{ rebase_node_tree
 
 static gboolean rebase_node_tree(struct mega_session *s, const gchar *new_root)
 {
@@ -1686,6 +1686,7 @@ static gboolean rebase_node_tree(struct mega_session *s, const gchar *new_root)
 		s->fs_nodes = g_slist_prepend(s->fs_nodes, root_node);
 	} else if (root_node->type == MEGA_NODE_FOLDER) {
 		GSList *i, *i_next, **i_prev_next = &s->fs_nodes;
+		GSList *free_list = NULL;
 
 		g_clear_pointer(&root_node->parent_handle, g_free);
 		root_node->parent = NULL;
@@ -1700,12 +1701,18 @@ static gboolean rebase_node_tree(struct mega_session *s, const gchar *new_root)
 				// drop link
 				*i_prev_next = i_next;
 				g_slist_free_1(i);
-				mega_node_free(n);
+
+				// we can't free the node right here, because it
+				// needs to be available for
+				// mega_node_has_ancestor checks
+				free_list = g_slist_prepend(free_list, n);
 			} else {
 				// move next address of previously kept node
 				i_prev_next = &i->next;
 			}
 		}
+
+		g_slist_free_full(free_list, (GDestroyNotify)mega_node_free);
 	} else {
 		return FALSE;
 	}
