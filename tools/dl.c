@@ -253,7 +253,7 @@ GSList* pick_nodes(void)
 	struct mega_node *parent = nodes->data;
 	int indent = 0;
 
-	g_print("1. %s/\n", ((struct mega_node*)nodes->data)->name);
+	g_print("1. %s%s\n", parent->name, mega_node_is_container(parent) ? "/" : "");
 
 	for (it = nodes->next; it; it = it->next) {
 		struct mega_node *node = it->data;
@@ -358,7 +358,7 @@ static int dl_main(int ac, char *av[])
 	g_assert(file_regex != NULL);
 
 	folder_regex =
-		g_regex_new("^https?://mega(?:\\.co)?\\.nz/#F!([a-z0-9_-]{8})!([a-z0-9_-]{22})(![a-z0-9_-]{8})?$",
+		g_regex_new("^https?://mega(?:\\.co)?\\.nz/#F!([a-z0-9_-]{8})!([a-z0-9_-]{22})(?:[!?]([a-z0-9_-]{8}))?$",
 			    G_REGEX_CASELESS, 0, NULL);
 	g_assert(folder_regex != NULL);
 
@@ -412,10 +412,6 @@ static int dl_main(int ac, char *av[])
 			handle = g_match_info_fetch(m2, 1);
 			key = g_match_info_fetch(m2, 2);
 			specific = g_match_info_fetch(m2, 3);
-
-			// remove first char of |specific| since it's an '!'
-			if (specific)
-				memmove(&specific[0], &specific[1], strlen(specific));
 
 			// perform download
 			if (!mega_session_open_exp_folder(s, handle, key, specific, &local_err)) {

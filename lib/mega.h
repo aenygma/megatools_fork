@@ -178,6 +178,7 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 				    GError **err);
 void mega_download_data_free(struct mega_download_data_params *params);
 
+struct mega_node* mega_session_get_node_by_handle(struct mega_session *s, const gchar* handle);
 gboolean mega_node_is_writable(struct mega_session *s, struct mega_node *n);
 
 gboolean mega_node_is_container(struct mega_node *n);
