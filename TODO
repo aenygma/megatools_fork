@@ -1,3 +1,7 @@
+- bug: when the session is started by megatools dl, it will have an
+  empty fs_nodes list, so next call to megatools ls will return empty
+  results and user needs to do --reload
+
 - add usages to the code
 
 ---------------------------------------
