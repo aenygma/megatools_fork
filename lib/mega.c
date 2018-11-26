@@ -1698,15 +1698,9 @@ static void update_pathmap_prune(struct mega_session *s, const gchar *specific)
 
 		if (g_str_equal(n->handle, specific)) {
 			// convert target into root node
-			if (n->type != MEGA_NODE_FILE) {
-				n->type = MEGA_NODE_ROOT;
-				n->parent = NULL;
-				n->parent_handle = NULL;
-			} else {
-				p_node->type = MEGA_NODE_ROOT;
-				p_node->parent = NULL;
-				p_node->parent_handle = NULL;
-			}
+			n->type = MEGA_NODE_ROOT;
+			n->parent = NULL;
+			n->parent_handle = NULL;
 		} else {
 			while (p_node && !g_str_equal(p_node->handle, specific))
 				p_node = p_node->parent;
@@ -1720,10 +1714,6 @@ static void update_pathmap_prune(struct mega_session *s, const gchar *specific)
 	gint idx;
 	for (idx = 0; idx < remove_nodes->len; idx++) {
 		struct mega_node *r = g_array_index(remove_nodes, struct mega_node *, idx);
-
-		if (r->type == MEGA_NODE_ROOT)
-			continue;
-
 		s->fs_nodes = g_slist_remove(s->fs_nodes, r);
 		mega_node_free(r);
 	}

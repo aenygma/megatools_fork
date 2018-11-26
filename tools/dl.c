@@ -358,7 +358,7 @@ static int dl_main(int ac, char *av[])
 	g_assert(file_regex != NULL);
 
 	folder_regex =
-		g_regex_new("^https?://mega(?:\\.co)?\\.nz/#F!([a-z0-9_-]{8})!([a-z0-9_-]{22})([!?][a-z0-9_-]{8})?$",
+		g_regex_new("^https?://mega(?:\\.co)?\\.nz/#F!([a-z0-9_-]{8})!([a-z0-9_-]{22})(![a-z0-9_-]{8})?$",
 			    G_REGEX_CASELESS, 0, NULL);
 	g_assert(folder_regex != NULL);
 
