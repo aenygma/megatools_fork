@@ -77,6 +77,9 @@ static int get_main(int ac, char *av[])
 		return 1;
 	}
 
+	// download files
+	mega_session_watch_status(s, status_callback, NULL);
+
 	// stream file
 	if (opt_stream) {
 		struct mega_node *n = mega_session_stat(s, av[1]);
@@ -94,9 +97,6 @@ static int get_main(int ac, char *av[])
 		tool_fini(s);
 		return status;
 	}
-
-	// download files
-	mega_session_watch_status(s, status_callback, NULL);
 
 	for (i = 1; i < ac; i++) {
 		gc_free gchar *path = tool_convert_filename(av[i], FALSE);
