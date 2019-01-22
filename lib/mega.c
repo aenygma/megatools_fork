@@ -1984,12 +1984,16 @@ static struct mega_node *mega_node_parse(struct mega_session *s, const gchar *no
 		return NULL;
 	}
 
-	// check for invalid characters in the name
+	// replace invalid filename characters with whitespace
+	gchar *check;
 #ifdef G_OS_WIN32
-	if (strpbrk(node_name, "/\\<>:\"|?*") || !strcmp(node_name, ".") || !strcmp(node_name, ".."))
+	while (check = strpbrk(node_name, "/\\<>:\"|?*"))
 #else
-	if (strpbrk(node_name, "/") || !strcmp(node_name, ".") || !strcmp(node_name, ".."))
+	while (check = strpbrk(node_name, "/"))
 #endif
+			*check = ' ';
+	// check for invalid names
+	if (!strcmp(node_name, ".") || !strcmp(node_name, ".."))
 	{
 		g_printerr("WARNING: Skipping FS node %s because it's name is invalid '%s'\n", node_h, node_name);
 		return NULL;
@@ -4667,12 +4671,16 @@ gboolean mega_session_dl_prepare(struct mega_session *s, struct mega_download_da
 		return FALSE;
 	}
 
-	// check for invalid characters in filename
+	// replace invalid filename characters with whitespace
+	gchar *check;
 #ifdef G_OS_WIN32
-	if (strpbrk(node_name, "/\\<>:\"|?*") || !strcmp(node_name, ".") || !strcmp(node_name, ".."))
+	while (check = strpbrk(node_name, "/\\<>:\"|?*"))
 #else
-	if (strpbrk(node_name, "/") || !strcmp(node_name, ".") || !strcmp(node_name, ".."))
+	while (check = strpbrk(node_name, "/"))
 #endif
+			*check = ' ';
+	// check for invalid names
+	if (!strcmp(node_name, ".") || !strcmp(node_name, ".."))
 	{
 		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Remote file name is invalid: '%s'", node_name);
 		return FALSE;
