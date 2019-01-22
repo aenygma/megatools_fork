@@ -1987,9 +1987,9 @@ static struct mega_node *mega_node_parse(struct mega_session *s, const gchar *no
 	// replace invalid filename characters with whitespace
 	gchar *check = node_name;
 #ifdef G_OS_WIN32
-	while (check = strpbrk(check, "/\\<>:\"|?*"))
+	while ((check = strpbrk(check, "/\\<>:\"|?*")))
 #else
-	while (check = strpbrk(check, "/"))
+	while ((check = strpbrk(check, "/")))
 #endif
 		*check = '_';
 
@@ -4674,9 +4674,9 @@ gboolean mega_session_dl_prepare(struct mega_session *s, struct mega_download_da
 	// replace invalid filename characters with whitespace
 	gchar *check = node_name;
 #ifdef G_OS_WIN32
-	while (check = strpbrk(check, "/\\<>:\"|?*"))
+	while ((check = strpbrk(check, "/\\<>:\"|?*")))
 #else
-	while (check = strpbrk(check, "/"))
+	while ((check = strpbrk(check, "/")))
 #endif
 		*check = '_';
 
