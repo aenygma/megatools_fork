@@ -4762,13 +4762,16 @@ gboolean mega_node_get_path(struct mega_node *n, gchar *buf, gsize len)
 	// count parents
 	gint n_parents = 0;
 	struct mega_node *it = n;
-	while (it) {
+	while (it && n_parents < 64) {
 		n_parents++;
 		it = it->parent;
 	}
 
+	if (n_parents >= 64)
+		return FALSE;
+
 	// allocate pointer list on stack
-	struct mega_node **parents = g_alloca(sizeof(struct mega_node *) * n_parents);
+	struct mega_node *parents[64];
 
 	// get parents into the pointer list
 	it = n;
