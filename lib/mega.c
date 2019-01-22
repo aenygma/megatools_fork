@@ -1991,10 +1991,10 @@ static struct mega_node *mega_node_parse(struct mega_session *s, const gchar *no
 #else
 	while (check = strpbrk(node_name, "/"))
 #endif
-			*check = ' ';
+		*check = '_';
+
 	// check for invalid names
-	if (!strcmp(node_name, ".") || !strcmp(node_name, ".."))
-	{
+	if (!strcmp(node_name, ".") || !strcmp(node_name, "..")) {
 		g_printerr("WARNING: Skipping FS node %s because it's name is invalid '%s'\n", node_h, node_name);
 		return NULL;
 	}
@@ -4678,10 +4678,10 @@ gboolean mega_session_dl_prepare(struct mega_session *s, struct mega_download_da
 #else
 	while (check = strpbrk(node_name, "/"))
 #endif
-			*check = ' ';
+		*check = '_';
+
 	// check for invalid names
-	if (!strcmp(node_name, ".") || !strcmp(node_name, ".."))
-	{
+	if (!strcmp(node_name, ".") || !strcmp(node_name, "..")) {
 		g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Remote file name is invalid: '%s'", node_name);
 		return FALSE;
 	}
