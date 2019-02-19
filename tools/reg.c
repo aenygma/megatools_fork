@@ -65,7 +65,6 @@ static struct mega_reg_state *unserialize_reg_state(const gchar *str)
 
 	struct mega_reg_state *state = g_new0(struct mega_reg_state, 1);
 	state->user_handle = g_match_info_fetch(m, 3);
-	;
 
 	decoded_pk = g_base64_decode(pk, &len);
 	if (!decoded_pk)
