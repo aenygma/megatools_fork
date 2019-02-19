@@ -4357,7 +4357,7 @@ gboolean mega_session_download_data(struct mega_session *s, struct mega_download
 				}
 
 				if (download_from > params->node_size) {
-					g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Unfinished downloaded data are larger than the node being downloaded (you can eg. remove %s to fix the issue)", tmp_path);
+					g_set_error(err, MEGA_ERROR, MEGA_ERROR_OTHER, "Unfinished downloaded data is larger than the node being downloaded (you can eg. remove %s to fix the issue)", tmp_path);
 					return FALSE;
 				}
 			} else {
@@ -4540,7 +4540,7 @@ retry:
 				 NULL, NULL, &local_err)) {
 		g_propagate_prefixed_error(
 			err, local_err,
-			"Can't rename downloaded temporary file %s to %s (downloaded data are good!): ", tmp_path,
+			"Can't rename downloaded temporary file %s to %s (downloaded data is good!): ", tmp_path,
 			file_path);
 		return FALSE;
 	}
