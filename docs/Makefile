@@ -1,7 +1,7 @@
 # build docs
 
 VERSION = 1.10.3
-COMMANDS = df dl get ls test mkdir put reg rm copy
+COMMANDS = df dl get ls test export mkdir put reg rm copy
 
 COMMON_DEPS = \
 	asciidoc.conf \

@@ -1,0 +1,46 @@
+megatools-export(1)
+=================
+
+NAME
+----
+megatools export - create public links for remote files
+
+
+SYNOPSIS
+--------
+[verse]
+'megatools export' <remotepaths>...
+
+
+DESCRIPTION
+-----------
+
+Exports (creates public links) for all files stored in your mega.nz
+account referenced by `<remotepaths>`.
+
+Works only for individual files for now.
+
+
+OPTIONS
+-------
+
+include::auth-options.txt[]
+include::basic-options.txt[]
+
+<remotepaths>::
+	One or more remote filesystem file paths to export.
+
+EXAMPLES
+--------
+
+* Export a file:
++
+------------
+$ megatools export /Root/README
+https://mega.nz/#!OFFRlbgR!k5rWmLp3mxB0gsq07Ii67PLd9L0wq4KondFLDlfH3Uw
+------------
+
+
+include::remote-paths.txt[]
+
+include::footer.txt[]
