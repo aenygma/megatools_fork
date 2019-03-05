@@ -1,0 +1,69 @@
+megatools-test(1)
+=================
+
+NAME
+----
+megatools test - Test for existence of files or folders
+
+
+SYNOPSIS
+--------
+[verse]
+'megatools test' [-f|-d] <remotepaths>...
+
+
+DESCRIPTION
+-----------
+
+Tests for existence of files or paths of files stored on Mega.nz.
+
+If all `<remotepaths>` match the condition, the tool returns status code 0.
+
+If one of the `<remotepaths>` doesn't exist, the tool returns 1.
+
+If one of the `<remotepaths>` doesn't match the `-f` or `-d` filter, the tool returns 2.
+
+For other errors, the tool returns 3.
+
+
+OPTIONS
+-------
+
+--file::
+-f::
+	Require all `<remotepaths>` to be files.
+
+--folder::
+-d::
+	Require all `<remotepaths>` to be folders.
+
+include::auth-options.txt[]
+include::basic-options.txt[]
+
+<remotepaths>::
+	One or more remote filesystem paths to test.
+
+EXAMPLES
+--------
+
+* Test for existence of a path:
++
+------------
+$ megatools test /Root/README
+$ test $? -eq 0 && echo "File or folder exists at /Root/README"
+File or folder exists at /Root/README
+------------
+
+
+* Test for existence of multiple files:
++
+------------
+$ megatools test -f /Root/file1 /Root/file2
+$ test $? -eq 0 && echo "/Root/file1 and /Root/file2 are both files"
+/Root/file1 and /Root/file2 are both files
+------------
+
+
+include::remote-paths.txt[]
+
+include::footer.txt[]

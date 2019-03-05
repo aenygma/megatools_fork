@@ -31,11 +31,13 @@ extern struct shell_tool shell_tool_put;
 extern struct shell_tool shell_tool_reg;
 extern struct shell_tool shell_tool_rm;
 extern struct shell_tool shell_tool_copy;
+extern struct shell_tool shell_tool_test;
 
 static struct shell_tool* tools[] = {
 	&shell_tool_dl,
 	&shell_tool_df,
 	&shell_tool_ls,
+	&shell_tool_test,
 	&shell_tool_get,
 	&shell_tool_put,
 	&shell_tool_copy,

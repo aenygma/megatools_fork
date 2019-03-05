@@ -11,6 +11,7 @@ SYNOPSIS
 [verse]
 'megatools df' [--free|--total|--used] [--mb|--gb|-h]
 'megatools ls' [-e] [-h] [--header] [-l] [-R] [-n] [<remotepaths>...]
+'megatools test' [-f|-d] <remotepaths>...
 'megatools put' [--no-progress] [--path <remotepath>] <paths>...
 'megatools mkdir' <remotepaths>...
 'megatools mkdir' /Contacts/<contactemail>
@@ -59,6 +60,9 @@ man:megatools-df[1]::
 
 man:megatools-ls[1]::
 	List all remote files
+
+man:megatools-test[1]::
+	Test for existence of files or folders
 
 man:megatools-mkdir[1]::
 	Create remote directory

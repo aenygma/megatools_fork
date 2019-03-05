@@ -29,6 +29,7 @@ Tools
   reg      Register and verify a new mega account
   df       Show your cloud storage space usage/quota
   ls       List all remote files
+  test     Test for existence of remote files or folders
   mkdir    Create remote directory
   rm       Remove remote file or directory
   put      Upload individual files
