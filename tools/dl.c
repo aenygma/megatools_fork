@@ -379,7 +379,8 @@ static int dl_main(int ac, char *av[])
 		gc_free gchar *key = NULL;
 		gc_free gchar *handle = NULL;
 		gc_free gchar *specific = NULL;
-		gc_free gchar *link = tool_convert_filename(av[i], FALSE);
+		gc_free gchar *link_utf8 = tool_convert_filename(av[i], FALSE);
+		gc_free gchar *link = g_uri_unescape_string(link_utf8, NULL);
 
 		if (g_regex_match(file_regex, link, 0, &m1)) {
 			handle = g_match_info_fetch(m1, 1);
