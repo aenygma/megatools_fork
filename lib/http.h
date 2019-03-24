@@ -33,9 +33,20 @@ enum {
 	HTTP_ERROR_OTHER
 };
 
+enum {
+	HTTP_IPPROTO_ANY,
+	HTTP_IPPROTO_V4,
+	HTTP_IPPROTO_V6,
+};
+
 typedef gsize (*http_data_fn)(gpointer buf, gsize len, gpointer user_data);
 typedef gboolean (*http_progress_fn)(goffset dltotal, goffset dlnow, goffset ultotal, goffset ulnow,
 				     gpointer user_data);
+
+// globals
+
+extern char* http_netif;
+extern int http_ipproto;
 
 // functions
 

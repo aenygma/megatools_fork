@@ -13,3 +13,12 @@
 	* `none` : Disable proxy if it was enabled in the config file.
 	* `socks5://localhost:9050` : Local SOCKSv5 proxy server
 	* `socks5h://localhost:9050` : Local SOCKSv5 proxy server with DNS handled by the proxy
+
+--netif <ifname|ip>::
+	Network interface or local IP address used for outgoing connections.
+	You have to specify IP address bound to some of your local network interfaces, when specifying an IP address.
+
+--ip-proto <proto>::
+	Which IP protocol to prefer when connecting to mega.nz (v4, v6, or any).
+	This is just an advisory option.
+	Megatools will resolve mega.nz domain, and then use an A or AAAA record based on the stated preference.

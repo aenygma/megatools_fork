@@ -24,6 +24,7 @@
 
 #include "config.h"
 #include "tools.h"
+#include "http.h"
 
 #ifdef G_OS_WIN32
 #include <windows.h>
@@ -59,6 +60,8 @@ static gint transfer_worker_count = 5;
 static gint cache_timout = 10 * 60;
 static gboolean opt_enable_previews = BOOLEAN_UNSET_BUT_TRUE;
 static gboolean opt_disable_resume;
+static gchar *opt_netif;
+static gchar *opt_ipproto;
 
 static gboolean tool_use_colors = FALSE;
 
@@ -147,6 +150,12 @@ static GOptionEntry network_options[] = {
 	{ "proxy", '\0',
                 0, G_OPTION_ARG_STRING, &opt_proxy,
                 "Proxy setup string", "PROXY" },
+	{ "netif", '\0',
+                0, G_OPTION_ARG_STRING, &opt_netif,
+                "Network interface or local IP address used for outgoing connections", "NAME" },
+	{ "ip-proto", '\0',
+                0, G_OPTION_ARG_STRING, &opt_ipproto,
+                "Which protocol to prefer when connecting to mega.nz (v4, v6, or any)", "PROTO" },
 	{ NULL }
 };
 
@@ -602,6 +611,23 @@ void tool_init(gint *ac, gchar ***av, const gchar *tool_name, GOptionEntry *tool
 			proxy = NULL;
 		else
 			proxy = opt_proxy;
+	}
+
+	if (opt_netif) {
+		http_netif = opt_netif;
+	}
+
+	if (opt_ipproto) {
+		if (!strcmp(opt_ipproto, "v4"))
+			http_ipproto = HTTP_IPPROTO_V4;
+		else if (!strcmp(opt_ipproto, "v6"))
+			http_ipproto = HTTP_IPPROTO_V6;
+		else if (!strcmp(opt_ipproto, "any"))
+			http_ipproto = HTTP_IPPROTO_ANY;
+		else {
+			g_printerr("ERROR: Invalid --ip-proto option.\n");
+			exit(1);
+		}
 	}
 
 	if (!(flags & TOOL_INIT_AUTH))

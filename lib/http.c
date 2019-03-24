@@ -23,6 +23,9 @@
 #include <curl/curl.h>
 #include <string.h>
 
+char* http_netif = NULL;
+int http_ipproto = HTTP_IPPROTO_ANY;
+
 #define MEGA_NZ_API_PUBKEY_PIN "sha256//0W38e765pAfPqS3DqSVOrPsC4MEOvRBaXQ7nY1AJ47E="
 
 // curlver.h: this macro was added in May 14, 2015
@@ -124,7 +127,18 @@ struct http *http_new(void)
 #else
 	curl_easy_setopt(h->curl, CURLOPT_ENCODING, "");
 #endif
-	curl_easy_setopt(h->curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+
+	switch (http_ipproto) {
+		case HTTP_IPPROTO_V4:
+			curl_easy_setopt(h->curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+			break;
+		case HTTP_IPPROTO_V6:
+			curl_easy_setopt(h->curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
+			break;
+	}
+
+	if (http_netif)
+		curl_easy_setopt(h->curl, CURLOPT_INTERFACE, http_netif);
 
 	if (mega_debug & MEGA_DEBUG_HTTP)
 		curl_easy_setopt(h->curl, CURLOPT_VERBOSE, 1L);
