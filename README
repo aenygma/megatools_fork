@@ -219,9 +219,10 @@ official tarball. If you're a developer and want help with building megatools
 from git, make sure to mention it, otherwise I'll assume you're an end user and
 just refer you to this README.
 
-If you want to develop megatools, you can send patches via e-mail to
-megous@megous.com or create pull requests on github. E-mail is the preferred
-method.
+If you want to contribute to megatools, you can send patches via e-mail to
+megatools@megous.com. The main GIT repository is available at:
+
+  https://megous.com/git/megatools
 
 In addition to the regular build steps, you'll need to install additional
 dependencies. For building from git repository, you'll also need: asciidoc,
@@ -265,15 +266,12 @@ Some third party tools can be found at:
 Author
 ======
 
-Megatools were written by Ondřej Jirman <megous@megous.com>, 2013-2018
+Megatools were written by Ondřej Jirman <megatools@megous.com>, 2013-2019
 
 My PGP key can be found at: https://megous.com/dl/key.txt
   (Fingerprint is: 9AB138B20691621CD4CF92026E6426C677CFEFF1)
 
 Official website is: https://megatools.megous.com
-
-If you'd like to donate, please use contact information provided on the
-official website.
 
 
 Contributors
@@ -305,17 +303,12 @@ Support and bug reports
 =======================
 
 If you think you've found bug in megatools, send a report including enough
-information for recreating the issue to: megous@megous.com
+information for recreating the issue to: megatools@megous.com Your message
+will end up in a public archive, so be careful what you say, or infomration
+you send.
 
-IMPORTANT: I use personal e-mail server for my e-mail communication. I respond
-to most e-mails, so if you are not getting a response within a few days, and
-you're a user of a more aggressive e-mail provider (Outlook, iCloud, ...) it may
-be because your provider rejected my e-mail as SPAM and did not deliver it at
-all (not even to your SPAM folder), despite it being response to your e-mail and
-my server using industry's best practices. You can either contact your e-mail
-provider so that they fix their issue with rejecting legitimate responses to
-your mail, or use different e-mail provider or contact channel to contact me.
-(github issues) 
+I respond to most e-mails, so if you are not getting a response within a few
+days, check your spam folder.
 
 
 License
