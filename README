@@ -182,6 +182,8 @@ On Alpine Linux:
   apk add --update build-base libcurl curl-dev asciidoc openssl-dev glib-dev \
     glib libtool automake autoconf
 
+WARNING: Newer versions of megatools use meson build system. Build steps
+are different for meson.
 
 You can build megatools into your HOME directory, so that they'll not pollute
 your /usr or /usr/local by using --prefix=$HOME/.local option to configure.
@@ -205,8 +207,24 @@ Now you can run megatools from ~/.local/bin.
   megals
 
 
-Building megatools from git repository and contributing code
-============================================================
+Building megatools from git repository and contributing code (new method)
+=========================================================================
+
+Megatools use meson build system. See https://mesonbuild.com/
+
+Build steps for meson are:
+
+  git clone https://megous.com/git/megatools
+  cd megatools
+  meson b
+  ninja -C b
+  sudo ninja -C b install
+
+You may need to install dependencies listed above in the previous section.
+
+
+Building megatools from git repository and contributing code (old method)
+=========================================================================
 
 Building from git is discouraged for most users, unless you want to contribute
 your code to megatools.
@@ -230,7 +248,7 @@ docbook-xml, autoconf, libtool, automake.
 
 Now, get the code using git:
 
-  git clone git://megous.com/megatools
+  git clone https://megous.com/git/megatools
 
 Documentation is built separately from the code, and must be built first.
 Running make -C docs should build the docs, if you have all the dependencies
@@ -242,7 +260,7 @@ The rest of the steps is the same as the regular source code build.
 
 Example build steps:
 
-  git clone git://megous.com/megatools
+  git clone https://megous.com/git/megatools
   cd megatools
   make -j8 -C docs
   ./autogen.sh --prefix=$HOME/.local
